@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronsUpDown, LogOut, Settings, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,6 +19,7 @@ import {
     SidebarMenuItem,
     useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavUserProps {
     user: {
@@ -30,6 +31,8 @@ interface NavUserProps {
 
 export function NavUser({ user }: NavUserProps) {
     const { isMobile } = useSidebar();
+    const { logout } = useAuth();
+    const navigate = useNavigate();
 
     const getInitials = (name: string) => {
         return name
@@ -38,6 +41,15 @@ export function NavUser({ user }: NavUserProps) {
             .join("")
             .toUpperCase()
             .slice(0, 2);
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate("/login");
+        } catch (error) {
+            console.error("Logout error:", error);
+        }
     };
 
     return (
@@ -102,7 +114,10 @@ export function NavUser({ user }: NavUserProps) {
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={handleLogout}
+                        >
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Keluar</span>
                         </DropdownMenuItem>

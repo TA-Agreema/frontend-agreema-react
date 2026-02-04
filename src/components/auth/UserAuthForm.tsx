@@ -15,6 +15,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/contexts/AuthContext"
 
 const formSchema = z.object({
     email: z.string().min(1, "Email wajib diisi").email("Format email tidak valid"),
@@ -23,7 +24,9 @@ const formSchema = z.object({
 
 export default function UserAuthForm() {
     const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string>("")
     const navigate = useNavigate()
+    const { login } = useAuth()
 
     const form = useForm({
         resolver: zodResolver(formSchema),
@@ -35,19 +38,28 @@ export default function UserAuthForm() {
 
     const onSubmit = async (data: z.infer<typeof formSchema>) => {
         setIsLoading(true)
+        setError("")
 
-        // Simulasi delay login (static flow tanpa API)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        console.log("Login data:", data)
-
-        // Redirect ke dashboard
-        navigate("/dashboard")
+        try {
+            await login(data.email, data.password)
+            navigate("/dashboard")
+        } catch (err) {
+            console.error("Login error:", err)
+            setError("Email atau password salah. Silakan coba lagi.")
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                {error && (
+                    <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
+                        {error}
+                    </div>
+                )}
+
                 <FormField
                     control={form.control}
                     name="email"
