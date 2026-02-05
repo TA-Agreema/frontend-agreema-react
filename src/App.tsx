@@ -5,7 +5,6 @@ import DashboardPage from './pages/dashboard/DashboardPage.tsx'
 import UsersListPage from './pages/users/new-users/UsersListPage.tsx'
 import RolesListPage from './pages/users/roles/RolesListPage.tsx'
 import ContractPage from './pages/contracts/ContractListPage.tsx'
-import ContractRevisionPage from './pages/contracts/RevisionContracts.tsx'
 import NotFoundPage from './pages/error/NotFoundPage.tsx'
 import ServerErrorPage from './pages/error/ServerErrorPage.tsx'
 import UnauthorizedPage from './pages/error/UnauthorizedPage.tsx'
@@ -16,7 +15,6 @@ const Dashboard = withDashboard(DashboardPage)
 const Users = withDashboard(UsersListPage)
 const Roles = withDashboard(RolesListPage)
 const Contract = withDashboard(ContractPage)
-const ContractRevision = withDashboard(ContractRevisionPage)
 
 export default function App() {
   return (
@@ -54,12 +52,6 @@ export default function App() {
           <Route path="/contracts" element={
             <ProtectedRoute>
               <Contract />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/contracts/revisions" element={
-            <ProtectedRoute>
-              <ContractRevision />
             </ProtectedRoute>
           } />
 
