@@ -68,6 +68,7 @@ import {
   fetchContract,
   updateContract,
 } from "@/services/contract.service";
+import { fetchFieldDefinitions } from "@/services/field.service";
 import type { Category } from "@/types/category";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 
@@ -184,10 +185,113 @@ const INTERNAL_ROLES = [
 const inputCls =
   "w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all";
 
-function EditorToolbar({
+// Field Inserter Dropdown
+interface FieldDefinition {
+  id: number;
+  field_key: string;
+  field_label: string;
+  field_type: string;
+  is_active: boolean;
+}
+
+function FieldInserter({
   editor,
+  fields,
+  onAddField,
 }: {
   editor: ReturnType<typeof useEditor> | null;
+  fields: FieldDefinition[];
+  onAddField: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const insertField = (field: FieldDefinition) => {
+    if (!editor) return;
+    const fieldTag = `{{${field.field_key}}}`;
+    editor.chain().focus().insertContent(fieldTag).run();
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        type="button"
+        title="Insert Field"
+        className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700 flex items-center gap-1">
+        <span className="text-xs font-semibold">
+          {`{`}
+          {`{`}
+        </span>
+        <span className="text-xs font-semibold">
+          {`}`}
+          {`}`}
+        </span>
+        <ChevronDown className="h-3 w-3" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+          {/* Field List - Max 4 items, scrollable */}
+          <div className="max-h-[160px] overflow-y-auto">
+            {fields.length > 0 ? (
+              fields.map((field) => (
+                <button
+                  key={field.id}
+                  onClick={() => insertField(field)}
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0">
+                  <div className="font-semibold text-gray-800">
+                    {field.field_label}
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-mono">
+                    {`{{${field.field_key}}}`}
+                  </div>
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-4 text-center text-xs text-gray-400">
+                Tidak ada field
+              </div>
+            )}
+          </div>
+
+          {/* Add Field Button - Absolute positioned */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2">
+            <button
+              onClick={onAddField}
+              type="button"
+              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded border border-dashed border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition-colors font-medium">
+              <Plus className="h-3.5 w-3.5" />
+              Tambah Field
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditorToolbar({
+  editor,
+  fields,
+  onAddField,
+}: {
+  editor: ReturnType<typeof useEditor> | null;
+  fields: FieldDefinition[];
+  onAddField: () => void;
 }) {
   const textPickerRef = useRef<HTMLInputElement>(null);
   const highlightPickerRef = useRef<HTMLInputElement>(null);
@@ -392,6 +496,39 @@ function EditorToolbar({
           onChange={onTextColorChange}
         />
       </div>
+      {/* Field Inserter */}
+      <FieldInserter editor={editor} fields={fields} onAddField={onAddField} />
+
+      {/* Line Spacing */}
+      <div className="flex items-center gap-1.5 ml-1">
+        <MoveVertical className="h-3.5 w-3.5 text-gray-400" />
+        <select
+          value={currentLineHeight}
+          onChange={(e) => setLineHeight(e.target.value)}
+          title="Line Spacing"
+          className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700">
+          {[1.0, 1.15, 1.5, 2.0, 2.5, 3.0].map((val) => (
+            <option key={val} value={val.toString()}>
+              {val.toFixed(2)}
+            </option>
+          ))}
+          {!["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"].includes(
+            currentLineHeight,
+          ) && <option value={currentLineHeight}>{currentLineHeight}</option>}
+        </select>
+      </div>
+      <div className="h-6 w-px bg-gray-100" />
+      <ToolbarBtn
+        onClick={addLink}
+        active={editor.isActive("link")}
+        title="Link">
+        <LinkIcon className="h-3.5 w-3.5" />
+      </ToolbarBtn>
+      <ToolbarBtn onClick={uploadImage} title="Insert Image">
+        <ImageIcon className="h-3.5 w-3.5" />
+      </ToolbarBtn>
+      <div className="h-6 w-px bg-gray-100" />
+
       {/* Font Size */}
       <div className="flex items-center gap-0.5">
         <ToolbarBtn
@@ -441,34 +578,6 @@ function EditorToolbar({
           <Plus className="h-3.5 w-3.5" />
         </ToolbarBtn>
       </div>
-      {/* Line Spacing */}
-      <div className="flex items-center gap-1.5 ml-1">
-        <MoveVertical className="h-3.5 w-3.5 text-gray-400" />
-        <select
-          value={currentLineHeight}
-          onChange={(e) => setLineHeight(e.target.value)}
-          title="Line Spacing"
-          className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700">
-          {[1.0, 1.15, 1.5, 2.0, 2.5, 3.0].map((val) => (
-            <option key={val} value={val.toString()}>
-              {val.toFixed(2)}
-            </option>
-          ))}
-          {!["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"].includes(
-            currentLineHeight,
-          ) && <option value={currentLineHeight}>{currentLineHeight}</option>}
-        </select>
-      </div>
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={addLink}
-        active={editor.isActive("link")}
-        title="Link">
-        <LinkIcon className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn onClick={uploadImage} title="Insert Image">
-        <ImageIcon className="h-3.5 w-3.5" />
-      </ToolbarBtn>
     </div>
   );
 }
@@ -549,8 +658,13 @@ function SignerRow({
         </div>
         <button
           onClick={onRemove}
-          disabled={disabled}
-          className={`p-0.5 ${disabled ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:text-red-400"} transition-colors rounded`}>
+          disabled={disabled || signer.id === "s1"}
+          title={
+            signer.id === "s1"
+              ? "Penandatangan utama tidak dapat dihapus"
+              : undefined
+          }
+          className={`p-0.5 ${disabled || signer.id === "s1" ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:text-red-400"} transition-colors rounded`}>
           <X className="h-3 w-3" />
         </button>
       </div>
@@ -705,6 +819,9 @@ export default function ContractEditorPage() {
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Fields for field inserter
+  const [fields, setFields] = useState<FieldDefinition[]>([]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -714,9 +831,18 @@ export default function ContractEditorPage() {
         /* silent */
       }
     })();
+
+    (async () => {
+      try {
+        const fieldData = await fetchFieldDefinitions();
+        setFields(fieldData.filter((f: FieldDefinition) => f.is_active));
+      } catch {
+        /* silent */
+      }
+    })();
   }, []);
 
-  // Signers
+  // Signers - Start with 1 internal, max 2 total
   const [signers, setSigners] = useState<Signer[]>([
     {
       id: "s1",
@@ -726,25 +852,14 @@ export default function ContractEditorPage() {
       email: "",
       noUserAccount: false,
     },
-    {
-      id: "s2",
-      type: "internal",
-      name: "",
-      title: "",
-      email: "",
-      noUserAccount: false,
-    },
-    {
-      id: "s3",
-      type: "external",
-      name: "",
-      title: "",
-      email: "",
-      noUserAccount: false,
-    },
   ]);
 
-  const addSigner = (type: SignerType) =>
+  const addSigner = (type: SignerType) => {
+    // Max 2 signers total
+    if (signers.length >= 2) return;
+
+    // If adding external and already have internal, ok
+    // But first signer MUST be internal (s1)
     setSigners((p) => [
       ...p,
       {
@@ -756,10 +871,14 @@ export default function ContractEditorPage() {
         noUserAccount: false,
       },
     ]);
+  };
   const updateSigner = (id: string, u: Signer) =>
     setSigners((p) => p.map((s) => (s.id === id ? u : s)));
-  const removeSigner = (id: string) =>
+  const removeSigner = (id: string) => {
+    // Prevent removing the first signer (must keep at least 1 internal)
+    if (id === "s1") return;
     setSigners((p) => p.filter((s) => s.id !== id));
+  };
 
   // Editor
   const editor = useEditor({
@@ -852,6 +971,11 @@ export default function ContractEditorPage() {
     template_id: selectedTemplate?.id ?? null,
     content: editor?.getHTML() ?? "",
   });
+
+  const handleAddField = () => {
+    // TODO: Open modal to add new field definition
+    console.log("Tambah field");
+  };
 
   const handleSaveDraft = async () => {
     if (!title.trim()) {
@@ -1088,8 +1212,13 @@ export default function ContractEditorPage() {
                     ))}
                     <button
                       onClick={() => setShowSignerTypeModal(true)}
-                      disabled={isReadOnlyAfterSubmit}
-                      className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit ? "opacity-40 cursor-not-allowed" : ""}`}>
+                      disabled={isReadOnlyAfterSubmit || signers.length >= 2}
+                      title={
+                        signers.length >= 2
+                          ? "Maksimal 2 penandatangan"
+                          : undefined
+                      }
+                      className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit || signers.length >= 2 ? "opacity-40 cursor-not-allowed" : ""}`}>
                       <Plus className="h-3.5 w-3.5" /> Tambah Penandatangan
                     </button>
                   </div>
@@ -1111,7 +1240,11 @@ export default function ContractEditorPage() {
             {/* CENTER flexible */}
             <Panel minSize={320}>
               <div className="h-full flex flex-col bg-white overflow-hidden">
-                <EditorToolbar editor={editor} />
+                <EditorToolbar
+                  editor={editor}
+                  fields={fields}
+                  onAddField={handleAddField}
+                />
                 <div className="flex-1 overflow-y-auto">
                   <EditorContent editor={editor} />
 
@@ -1121,26 +1254,15 @@ export default function ContractEditorPage() {
                       Tanda Tangan
                     </p>
                     <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
-                      {signers
-                        .filter((s) => s.type === "internal")
-                        .map((s) => (
-                          <SignatureBox
-                            key={s.id}
-                            name={s.name || undefined}
-                            title={s.title || undefined}
-                          />
-                        ))}
-                      {signers
-                        .filter((s) => s.type === "external")
-                        .map((s) => (
-                          <SignatureBox
-                            key={s.id}
-                            isExternal
-                            name={s.name || undefined}
-                            title={s.title || undefined}
-                            email={s.email || undefined}
-                          />
-                        ))}
+                      {signers.map((s) => (
+                        <SignatureBox
+                          key={s.id}
+                          isExternal={s.type === "external"}
+                          name={s.name || undefined}
+                          title={s.title || undefined}
+                          email={s.email || undefined}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
