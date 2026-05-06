@@ -58,6 +58,7 @@ function CategoryActionMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const canDelete = category.templates_count === 0;
+  const canToggleStatus = category.templates_count === 0;
 
   //  Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -135,7 +136,17 @@ function CategoryActionMenu({
               onToggleStatus(category);
               setOpen(false);
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors">
+            disabled={!canToggleStatus}
+            title={
+              !canToggleStatus
+                ? "Tidak dapat dinonaktifkan karena memiliki kontrak aktif"
+                : undefined
+            }
+            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
+              canToggleStatus
+                ? "hover:bg-muted"
+                : "text-muted-foreground cursor-not-allowed opacity-50"
+            }`}>
             <ToggleLeft className="h-4 w-4 text-muted-foreground" />
             {category.is_active ? "Nonaktifkan" : "Aktifkan"}
           </button>
@@ -299,10 +310,10 @@ export default function ContractCategoryPage() {
         </div>
 
         {/* Info banner */}
-        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          Kategori hanya dapat dihapus dan dinonaktifkan jika tidak memiliki
-          kontrak aktif
+          Kategori yang memiliki kontrak aktif tidak dapat dihapus maupun
+          dinonaktifkan.
         </div>
 
         {/* Error */}
