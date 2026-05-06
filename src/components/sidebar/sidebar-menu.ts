@@ -17,6 +17,7 @@ export interface SidebarMenuSubItem {
   title: string;
   url: string;
   permissions?: string[];
+  roles?: string[];
 }
 
 export interface SidebarMenuItemType {
@@ -41,6 +42,7 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     title: "Manajemen Pengguna",
     url: "/users",
     icon: Users,
+    roles: ["admin"],
   },
 
   // Role Admin - Kategori Kontrak
@@ -48,6 +50,7 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     title: "Kategori Kontrak",
     url: "/categories",
     icon: FileText,
+    roles: ["admin"],
   },
 
   // Role Admin - Template Kontrak
@@ -55,27 +58,32 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     title: "Template Kontrak",
     url: "/contracts-templates",
     icon: FileText,
+    roles: ["admin"],
   },
   {
     title: "Pengaturan",
     url: "/settings",
     icon: Settings,
+    roles: ["admin"],
   },
 
   {
     title: "Daftar Kontrak",
     url: "/contracts",
     icon: FileText,
+    roles: ["hrd"],
   },
   {
-    title: "Template",
+    title: "Template Kontrak",
     url: "/contracts-templates",
     icon: ClipboardList,
+    roles: ["hrd"],
   },
   {
     title: "Arsip Kontrak",
     url: "/contracts-archive",
     icon: Archive,
+    roles: ["hrd"],
   },
 
   // Role Manager - Approval
@@ -83,6 +91,7 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     title: "Approval Kontrak",
     url: "/approvals",
     icon: CheckCircle,
+    roles: ["manager"],
     items: [
       { title: "Perlu Ditinjau", url: "/approvals/pending" },
       { title: "Riwayat kontrak", url: "/approvals/history" },

@@ -1,102 +1,75 @@
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { Loader2, LogIn } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
+import { Link, useLocation } from "react-router-dom";
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { useAuth } from "@/contexts/AuthContext"
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+} from "@/components/ui/sidebar";
+import type { SidebarMenuItemType } from "./sidebar-menu";
 
-const formSchema = z.object({
-    email: z.string().min(1, "Email wajib diisi").email("Format email tidak valid"),
-    password: z.string().min(1, "Password wajib diisi").min(6, "Password minimal 6 karakter"),
-})
+type NavMainProps = {
+  items: SidebarMenuItemType[];
+};
 
-export default function UserAuthForm() {
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string>("")
-    const navigate = useNavigate()
-    const { login } = useAuth()
+export function NavMain({ items }: NavMainProps) {
+  const location = useLocation();
 
-    const form = useForm({
-        resolver: zodResolver(formSchema),
-        defaultValues: {
-            email: "",
-            password: "",
-        },
-    })
+  const isActive = (url: string) => {
+    return location.pathname === url || location.pathname.startsWith(url + "/");
+  };
 
-    const onSubmit = async (data: z.infer<typeof formSchema>) => {
-        setIsLoading(true)
-        setError("")
-
-        try {
-            await login(data.email, data.password)
-            navigate("/dashboard")
-        } catch (err) {
-            console.error("Login error:", err)
-            setError("Email atau password salah. Silakan coba lagi.")
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {error && (
-                    <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md">
-                        {error}
-                    </div>
-                )}
-
-                <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                                <Input placeholder="nama@perusahaan.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Password</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="Masukkan password" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-
-                <Button
-                    type="submit"
-                    className="mt-2 w-full flex items-center justify-center gap-2"
-                    disabled={isLoading}
-                >
-                    {isLoading ? <Loader2 className="animate-spin" /> : <LogIn />}
-                    {isLoading ? "Memproses..." : "Masuk"}
-                </Button>
-            </form>
-        </Form>
-    )
+  return (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton
+            asChild
+            tooltip={item.title}
+            className={
+              isActive(item.url)
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : ""
+            }>
+            <Link
+              to={item.url}
+              className={`flex items-center gap-2 transition-colors duration-200 ${
+                isActive(item.url)
+                  ? "bg-emerald-100 text-emerald-700 font-semibold"
+                  : "hover:bg-gray-100 text-gray-700"
+              }`}>
+              {item.icon && <item.icon className="h-4 w-4" />}
+              <span>{item.title}</span>
+            </Link>
+          </SidebarMenuButton>
+          {item.items && item.items.length > 0 && (
+            <SidebarMenuSub>
+              {item.items.map((subItem) => (
+                <SidebarMenuSubItem key={subItem.title}>
+                  <SidebarMenuSubButton
+                    asChild
+                    className={
+                      isActive(subItem.url)
+                        ? "bg-emerald-50 text-emerald-700 font-semibold"
+                        : ""
+                    }>
+                    <Link
+                      to={subItem.url}
+                      className={`transition-colors duration-200 ${
+                        isActive(subItem.url)
+                          ? "text-emerald-700 font-semibold"
+                          : "text-gray-600 hover:text-emerald-600"
+                      }`}>
+                      <span>{subItem.title}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              ))}
+            </SidebarMenuSub>
+          )}
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
 }
