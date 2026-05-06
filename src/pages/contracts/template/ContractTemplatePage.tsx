@@ -19,10 +19,6 @@ import StatusBadge from "@/components/ui/status-badge";
 
 const PAGE_SIZE = 4;
 
-
-
-
-
 // Row Action Menu
 
 function RowMenu({
@@ -31,12 +27,16 @@ function RowMenu({
   onDelete,
   onDownload,
   onToggleStatus,
+  canEdit = false,
+  canDelete = false,
 }: {
   template: ContractTemplate;
   onEdit: (t: ContractTemplate) => void;
   onDelete: (t: ContractTemplate) => void;
   onDownload: (t: ContractTemplate) => void;
   onToggleStatus: (t: ContractTemplate) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -106,7 +106,17 @@ function RowMenu({
               onEdit(template);
               setOpen(false);
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors">
+            disabled={!canEdit}
+            title={
+              !canEdit
+                ? "Anda tidak memiliki izin untuk mengedit template"
+                : undefined
+            }
+            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
+              canEdit
+                ? "hover:bg-muted"
+                : "text-muted-foreground cursor-not-allowed opacity-50"
+            }`}>
             <Pencil className="h-4 w-4 text-muted-foreground" />
             Edit
           </button>
@@ -116,7 +126,17 @@ function RowMenu({
               onToggleStatus(template);
               setOpen(false);
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors">
+            disabled={!canEdit}
+            title={
+              !canEdit
+                ? "Anda tidak memiliki izin untuk mengubah status template"
+                : undefined
+            }
+            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
+              canEdit
+                ? "hover:bg-muted"
+                : "text-muted-foreground cursor-not-allowed opacity-50"
+            }`}>
             <ToggleLeft className="h-4 w-4 text-muted-foreground" />
             {template.status === "Aktif" ? "Nonaktifkan" : "Aktifkan"}
           </button>
@@ -138,7 +158,17 @@ function RowMenu({
               onDelete(template);
               setOpen(false);
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+            disabled={!canDelete}
+            title={
+              !canDelete
+                ? "Anda tidak memiliki izin untuk menghapus template"
+                : undefined
+            }
+            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
+              canDelete
+                ? "text-red-600 hover:bg-red-50"
+                : "text-muted-foreground cursor-not-allowed opacity-50"
+            }`}>
             <Trash2 className="h-4 w-4" />
             Hapus
           </button>
@@ -150,8 +180,10 @@ function RowMenu({
 
 export default function ContractTemplatePage() {
   const navigate = useNavigate();
-  const { roles } = useAuth();
-  const isAdmin = roles.includes("admin");
+  const { permissions } = useAuth();
+  const canEdit = permissions.includes("update.template");
+  const canDelete = permissions.includes("delete.template");
+  const canCreate = permissions.includes("create.template");
 
   const {
     templates,
@@ -226,7 +258,7 @@ export default function ContractTemplatePage() {
               className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
             />
           </div>
-          {isAdmin && (
+          {canCreate && (
             <button
               onClick={() => navigate("/contracts-templates/new")}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0">
@@ -279,7 +311,7 @@ export default function ContractTemplatePage() {
             <p className="text-sm">
               {search ? "Tidak ada template yang cocok" : "Belum ada template"}
             </p>
-            {!search && isAdmin && (
+            {!search && canCreate && (
               <button
                 onClick={() => navigate("/contracts-templates/new")}
                 className="mt-1 flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 transition-colors">
