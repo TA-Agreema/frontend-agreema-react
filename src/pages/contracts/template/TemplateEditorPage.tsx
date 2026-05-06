@@ -67,6 +67,8 @@ import {
   type FieldDefinition,
 } from "@/services/field.service";
 import type { Category } from "@/types/category";
+import { Navigate } from "react-router-dom";
+import PermissionGuard from "@/middlewares/PermissionGuard";
 
 //  Types
 
@@ -129,8 +131,7 @@ function TabBtn({
         active
           ? "border-emerald-600 text-emerald-700 font-medium bg-emerald-50/50"
           : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}
-    >
+      }`}>
       {icon}
       {label}
     </button>
@@ -408,7 +409,11 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
-            editor.chain().focus().setImage({ src: e.target.result as string }).run();
+            editor
+              .chain()
+              .focus()
+              .setImage({ src: e.target.result as string })
+              .run();
           }
         };
         reader.readAsDataURL(file);
@@ -635,9 +640,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
         title="Link">
         <LinkIcon className="h-4 w-4" />
       </ToolbarBtn>
-      <ToolbarBtn
-        onClick={uploadImage}
-        title="Insert Image">
+      <ToolbarBtn onClick={uploadImage} title="Insert Image">
         <ImageIcon className="h-4 w-4" />
       </ToolbarBtn>
     </div>
@@ -809,188 +812,192 @@ export default function TemplateEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
-      {/*  Header  */}
-      <header className="flex items-center justify-between px-5 h-12 border-b bg-card shadow-sm shrink-0 z-10">
-        {/* Agreema logo */}
-        <div className="flex items-center gap-2.5">
-          <img src="/Agreema.svg" alt="Agreema" className="h-8 w-auto" />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {saveError && (
-            <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-              {saveError}
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={() => navigate("/contracts-templates")}
-            disabled={loading}
-            className="px-4 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50">
-            Batal
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50">
-            {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Simpan
-          </button>
-        </div>
-      </header>
-
-      {/*  Body: 3-column layout  */}
-      <div className="flex flex-1 overflow-hidden">
-        {/*  LEFT: Informasi Template  */}
-        <aside className="w-80 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
-          <div className="p-4 space-y-1">
-            {/* Section header */}
-            <div className="pb-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Informasi Template
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Atur metadata dan kategori template
-              </p>
-            </div>
-
-            {/* Nama Template */}
-            <div className="space-y-1.5 py-1">
-              <label className="text-xs font-semibold text-foreground">
-                Nama Template <span className="text-red-500">*</span>
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Template Perjanjian Kerja Sama"
-                className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                autoFocus={!isEditMode}
-              />
-            </div>
-
-            {/* Kategori */}
-            <div className="space-y-1.5 py-1">
-              <label className="text-xs font-semibold text-foreground">
-                Kategori
-              </label>
-              <div className="relative">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(Number(e.target.value))}
-                  className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
-                  <option value="">Pilih kategori</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="space-y-1.5 py-1">
-              <label className="text-xs font-semibold text-foreground">
-                Status
-              </label>
-              <div className="relative">
-                <select
-                  value={status}
-                  onChange={(e) =>
-                    setStatus(e.target.value as "Active" | "Inactive")
-                  }
-                  className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/*  CENTER: Editor  */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex items-center w-full pt-3 border-b bg-card shrink-0">
-            <TabBtn
-              active={activeTab === "visual"}
-              onClick={() => setActiveTab("visual")}
-              icon={<LayoutTemplate className="h-3.5 w-3.5" />}
-              label="Editor Visual"
-            />
-            <TabBtn
-              active={activeTab === "upload"}
-              onClick={() => setActiveTab("upload")}
-              icon={<Upload className="h-3.5 w-3.5" />}
-              label="Upload Dokumen"
-            />
-            <TabBtn
-              active={activeTab === "preview"}
-              onClick={() => setActiveTab("preview")}
-              icon={<Eye className="h-3.5 w-3.5" />}
-              label="Preview"
-            />
+    <PermissionGuard
+      permissions={["create.template", "update.template"]}
+      fallback={<Navigate to="/unauthorized" replace />}>
+      <div className="flex flex-col h-screen bg-background overflow-hidden">
+        {/*  Header  */}
+        <header className="flex items-center justify-between px-5 h-12 border-b bg-card shadow-sm shrink-0 z-10">
+          {/* Agreema logo */}
+          <div className="flex items-center gap-2.5">
+            <img src="/Agreema.svg" alt="Agreema" className="h-8 w-auto" />
           </div>
 
-          {/* Editor content */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-background">
-            {activeTab === "visual" && (
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <EditorToolbar editor={editor} />
-                <div className="flex-1 overflow-y-auto">
-                  <EditorContent editor={editor} />
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {saveError && (
+              <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                {saveError}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate("/contracts-templates")}
+              disabled={loading}
+              className="px-4 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50">
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50">
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Simpan
+            </button>
+          </div>
+        </header>
+
+        {/*  Body: 3-column layout  */}
+        <div className="flex flex-1 overflow-hidden">
+          {/*  LEFT: Informasi Template  */}
+          <aside className="w-80 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
+            <div className="p-4 space-y-1">
+              {/* Section header */}
+              <div className="pb-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  Informasi Template
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Atur metadata dan kategori template
+                </p>
+              </div>
+
+              {/* Nama Template */}
+              <div className="space-y-1.5 py-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Nama Template <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Template Perjanjian Kerja Sama"
+                  className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                  autoFocus={!isEditMode}
+                />
+              </div>
+
+              {/* Kategori */}
+              <div className="space-y-1.5 py-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Kategori
+                </label>
+                <div className="relative">
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(Number(e.target.value))}
+                    className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                    <option value="">Pilih kategori</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 </div>
               </div>
-            )}
-            {activeTab === "upload" && (
-              <UploadTab
-                file={uploadedFile}
-                onSelect={handleFileSelect}
-                onRemove={() => setFile(null)}
-              />
-            )}
-            {activeTab === "preview" && (
-              <PreviewTab content={editor?.getHTML() ?? ""} name={name} />
-            )}
-          </div>
-        </main>
 
-        {/*  RIGHT: Field Template  */}
-        <aside className="w-80 shrink-0 border-l bg-card flex flex-col overflow-hidden">
-          {/* Fixed header */}
-          <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-              Field Template
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Klik untuk menyalin tag field
-            </p>
-          </div>
-
-          {/* Scrollable field list */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            <HowToUse />
-            <div>
-              {[...fieldGroups.entries()].map(([title, fields]) => (
-                <FieldGroup
-                  key={title}
-                  title={title}
-                  fields={fields}
-                  onInsert={insertField}
-                  copiedTag={copiedTag}
-                  onCopy={copyTag}
-                />
-              ))}
+              {/* Status */}
+              <div className="space-y-1.5 py-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Status
+                </label>
+                <div className="relative">
+                  <select
+                    value={status}
+                    onChange={(e) =>
+                      setStatus(e.target.value as "Active" | "Inactive")
+                    }
+                    className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+
+          {/*  CENTER: Editor  */}
+          <main className="flex-1 flex flex-col overflow-hidden">
+            {/* Tab bar */}
+            <div className="flex items-center w-full pt-3 border-b bg-card shrink-0">
+              <TabBtn
+                active={activeTab === "visual"}
+                onClick={() => setActiveTab("visual")}
+                icon={<LayoutTemplate className="h-3.5 w-3.5" />}
+                label="Editor Visual"
+              />
+              <TabBtn
+                active={activeTab === "upload"}
+                onClick={() => setActiveTab("upload")}
+                icon={<Upload className="h-3.5 w-3.5" />}
+                label="Upload Dokumen"
+              />
+              <TabBtn
+                active={activeTab === "preview"}
+                onClick={() => setActiveTab("preview")}
+                icon={<Eye className="h-3.5 w-3.5" />}
+                label="Preview"
+              />
+            </div>
+
+            {/* Editor content */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-background">
+              {activeTab === "visual" && (
+                <div className="flex flex-col flex-1 overflow-hidden">
+                  <EditorToolbar editor={editor} />
+                  <div className="flex-1 overflow-y-auto">
+                    <EditorContent editor={editor} />
+                  </div>
+                </div>
+              )}
+              {activeTab === "upload" && (
+                <UploadTab
+                  file={uploadedFile}
+                  onSelect={handleFileSelect}
+                  onRemove={() => setFile(null)}
+                />
+              )}
+              {activeTab === "preview" && (
+                <PreviewTab content={editor?.getHTML() ?? ""} name={name} />
+              )}
+            </div>
+          </main>
+
+          {/*  RIGHT: Field Template  */}
+          <aside className="w-80 shrink-0 border-l bg-card flex flex-col overflow-hidden">
+            {/* Fixed header */}
+            <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0">
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Field Template
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Klik untuk menyalin tag field
+              </p>
+            </div>
+
+            {/* Scrollable field list */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              <HowToUse />
+              <div>
+                {[...fieldGroups.entries()].map(([title, fields]) => (
+                  <FieldGroup
+                    key={title}
+                    title={title}
+                    fields={fields}
+                    onInsert={insertField}
+                    copiedTag={copiedTag}
+                    onCopy={copyTag}
+                  />
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
-    </div>
+    </PermissionGuard>
   );
 }
