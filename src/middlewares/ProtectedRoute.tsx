@@ -11,8 +11,16 @@ export default function ProtectedRoute({
   children,
   permissions = [],
 }: ProtectedRouteProps) {
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
   const { hasAnyPermission } = usePermissions();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   if (!token) {
     return <Navigate to="/login" replace />;
