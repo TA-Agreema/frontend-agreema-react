@@ -38,8 +38,6 @@ import {
   Info,
   Loader2,
   AlertCircle,
-  IndentIncrease,
-  IndentDecrease,
   Plus,
   Minus,
   MoveVertical,
@@ -53,7 +51,6 @@ import {
 } from "@/components/editor/ToolbarComponents";
 import { TableDropdown } from "@/components/editor/TableDropdown";
 
-import { Indent } from "@/lib/tiptap-indent";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
 import {
@@ -601,26 +598,6 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
       </ToolbarBtn>
       <ToolbarDivider />
 
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().indent().run()}
-        title="Indent">
-        <IndentIncrease className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().outdent().run()}
-        title="Outdent">
-        <IndentDecrease className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().indentRight().run()}
-        title="Indent Right">
-        <span className="text-[10px] font-bold px-0.5">R+</span>
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().outdentRight().run()}
-        title="Outdent Right">
-        <span className="text-[10px] font-bold px-0.5">R-</span>
-      </ToolbarBtn>
       <ToolbarDivider />
       <ToolbarBtn
         onClick={() => editor.chain().focus().toggleBulletList().run()}
@@ -690,7 +667,6 @@ export default function TemplateEditorPage() {
       TableRow,
       TableHeader,
       TableCell,
-      Indent,
       ImageResize,
     ],
     content: "",

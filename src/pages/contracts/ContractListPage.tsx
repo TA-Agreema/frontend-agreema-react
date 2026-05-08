@@ -630,7 +630,7 @@ export default function ContractListPage() {
           onSelect={async (template: TemplateOption) => {
             try {
               const created = await createContract({
-                contract_number: `CF-${Date.now()}`,
+                contract_number: "", // Biarkan backend generate otomatis sesuai prefix kategori
                 title: template.name,
                 template_id: template.id,
                 category_id: template.category_id,

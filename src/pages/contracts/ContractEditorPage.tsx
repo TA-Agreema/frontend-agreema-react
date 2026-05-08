@@ -43,12 +43,9 @@ import {
   User,
   Mail,
   Pen,
-  IndentIncrease,
-  IndentDecrease,
   MoveVertical,
   ImageIcon,
 } from "lucide-react";
-import { Indent } from "@/lib/tiptap-indent";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
 
@@ -62,11 +59,14 @@ import TemplateSelectModal, {
 } from "@/components/modal/TemplateSelectModal";
 import SignerTypeModal from "@/components/modal/SignerTypeModal";
 import SubmitConfirmModal from "@/components/modal/SubmitConfirmModal";
+import FieldManageModal from "@/components/modal/FieldManageModal";
 import { fetchCategories } from "@/services/category.service";
 import {
   createContract,
   fetchContract,
   updateContract,
+  generateContractNumber,
+  fetchSigners,
 } from "@/services/contract.service";
 import { fetchFieldDefinitions } from "@/services/field.service";
 import type { Category } from "@/types/category";
@@ -165,21 +165,6 @@ const STATUS_DOT: Record<string, string> = {
   active: "bg-emerald-500",
   revision: "bg-orange-400",
 };
-
-const INTERNAL_USERS = [
-  "Galang Aly N",
-  "Alexa Jovanca",
-  "Budi Santoso",
-  "Aldi Santosa",
-];
-const INTERNAL_ROLES = [
-  "Manager",
-  "Legal",
-  "Direktur",
-  "HR Manager",
-  "CFO",
-  "Employee",
-];
 
 // common input class used by sidebar fields
 const inputCls =
@@ -435,28 +420,6 @@ function EditorToolbar({
       </ToolbarBtn>
       <div className="h-6 w-px bg-gray-100" />
       <ToolbarBtn
-        onClick={() => editor.chain().focus().indent().run()}
-        title="Indent Left">
-        <IndentIncrease className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().outdent().run()}
-        title="Outdent Left">
-        <IndentDecrease className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().indentRight().run()}
-        title="Indent Right">
-        <span className="text-[10px] font-bold px-0.5">R+</span>
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().outdentRight().run()}
-        title="Outdent Right">
-        <span className="text-[10px] font-bold px-0.5">R-</span>
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title="Horizontal Rule">
         <span className="text-xs font-bold">―</span>
@@ -631,11 +594,13 @@ function SelectField({
 
 function SignerRow({
   signer,
+  internalUsers,
   onChange,
   onRemove,
   disabled,
 }: {
   signer: Signer;
+  internalUsers: InternalUser[];
   onChange: (u: Signer) => void;
   onRemove: () => void;
   disabled?: boolean;
@@ -679,21 +644,47 @@ function SignerRow({
           disabled={disabled}
         />
       ) : (
-        <SelectField
-          value={signer.name}
-          onChange={(v) => onChange({ ...signer, name: v })}
-          placeholder="Nama"
-          options={INTERNAL_USERS}
-          disabled={disabled}
-        />
+        <div className="relative">
+          <select
+            value={signer.name}
+            onChange={(e) => {
+              const userName = e.target.value;
+              const user = internalUsers.find((u) => u.name === userName);
+              onChange({
+                ...signer,
+                name: userName,
+                title: user?.job_title || "",
+              });
+            }}
+            disabled={disabled}
+            className={`${inputCls} appearance-none pr-6 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}>
+            <option value="">Pilih Nama</option>
+            {internalUsers.map((u) => (
+              <option key={u.id} value={u.name}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+        </div>
       )}
 
-      {!isExt && (
-        <SelectField
+      {isExt ? (
+        <input
+          type="text"
+          placeholder="Jabatan (Contoh: Direktur)"
           value={signer.title}
-          onChange={(v) => onChange({ ...signer, title: v })}
+          onChange={(e) => onChange({ ...signer, title: e.target.value })}
+          className={`${inputCls} ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+          disabled={disabled}
+        />
+      ) : (
+        <input
+          type="text"
           placeholder="Jabatan"
-          options={INTERNAL_ROLES}
+          value={signer.title}
+          readOnly
+          className={`${inputCls} opacity-70 bg-gray-50 cursor-not-allowed`}
           disabled={disabled}
         />
       )}
@@ -797,10 +788,14 @@ export default function ContractEditorPage() {
   const [selectedTemplate, setSelectedTemplate] =
     useState<TemplateOption | null>(initialTemplate);
   const [showSignerTypeModal, setShowSignerTypeModal] = useState(false);
+  const [showFieldModal, setShowFieldModal] = useState(false);
 
   // Form
   const [contractNumber, setContractNumber] = useState(
-    navState?.createdContract?.contract_number || "CT-2024-001",
+    navState?.createdContract?.contract_number || "",
+  );
+  const [externalContractNumber, setExternalContractNumber] = useState(
+    navState?.createdContract?.external_contract_number || "",
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
@@ -819,8 +814,22 @@ export default function ContractEditorPage() {
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Internal Users
+  const [internalUsers, setInternalUsers] = useState<any[]>([]);
+
   // Fields for field inserter
   const [fields, setFields] = useState<FieldDefinition[]>([]);
+
+  const refreshFields = useCallback(async () => {
+    try {
+      const fieldData = await fetchFieldDefinitions();
+      setFields(fieldData.filter((f: FieldDefinition) => f.is_active));
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  const autoGeneratedRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -832,15 +841,28 @@ export default function ContractEditorPage() {
       }
     })();
 
+    refreshFields();
+
+    // Fetch Internal Users
     (async () => {
       try {
-        const fieldData = await fetchFieldDefinitions();
-        setFields(fieldData.filter((f: FieldDefinition) => f.is_active));
+        const userData = await fetchSigners();
+        setInternalUsers(userData);
       } catch {
         /* silent */
       }
     })();
-  }, []);
+
+    // Auto-generate contract number once for new contracts
+    if (!isEdit && !autoGeneratedRef.current) {
+      autoGeneratedRef.current = true;
+      generateContractNumber()
+        .then((num) => setContractNumber(num))
+        .catch(() => {
+          /* silent — user can type manually */
+        });
+    }
+  }, [refreshFields, isEdit]);
 
   // Signers - Start with 1 internal, max 2 total
   const [signers, setSigners] = useState<Signer[]>([
@@ -887,7 +909,6 @@ export default function ContractEditorPage() {
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: false }),
-      Indent,
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
@@ -916,6 +937,10 @@ export default function ContractEditorPage() {
       try {
         const c = await fetchContract(Number(id));
         setContractNumber(c.contract_number ?? "");
+        setExternalContractNumber(
+          (c as unknown as { external_contract_number?: string })
+            .external_contract_number ?? "",
+        );
         setTitle(c.title ?? "");
 
         // Reconstruct template dari contract data
@@ -958,12 +983,20 @@ export default function ContractEditorPage() {
       setShowTemplateModal(false);
       editor?.commands.setContent(t.content);
       if (!title || title === "Kontrak Sewa Vendor") setTitle(t.name);
+
+      // Auto-update contract number prefix based on the new category
+      if (!isEdit) {
+        generateContractNumber(t.category_id)
+          .then(setContractNumber)
+          .catch(() => {});
+      }
     },
-    [editor, title],
+    [editor, title, isEdit],
   );
 
   const buildPayload = (status: string) => ({
-    contract_number: contractNumber.trim(),
+    contract_number: contractNumber.trim() || undefined,
+    external_contract_number: externalContractNumber.trim() || null,
     title: title.trim(),
     start_date: startDate || null,
     end_date: endDate || null,
@@ -1128,14 +1161,102 @@ export default function ContractEditorPage() {
                     </div>
                   </div>
 
-                  <Field label="Nomor Kontrak">
+                  {/* Drag-to-insert contract number chips */}
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 space-y-1.5">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      Seret ke Dokumen
+                    </p>
+                    {(
+                      [
+                        {
+                          label: "No. Kontrak Internal",
+                          value: contractNumber,
+                        },
+                        ...(externalContractNumber
+                          ? [
+                              {
+                                label: "No. Kontrak Eksternal",
+                                value: externalContractNumber,
+                              },
+                            ]
+                          : []),
+                      ] as { label: string; value: string }[]
+                    ).map((chip) => (
+                      <div
+                        key={chip.label}
+                        draggable
+                        onDragStart={(e) =>
+                          e.dataTransfer.setData("text/plain", chip.value)
+                        }
+                        title={`Seret untuk menyisipkan ${chip.label}`}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border border-emerald-200 text-xs cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm transition-all select-none group">
+                        <span className="text-emerald-700 font-medium shrink-0">
+                          {chip.label}
+                        </span>
+                        <span className="text-gray-500 truncate flex-1 text-right text-[10px] font-mono bg-gray-50 px-1 rounded">
+                          {chip.value || "—"}
+                        </span>
+                        <svg
+                          className="h-3 w-3 text-gray-300 group-hover:text-emerald-400 shrink-0"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 8h16M4 16h16"
+                          />
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+
+                  <Field label="Nomor Kontrak Internal">
+                    <div className="flex gap-1.5">
+                      <input
+                        value={contractNumber}
+                        onChange={(e) => setContractNumber(e.target.value)}
+                        placeholder="PKS-001/SLAB/V/2026"
+                        className={`${inputCls} flex-1 ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                        disabled={isReadOnlyAfterSubmit}
+                      />
+                      {!isEdit && !isReadOnlyAfterSubmit && (
+                        <button
+                          type="button"
+                          title="Generate ulang nomor kontrak"
+                          onClick={() =>
+                            generateContractNumber(
+                              selectedTemplate?.category_id,
+                            )
+                              .then(setContractNumber)
+                              .catch(() => {})
+                          }
+                          className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0">
+                          ↺
+                        </button>
+                      )}
+                    </div>
+                  </Field>
+
+                  <Field label="Nomor Kontrak Eksternal (Opsional)">
                     <input
-                      value={contractNumber}
-                      onChange={(e) => setContractNumber(e.target.value)}
-                      placeholder="CT-2024-001"
+                      value={externalContractNumber}
+                      onChange={(e) =>
+                        setExternalContractNumber(e.target.value)
+                      }
+                      placeholder="Nomor dari pihak mitra"
                       className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
                       disabled={isReadOnlyAfterSubmit}
                     />
+                    {externalContractNumber && (
+                      <p className="text-[10px] text-gray-400 mt-0.5 pl-0.5">
+                        Dapat diseret ke dokumen sebagai{" "}
+                        <span className="font-mono">
+                          {"{{external_contract_number}}"}
+                        </span>
+                      </p>
+                    )}
                   </Field>
 
                   <Field label="Judul Dokumen">
@@ -1205,6 +1326,7 @@ export default function ContractEditorPage() {
                       <SignerRow
                         key={s.id}
                         signer={s}
+                        internalUsers={internalUsers}
                         onChange={(u) => updateSigner(s.id, u)}
                         onRemove={() => removeSigner(s.id)}
                         disabled={isReadOnlyAfterSubmit}
@@ -1243,9 +1365,18 @@ export default function ContractEditorPage() {
                 <EditorToolbar
                   editor={editor}
                   fields={fields}
-                  onAddField={handleAddField}
+                  onAddField={() => setShowFieldModal(true)}
                 />
-                <div className="flex-1 overflow-y-auto">
+                <div
+                  className="flex-1 overflow-y-auto"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const tag = e.dataTransfer.getData("text/plain");
+                    if (tag && editor) {
+                      editor.chain().focus().insertContent(tag).run();
+                    }
+                  }}>
                   <EditorContent editor={editor} />
 
                   {/*  Tanda Tangan  */}
@@ -1309,6 +1440,13 @@ export default function ContractEditorPage() {
           }
         }}
       />
+
+      {showFieldModal && (
+        <FieldManageModal
+          onClose={() => setShowFieldModal(false)}
+          onRefreshFields={refreshFields}
+        />
+      )}
     </>
   );
 }

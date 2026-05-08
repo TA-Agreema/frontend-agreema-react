@@ -4,7 +4,7 @@ import type { ContractRow } from "@/pages/contracts/ContractListPage";
 const BASE_PATH = "/contracts";
 
 export interface CreateContractPayload {
-  contract_number: string;
+  contract_number?: string | null;
   external_contract_number?: string | null;
   title: string;
   start_date?: string | null;
@@ -17,6 +17,19 @@ export interface CreateContractPayload {
 }
 
 export type UpdateContractPayload = Partial<CreateContractPayload>;
+
+export const generateContractNumber = async (categoryId?: number | null): Promise<string> => {
+  const url = categoryId
+    ? `${BASE_PATH}/generate-number?category_id=${categoryId}`
+    : `${BASE_PATH}/generate-number`;
+  const res = await api.get<{ contract_number: string }>(url);
+  return res.data.contract_number;
+};
+
+export const fetchSigners = async (): Promise<any[]> => {
+  const res = await api.get("/signers/internal");
+  return res.data.data;
+};
 
 export const fetchContracts = async (
   search?: string,
