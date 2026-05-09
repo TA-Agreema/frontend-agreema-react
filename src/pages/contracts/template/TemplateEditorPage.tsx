@@ -16,19 +16,6 @@ import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
 import mammoth from "mammoth";
 import {
-  Undo2,
-  Redo2,
-  Bold,
-  Italic,
-  Underline as UnderlineIcon,
-  Strikethrough,
-  Code,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  List,
-  ListOrdered,
-  Link as LinkIcon,
   Upload,
   Eye,
   LayoutTemplate,
@@ -39,17 +26,24 @@ import {
   Loader2,
   AlertCircle,
   Plus,
-  Minus,
-  MoveVertical,
-  ImageIcon,
 } from "lucide-react";
 
 // Shared Editor Components
-import {
-  ToolbarBtn,
-  ToolbarDivider,
-} from "@/components/editor/ToolbarComponents";
+import { ToolbarBtn, ToolbarDivider } from "@/components/editor/ToolbarBtn";
+import { HistoryButtons } from "@/components/editor/HistoryButtons";
+import { HeadingButtons } from "@/components/editor/HeadingButtons";
+import { FormattingButtons } from "@/components/editor/FormattingButtons";
+import { AlignmentButtons } from "@/components/editor/AlignmentButtons";
+import { BulletDropdown } from "@/components/editor/BulletDropdown";
+import { NumberingDropdown } from "@/components/editor/NumberingDropdown";
+import { MarginDropdown, type MarginStyle, MARGIN_PRESETS } from "@/components/editor/MarginDropdown";
 import { TableDropdown } from "@/components/editor/TableDropdown";
+import { HighlightColorPicker } from "@/components/editor/HighlightColorPicker";
+import { TextColorPicker } from "@/components/editor/TextColorPicker";
+import { LineSpacingToggle } from "@/components/editor/LineSpacingToggle";
+import { LinkButton } from "@/components/editor/LinkButton";
+import { ImageUploadButton } from "@/components/editor/ImageUploadButton";
+import { FontSizeSelector } from "@/components/editor/FontSizeSelector";
 
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
@@ -345,285 +339,7 @@ function FieldGroup({
   );
 }
 
-//  Toolbar
-function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
-  const textPickerRef = useRef<HTMLInputElement>(null);
-  const highlightPickerRef = useRef<HTMLInputElement>(null);
-  const [, setUpdate] = useState(0);
-
-  useEffect(() => {
-    if (!editor) return;
-    const handler = () => setUpdate((v) => v + 1);
-    editor.on("selectionUpdate", handler);
-    editor.on("transaction", handler);
-    return () => {
-      editor.off("selectionUpdate", handler);
-      editor.off("transaction", handler);
-    };
-  }, [editor]);
-
-  if (!editor) return null;
-
-  const currentFontSize = editor.getAttributes("textStyle").fontSize || "16px";
-  const currentLineHeight =
-    editor.getAttributes("paragraph").lineHeight ||
-    editor.getAttributes("heading").lineHeight ||
-    "1.0";
-
-  const setLineHeight = (value: string) => {
-    editor.chain().focus().setLineHeight(value).run();
-  };
-
-  const setLink = () => {
-    const prev = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Masukkan URL:", prev ?? "https://");
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-    editor.chain().focus().setLink({ href: url }).run();
-  };
-
-  const onHighlightColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    editor.chain().focus().setHighlight({ color: e.target.value }).run();
-  };
-
-  const onTextColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    editor.chain().focus().setColor(e.target.value).run();
-  };
-
-  const setFontSize = (size: string) => {
-    editor.chain().focus().setFontSize(size).run();
-  };
-
-  const uploadImage = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            editor
-              .chain()
-              .focus()
-              .setImage({ src: e.target.result as string })
-              .run();
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  };
-
-  return (
-    <div className="flex items-center gap-0.5 px-3 py-2 border-b bg-muted/20 flex-wrap shrink-0">
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        title="Undo">
-        <Undo2 className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        title="Redo">
-        <Redo2 className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarDivider />
-      {([1, 2, 3] as const).map((level) => (
-        <ToolbarBtn
-          key={level}
-          onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-          active={editor.isActive("heading", { level })}
-          title={`Heading ${level}`}>
-          <span className="text-xs font-bold w-5 text-center">H{level}</span>
-        </ToolbarBtn>
-      ))}
-      <ToolbarDivider />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule">
-        <span className="text-xs font-bold">―</span>
-      </ToolbarBtn>
-      <TableDropdown editor={editor} />
-      <div className="relative flex items-center">
-        <ToolbarBtn
-          onClick={() => highlightPickerRef.current?.click()}
-          title="Highlight Color">
-          <span className="text-xs font-bold">🖍️</span>
-        </ToolbarBtn>
-        <input
-          ref={highlightPickerRef}
-          type="color"
-          className="absolute opacity-0 w-0 h-0 pointer-events-none"
-          onChange={onHighlightColorChange}
-        />
-      </div>
-      <div className="relative flex items-center">
-        <ToolbarBtn
-          onClick={() => textPickerRef.current?.click()}
-          title="Text Color">
-          <span
-            className="text-xs font-bold"
-            style={{
-              color: editor.getAttributes("textStyle").color || "#000000",
-            }}>
-            A
-          </span>
-        </ToolbarBtn>
-        <input
-          ref={textPickerRef}
-          type="color"
-          className="absolute opacity-0 w-0 h-0 pointer-events-none"
-          onChange={onTextColorChange}
-        />
-      </div>
-      <div className="flex items-center gap-0.5">
-        <ToolbarBtn
-          onClick={() => {
-            // @ts-expect-error: decreaseFontSize is a custom command
-            editor.chain().focus().decreaseFontSize().run();
-          }}
-          title="Decrease Font Size">
-          <Minus className="h-4 w-4" />
-        </ToolbarBtn>
-        <select
-          value={currentFontSize}
-          onChange={(e) => setFontSize(e.target.value)}
-          title="Font Size"
-          className="px-2 py-1.5 text-sm rounded border border-border bg-background hover:bg-muted cursor-pointer">
-          {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72].map(
-            (size) => (
-              <option key={size} value={`${size}px`}>
-                {size}px
-              </option>
-            ),
-          )}
-          {![
-            "8px",
-            "9px",
-            "10px",
-            "11px",
-            "12px",
-            "14px",
-            "16px",
-            "18px",
-            "20px",
-            "24px",
-            "30px",
-            "36px",
-            "48px",
-            "60px",
-            "72px",
-          ].includes(currentFontSize) && (
-            <option value={currentFontSize}>{currentFontSize}</option>
-          )}
-        </select>
-        <ToolbarBtn
-          onClick={() => {
-            // @ts-expect-error: increaseFontSize is a custom command
-            editor.chain().focus().increaseFontSize().run();
-          }}
-          title="Increase Font Size">
-          <Plus className="h-4 w-4" />
-        </ToolbarBtn>
-      </div>
-      <div className="flex items-center gap-1.5 ml-1">
-        <MoveVertical className="h-4 w-4 text-muted-foreground" />
-        <select
-          value={currentLineHeight}
-          onChange={(e) => setLineHeight(e.target.value)}
-          title="Line Spacing"
-          className="px-2 py-1.5 text-sm rounded border border-border bg-background hover:bg-muted cursor-pointer">
-          {[1.0, 1.15, 1.5, 2.0, 2.5, 3.0].map((val) => (
-            <option key={val} value={val.toString()}>
-              {val.toFixed(2)}
-            </option>
-          ))}
-          {!["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"].includes(
-            currentLineHeight,
-          ) && <option value={currentLineHeight}>{currentLineHeight}</option>}
-        </select>
-      </div>
-      <ToolbarDivider />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleBold().run()}
-        active={editor.isActive("bold")}
-        title="Bold">
-        <Bold className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleItalic().run()}
-        active={editor.isActive("italic")}
-        title="Italic">
-        <Italic className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
-        active={editor.isActive("underline")}
-        title="Underline">
-        <UnderlineIcon className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleStrike().run()}
-        active={editor.isActive("strike")}
-        title="Strikethrough">
-        <Strikethrough className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleCode().run()}
-        active={editor.isActive("code")}
-        title="Inline Code">
-        <Code className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarDivider />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("left").run()}
-        active={editor.isActive({ textAlign: "left" })}>
-        <AlignLeft className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("center").run()}
-        active={editor.isActive({ textAlign: "center" })}>
-        <AlignCenter className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("right").run()}
-        active={editor.isActive({ textAlign: "right" })}>
-        <AlignRight className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarDivider />
-
-      <ToolbarDivider />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleBulletList().run()}
-        active={editor.isActive("bulletList")}>
-        <List className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        active={editor.isActive("orderedList")}
-        title="Ordered List">
-        <ListOrdered className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarDivider />
-      <ToolbarBtn
-        onClick={setLink}
-        active={editor.isActive("link")}
-        title="Link">
-        <LinkIcon className="h-4 w-4" />
-      </ToolbarBtn>
-      <ToolbarBtn onClick={uploadImage} title="Insert Image">
-        <ImageIcon className="h-4 w-4" />
-      </ToolbarBtn>
-    </div>
-  );
-}
+// EditorToolbar has been extracted to src/components/editor/EditorToolbar.tsx
 
 //  Main Page
 
@@ -659,6 +375,7 @@ export default function TemplateEditorPage() {
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [initialising, setInit] = useState(true);
+  const [pageMargin, setPageMargin] = useState<MarginStyle>(MARGIN_PRESETS[0].value);
 
   // TipTap
   const editor = useEditor({
@@ -673,7 +390,20 @@ export default function TemplateEditorPage() {
       FontSize,
       LineHeight,
       HorizontalRule,
-      Table.configure({
+      Table.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            borderType: {
+              default: "all",
+              parseHTML: (element) => element.getAttribute("data-border-type"),
+              renderHTML: (attributes) => ({
+                "data-border-type": attributes.borderType,
+              }),
+            },
+          };
+        },
+      }).configure({
         resizable: true,
       }),
       TableRow,
@@ -684,12 +414,19 @@ export default function TemplateEditorPage() {
     content: "",
     editorProps: {
       attributes: {
-        class: "outline-none min-h-[420px] px-6 py-5 text-sm leading-7",
+        class: "outline-none text-sm leading-7 text-gray-800",
       },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const draftKey = id ? `template_draft_${id}` : "template_draft_new";
+      if (html && html !== "<p></p>") {
+        localStorage.setItem(draftKey, html);
+      }
     },
   });
 
-  // Load categories + field definitions
+  // Load categories + field definitions + Restore "New" Draft
   useEffect(() => {
     (async () => {
       try {
@@ -699,13 +436,21 @@ export default function TemplateEditorPage() {
         ]);
         setCategories(catData.filter((c: Category) => c.is_active));
         setFieldGroups(groupFields(fieldData));
+
+        // Restore draft for new template
+        if (!isEditMode && editor) {
+          const savedDraft = localStorage.getItem("template_draft_new");
+          if (savedDraft) {
+            editor.commands.setContent(savedDraft);
+          }
+        }
       } catch (err) {
         console.error("Gagal memuat data awal:", err);
       } finally {
         if (!isEditMode) setInit(false);
       }
     })();
-  }, [isEditMode]);
+  }, [isEditMode, editor]);
 
   const refreshFields = async () => {
     try {
@@ -756,7 +501,14 @@ export default function TemplateEditorPage() {
         setName(template.name);
         setCategoryId(template.category_id ?? "");
         setStatus(template.status === "Aktif" ? "Active" : "Inactive");
-        if (template.content) editor.commands.setContent(template.content);
+        
+        // Load draft if exists, otherwise load from DB
+        const savedDraft = localStorage.getItem(`template_draft_${id}`);
+        if (savedDraft) {
+          editor.commands.setContent(savedDraft);
+        } else if (template.content) {
+          editor.commands.setContent(template.content);
+        }
       }
       setInit(false);
     })();
@@ -782,7 +534,16 @@ export default function TemplateEditorPage() {
     if (f.name.toLowerCase().endsWith(".docx")) {
       try {
         const arrayBuffer = await f.arrayBuffer();
-        const result = await mammoth.convertToHtml({ arrayBuffer });
+        const options = {
+          convertImage: mammoth.images.imgElement((image) => {
+            return image.read("base64").then((imageBuffer) => {
+              return {
+                src: `data:${image.contentType};base64,${imageBuffer}`,
+              };
+            });
+          }),
+        };
+        const result = await mammoth.convertToHtml({ arrayBuffer }, options);
         if (editor) {
           editor.commands.setContent(result.value);
           setActiveTab("visual");
@@ -824,6 +585,8 @@ export default function TemplateEditorPage() {
         };
         await createTemplate(payload);
       }
+      // Clear draft on success
+      localStorage.removeItem(isEditMode ? `template_draft_${id}` : "template_draft_new");
       navigate("/contracts-templates");
     } catch {
       setSaveError("Gagal menyimpan template. Coba lagi.");
@@ -940,8 +703,8 @@ export default function TemplateEditorPage() {
                       setStatus(e.target.value as "Active" | "Inactive")
                     }
                     className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
+                    <option value="Active">Aktif</option>
+                    <option value="Inactive">Nonaktif</option>
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 </div>
@@ -984,9 +747,57 @@ export default function TemplateEditorPage() {
             <div className="flex-1 flex flex-col overflow-hidden bg-background">
               {activeTab === "visual" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <EditorToolbar editor={editor} />
-                  <div className="flex-1 overflow-y-auto">
-                    <EditorContent editor={editor} />
+                  <div className="flex items-center gap-0.5 px-3 py-2 border-b bg-muted/20 flex-wrap shrink-0">
+                    <HistoryButtons editor={editor} />
+                    <ToolbarDivider />
+                    <HeadingButtons editor={editor} />
+                    <ToolbarDivider />
+                    <FormattingButtons editor={editor} />
+                    <ToolbarDivider />
+                    <AlignmentButtons editor={editor} />
+                    <ToolbarDivider />
+                    <BulletDropdown editor={editor} />
+                    <NumberingDropdown editor={editor} />
+                    <ToolbarDivider />
+                    <ToolbarBtn
+                      onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+                      title="Horizontal Rule">
+                      <span className="text-xs font-bold">―</span>
+                    </ToolbarBtn>
+                    <MarginDropdown margin={pageMargin} setMargin={setPageMargin} />
+                    <TableDropdown editor={editor!} />
+                    <HighlightColorPicker editor={editor} />
+                    <TextColorPicker editor={editor} />
+                    <div className="relative ml-1">
+                      <LineSpacingToggle editor={editor} />
+                    </div>
+                    <ToolbarDivider />
+                    <LinkButton editor={editor} />
+                    <ImageUploadButton editor={editor} />
+                    <ToolbarDivider />
+                    <FontSizeSelector editor={editor} />
+                  </div>
+                  <div className="flex-1 overflow-y-auto bg-[#f3f4f6] py-8">
+                    <div 
+                      className="mx-auto bg-white shadow-md border border-gray-200 flex flex-col relative"
+                      style={{
+                        width: '21.5cm',
+                        minHeight: '33cm',
+                        backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)'
+                      }}
+                    >
+                      <div 
+                        className="flex-1"
+                        style={{ 
+                          paddingTop: pageMargin.top, 
+                          paddingBottom: pageMargin.bottom, 
+                          paddingLeft: pageMargin.left, 
+                          paddingRight: pageMargin.right 
+                        }}
+                      >
+                        <EditorContent editor={editor} className="h-full" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

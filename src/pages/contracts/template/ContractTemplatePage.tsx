@@ -7,7 +7,6 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  Download,
   Tag,
   ToggleLeft,
 } from "lucide-react";
@@ -25,7 +24,6 @@ function RowMenu({
   template,
   onEdit,
   onDelete,
-  onDownload,
   onToggleStatus,
   canEdit = false,
   canDelete = false,
@@ -33,7 +31,6 @@ function RowMenu({
   template: ContractTemplate;
   onEdit: (t: ContractTemplate) => void;
   onDelete: (t: ContractTemplate) => void;
-  onDownload: (t: ContractTemplate) => void;
   onToggleStatus: (t: ContractTemplate) => void;
   canEdit?: boolean;
   canDelete?: boolean;
@@ -141,15 +138,7 @@ function RowMenu({
             {template.status === "Aktif" ? "Nonaktifkan" : "Aktifkan"}
           </button>
 
-          <button
-            onClick={() => {
-              onDownload(template);
-              setOpen(false);
-            }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors">
-            <Download className="h-4 w-4 text-muted-foreground" />
-            Download PDF
-          </button>
+
 
           <hr className="my-1 border-border" />
 
@@ -190,7 +179,6 @@ export default function ContractTemplatePage() {
     loading,
     error,
     deleteTemplate,
-    downloadPdf,
     toggleTemplateStatus,
   } = useTemplates();
 
@@ -356,7 +344,6 @@ export default function ContractTemplatePage() {
                       navigate(`/contracts-templates/${t.id}/edit`)
                     }
                     onDelete={(t) => setDeleteTarget(t)}
-                    onDownload={(t) => downloadPdf(t.id)}
                     onToggleStatus={(t) => toggleTemplateStatus(t.id)}
                     canEdit={canEdit}
                     canDelete={canDelete}

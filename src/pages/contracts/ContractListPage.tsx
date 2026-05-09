@@ -10,7 +10,6 @@ import {
   FileText,
   XCircle,
   Trash2,
-  Download,
   FileSignature,
   CalendarDays,
 } from "lucide-react";
@@ -158,14 +157,12 @@ function RowMenu({
   onAddendum,
   onTerminate,
   onDelete,
-  onDownload,
 }: {
   contract: ContractRow;
   onEdit: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
-  onDownload: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -288,18 +285,7 @@ function RowMenu({
             </button>
           )}
 
-          <div className="my-1 border-t border-border" />
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload();
-              setOpen(false);
-            }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
-            <Download className="h-4 w-4 text-muted-foreground opacity-70" />
-            Download PDF
-          </button>
         </div>
       )}
     </div>
@@ -582,9 +568,6 @@ export default function ContractListPage() {
                             navigate(`/contracts/${contract.id}/terminate`)
                           }
                           onDelete={() => setDeleteTarget(contract)}
-                          onDownload={() =>
-                            console.log("Download PDF", contract.id)
-                          }
                         />
                       </td>
                     </tr>

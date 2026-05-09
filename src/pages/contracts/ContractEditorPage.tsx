@@ -19,22 +19,9 @@ import OrderedList from "@tiptap/extension-ordered-list";
 import BulletList from "@tiptap/extension-bullet-list";
 import ListItem from "@tiptap/extension-list-item";
 import {
-  Undo2,
-  Redo2,
-  Bold,
-  Italic,
-  Underline as UnderlineIcon,
-  Strikethrough,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  Link as LinkIcon,
-  CalendarDays,
   ChevronDown,
   Plus,
-  Minus,
   X,
-  FileText,
   Clock,
   Paperclip,
   Send,
@@ -46,18 +33,28 @@ import {
   User,
   Mail,
   Pen,
-  MoveVertical,
-  ImageIcon,
-  List,
-  ListOrdered,
 } from "lucide-react";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
 
 // Shared Editor Components
-import { ToolbarBtn } from "@/components/editor/ToolbarComponents";
-import { TableDropdown } from "@/components/editor/TableDropdown";
 import { ResizeHandle } from "@/components/editor/ResizeHandle";
+import { ToolbarBtn, ToolbarDivider } from "@/components/editor/ToolbarBtn";
+import { HistoryButtons } from "@/components/editor/HistoryButtons";
+import { HeadingButtons } from "@/components/editor/HeadingButtons";
+import { FormattingButtons } from "@/components/editor/FormattingButtons";
+import { AlignmentButtons } from "@/components/editor/AlignmentButtons";
+import { BulletDropdown } from "@/components/editor/BulletDropdown";
+import { NumberingDropdown } from "@/components/editor/NumberingDropdown";
+import { MarginDropdown, type MarginStyle, MARGIN_PRESETS } from "@/components/editor/MarginDropdown";
+import { TableDropdown } from "@/components/editor/TableDropdown";
+import { HighlightColorPicker } from "@/components/editor/HighlightColorPicker";
+import { TextColorPicker } from "@/components/editor/TextColorPicker";
+import { FieldInserter, type FieldDefinition } from "@/components/editor/FieldInserter";
+import { LineSpacingToggle } from "@/components/editor/LineSpacingToggle";
+import { LinkButton } from "@/components/editor/LinkButton";
+import { ImageUploadButton } from "@/components/editor/ImageUploadButton";
+import { FontSizeSelector } from "@/components/editor/FontSizeSelector";
 
 import TemplateSelectModal, {
   type TemplateOption,
@@ -188,706 +185,7 @@ const STATUS_DOT: Record<string, string> = {
 const inputCls =
   "w-full text-xs border border-gray-200 rounded-md px-2.5 py-1.5 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all";
 
-// Field Inserter Dropdown
-interface FieldDefinition {
-  id: number;
-  field_key: string;
-  field_label: string;
-  field_type: string;
-  is_active: boolean;
-}
-
-function FieldInserter({
-  editor,
-  fields,
-  onAddField,
-  disabled = false,
-}: {
-  editor: ReturnType<typeof useEditor> | null;
-  fields: FieldDefinition[];
-  onAddField: () => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  const insertField = (field: FieldDefinition) => {
-    if (!editor) return;
-    const fieldTag = `{{${field.field_key}}}`;
-    editor.chain().focus().insertContent(fieldTag).run();
-    setOpen(false);
-  };
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => !disabled && setOpen(!open)}
-        type="button"
-        title={disabled ? "Fitur dinonaktifkan" : "Insert Field"}
-        disabled={disabled}
-        className={`px-2 py-1.5 text-sm rounded border border-gray-200 bg-white ${disabled ? "text-gray-300 cursor-not-allowed opacity-60" : "hover:bg-gray-50 cursor-pointer text-gray-700"} flex items-center gap-1`}>
-        <span className="text-xs font-semibold">Field</span>
-        <ChevronDown className="h-3 w-3" />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-60 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-          {/* Field List - Max 4 items, scrollable */}
-          <div className="max-h-[160px] overflow-y-auto">
-            {fields.length > 0 ? (
-              fields.map((field) => (
-                <button
-                  key={field.id}
-                  onClick={() => insertField(field)}
-                  type="button"
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0">
-                  <div className="font-semibold text-gray-800">
-                    {field.field_label}
-                  </div>
-                  <div className="text-[10px] text-gray-500 font-mono">
-                    {`{{${field.field_key}}}`}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="px-3 py-4 text-center text-xs text-gray-400">
-                Tidak ada field
-              </div>
-            )}
-          </div>
-
-          {/* Add Field Button - Absolute positioned */}
-          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2">
-            <button
-              onClick={() => !disabled && onAddField()}
-              type="button"
-              disabled={disabled}
-              className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded border border-dashed border-emerald-300 ${disabled ? "text-gray-300 cursor-not-allowed bg-white/50" : "text-emerald-600 hover:bg-emerald-50"} transition-colors font-medium`}>
-              <Plus className="h-3.5 w-3.5" />
-              Tambah Field
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function NumberingDropdown({
-  editor,
-  disabled = false,
-}: {
-  editor: ReturnType<typeof useEditor> | null;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  if (!editor) return null;
-
-  const toggleStyle = (type: string | null) => {
-    if (type === null) {
-      if (editor.isActive("orderedList")) {
-        editor.chain().focus().toggleOrderedList().run();
-      }
-    } else {
-      if (editor.isActive("orderedList")) {
-        editor
-          .chain()
-          .focus()
-          .updateAttributes("orderedList", { listType: type })
-          .run();
-      } else {
-        editor
-          .chain()
-          .focus()
-          .toggleOrderedList()
-          .updateAttributes("orderedList", { listType: type })
-          .run();
-      }
-    }
-    setOpen(false);
-  };
-
-  const numberingStyles = [
-    { id: "none", label: "None", type: null, preview: ["None"] },
-    { id: "decimal", label: "1, 2, 3", type: "1", preview: ["1.", "2.", "3."] },
-    { id: "alpha", label: "a, b, c", type: "a", preview: ["a.", "b.", "c."] },
-    {
-      id: "roman",
-      label: "i, ii, iii",
-      type: "i",
-      preview: ["i.", "ii.", "iii."],
-    },
-    {
-      id: "upper-alpha",
-      label: "A, B, C",
-      type: "A",
-      preview: ["A.", "B.", "C."],
-    },
-    {
-      id: "upper-roman",
-      label: "I, II, III",
-      type: "I",
-      preview: ["I.", "II.", "III."],
-    },
-  ];
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <ToolbarBtn
-        onClick={() => !disabled && setOpen(!open)}
-        active={editor.isActive("orderedList")}
-        disabled={disabled}
-        title={disabled ? "Fitur dinonaktifkan" : "Numbering Library"}>
-        <div className="flex items-center gap-0.5">
-          <ListOrdered className="h-3.5 w-3.5" />
-          <ChevronDown className="h-2.5 w-2.5" />
-        </div>
-      </ToolbarBtn>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
-            Numbering Library
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            {numberingStyles.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => toggleStyle(s.type)}
-                className="flex flex-col items-center justify-center p-2 rounded border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
-                <div className="w-full aspect-square border border-gray-200 rounded bg-white mb-1.5 flex flex-col items-start justify-center text-[9px] text-gray-500 font-mono leading-tight p-2 group-hover:border-emerald-200">
-                  {s.preview.map((line, i) => (
-                    <div
-                      key={i}
-                      className="w-full flex items-center gap-1 mb-0.5 last:mb-0">
-                      <span className="shrink-0">{line}</span>
-                      <div className="h-0.5 flex-1 bg-gray-100 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-                <span className="text-[9px] text-gray-500 font-medium">
-                  {s.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BulletDropdown({
-  editor,
-  disabled = false,
-}: {
-  editor: ReturnType<typeof useEditor> | null;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!dropdownRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
-
-  if (!editor) return null;
-
-  const toggleStyle = (style: string | null) => {
-    if (style === null) {
-      if (editor.isActive("bulletList")) {
-        editor.chain().focus().toggleBulletList().run();
-      }
-    } else {
-      const className = `list-${style}`;
-      if (!editor.isActive("bulletList")) {
-        editor
-          .chain()
-          .focus()
-          .toggleBulletList()
-          .updateAttributes("bulletList", { class: className })
-          .run();
-      } else {
-        editor
-          .chain()
-          .focus()
-          .updateAttributes("bulletList", { class: className })
-          .run();
-      }
-    }
-    setOpen(false);
-  };
-
-  const bulletStyles = [
-    { id: "none", label: "None", style: null, preview: ["None"] },
-    {
-      id: "disc",
-      label: "Solid Circle",
-      style: "disc",
-      preview: ["●", "●", "●"],
-    },
-    {
-      id: "circle",
-      label: "Open Circle",
-      style: "circle",
-      preview: ["○", "○", "○"],
-    },
-    {
-      id: "square",
-      label: "Square",
-      style: "square",
-      preview: ["■", "■", "■"],
-    },
-  ];
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <ToolbarBtn
-        onClick={() => !disabled && setOpen(!open)}
-        active={editor.isActive("bulletList")}
-        disabled={disabled}
-        title={disabled ? "Fitur dinonaktifkan" : "Bullet Library"}>
-        <div className="flex items-center gap-0.5">
-          <List className="h-3.5 w-3.5" />
-          <ChevronDown className="h-2.5 w-2.5" />
-        </div>
-      </ToolbarBtn>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
-            Bullet Library
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {bulletStyles.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => toggleStyle(s.style)}
-                className="flex flex-col items-center justify-center p-2 rounded border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
-                <div className="w-full aspect-square border border-gray-200 rounded bg-white mb-1.5 flex flex-col items-start justify-center text-[10px] text-gray-500 font-mono leading-tight p-2 group-hover:border-emerald-200">
-                  {s.preview.map((line, i) => (
-                    <div
-                      key={i}
-                      className="w-full flex items-center gap-2 mb-1 last:mb-0">
-                      <span className="shrink-0">{line}</span>
-                      <div className="h-0.5 flex-1 bg-gray-100 rounded-full" />
-                    </div>
-                  ))}
-                </div>
-                <span className="text-[9px] text-gray-500 font-medium">
-                  {s.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EditorToolbar({
-  editor,
-  fields,
-  onAddField,
-  disabled = false,
-}: {
-  editor: ReturnType<typeof useEditor> | null;
-  fields: FieldDefinition[];
-  onAddField: () => void;
-  disabled?: boolean;
-}) {
-  const textPickerRef = useRef<HTMLInputElement>(null);
-  const highlightPickerRef = useRef<HTMLInputElement>(null);
-  const [, setUpdate] = useState(0);
-
-  useEffect(() => {
-    if (!editor) return;
-    const handler = () => setUpdate((v) => v + 1);
-    editor.on("selectionUpdate", handler);
-    editor.on("transaction", handler);
-    return () => {
-      editor.off("selectionUpdate", handler);
-      editor.off("transaction", handler);
-    };
-  }, [editor]);
-
-  // Manual custom line-height input state; keep declared before any early returns
-  // customLineHeight removed per request; only presets remain
-
-  // No custom input state anymore; presets-only implementation.
-
-  if (!editor) return null;
-
-  const currentFontSize = editor.getAttributes("textStyle").fontSize || "16px";
-  // Normalize current line-height to a string with 2 decimals so the <select> matches
-  const _rawLineHeight =
-    editor.getAttributes("paragraph").lineHeight ??
-    editor.getAttributes("heading").lineHeight ??
-    "1.0";
-
-  const currentLineHeight =
-    typeof _rawLineHeight === "number"
-      ? _rawLineHeight.toFixed(2)
-      : (() => {
-          const n = Number(String(_rawLineHeight));
-          return Number.isNaN(n) ? String(_rawLineHeight) : n.toFixed(2);
-        })();
-
-  const setLineHeight = (value: string) => {
-    // TipTap expects a string; normalize numeric values to string
-    const parsed = parseFloat(value);
-    const toSet = Number.isNaN(parsed) ? String(value) : String(parsed);
-    // Avoid calling focus() here — focusing the editor will blur the custom input
-    // and cause the dropdown to close unexpectedly while the user is typing.
-    editor.chain().setLineHeight(toSet).run();
-  };
-
-  // Manual custom line-height input state/handlers
-
-  // custom input removed: presets only
-
-  // LineSpacingToggle - inline component to keep toolbar compact
-  function LineSpacingToggle() {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-      if (!open) return;
-      const onClick = (e: MouseEvent) => {
-        if (!ref.current) return;
-        if (ref.current.contains(e.target as Node)) return;
-        setOpen(false);
-      };
-      document.addEventListener("mousedown", onClick);
-      return () => document.removeEventListener("mousedown", onClick);
-    }, [open]);
-
-    const presets = [1.0, 1.15, 1.5, 2.0, 2.5, 3.0];
-
-    return (
-      <div className="relative" ref={ref}>
-        <button
-          type="button"
-          onClick={() => !disabled && setOpen((s) => !s)}
-          disabled={disabled}
-          title={disabled ? "Fitur dinonaktifkan" : "Line Spacing"}
-          className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded border border-gray-200 bg-white ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"} text-gray-700`}>
-          <MoveVertical className="h-3.5 w-3.5 text-gray-400" />
-          <span className="text-xs font-medium">{currentLineHeight}</span>
-          <ChevronDown className="h-3 w-3 text-gray-400" />
-        </button>
-
-        {open && (
-          <div className="absolute left-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2">
-            <div className="space-y-1">
-              {presets.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    setLineHeight(p.toFixed(2));
-                    // Do not close dropdown automatically when selecting preset
-                  }}
-                  className={`w-full text-left px-2 py-1 text-sm rounded ${currentLineHeight === p.toFixed(2) ? "bg-emerald-50 text-emerald-700" : "hover:bg-gray-50"} transition-colors`}>
-                  {p.toFixed(2)}
-                </button>
-              ))}
-            </div>
-
-            {/* custom input removed; only presets available */}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const addLink = () => {
-    const url = window.prompt("URL:", editor.getAttributes("link").href ?? "");
-    if (url === null) return;
-    if (!url) {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-    editor.chain().focus().setLink({ href: url }).run();
-  };
-
-  const onHighlightColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    editor.chain().focus().setHighlight({ color: e.target.value }).run();
-  };
-
-  const onTextColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    editor.chain().focus().setColor(e.target.value).run();
-  };
-
-  const setFontSize = (size: string) => {
-    editor.chain().focus().setFontSize(size).run();
-  };
-
-  const uploadImage = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          if (ev.target?.result) {
-            editor
-              .chain()
-              .focus()
-              .setImage({ src: ev.target.result as string })
-              .run();
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
-  };
-
-  return (
-    <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-200 bg-white flex-wrap shrink-0">
-      <ToolbarBtn
-        onClick={() => !disabled && editor.chain().focus().undo().run()}
-        disabled={disabled || !editor.can().undo()}
-        title={disabled ? "Fitur dinonaktifkan" : "Undo"}>
-        <Undo2 className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => !disabled && editor.chain().focus().redo().run()}
-        disabled={disabled || !editor.can().redo()}
-        title={disabled ? "Fitur dinonaktifkan" : "Redo"}>
-        <Redo2 className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-      {([1, 2, 3] as const).map((l) => (
-        <ToolbarBtn
-          key={l}
-          onClick={() =>
-            !disabled &&
-            editor.chain().focus().toggleHeading({ level: l }).run()
-          }
-          disabled={disabled}
-          active={editor.isActive("heading", { level: l })}>
-          <span className="font-bold text-[11px] w-4 text-center block">
-            H{l}
-          </span>
-        </ToolbarBtn>
-      ))}
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={() => !disabled && editor.chain().focus().toggleBold().run()}
-        disabled={disabled}
-        active={editor.isActive("bold")}
-        title={disabled ? "Fitur dinonaktifkan" : "Bold"}>
-        <Bold className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => !disabled && editor.chain().focus().toggleItalic().run()}
-        disabled={disabled}
-        active={editor.isActive("italic")}
-        title={disabled ? "Fitur dinonaktifkan" : "Italic"}>
-        <Italic className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() =>
-          !disabled && editor.chain().focus().toggleUnderline().run()
-        }
-        disabled={disabled}
-        active={editor.isActive("underline")}
-        title={disabled ? "Fitur dinonaktifkan" : "Underline"}>
-        <UnderlineIcon className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() => !disabled && editor.chain().focus().toggleStrike().run()}
-        disabled={disabled}
-        active={editor.isActive("strike")}
-        title={disabled ? "Fitur dinonaktifkan" : "Strikethrough"}>
-        <Strikethrough className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={() =>
-          !disabled && editor.chain().focus().setTextAlign("left").run()
-        }
-        disabled={disabled}
-        active={editor.isActive({ textAlign: "left" })}>
-        <AlignLeft className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() =>
-          !disabled && editor.chain().focus().setTextAlign("center").run()
-        }
-        disabled={disabled}
-        active={editor.isActive({ textAlign: "center" })}>
-        <AlignCenter className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn
-        onClick={() =>
-          !disabled && editor.chain().focus().setTextAlign("right").run()
-        }
-        disabled={disabled}
-        active={editor.isActive({ textAlign: "right" })}>
-        <AlignRight className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-      <BulletDropdown editor={editor} disabled={disabled} />
-      <NumberingDropdown editor={editor} disabled={disabled} />
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule">
-        <span className="text-xs font-bold">―</span>
-      </ToolbarBtn>
-      <TableDropdown editor={editor} />
-      {/* Highlight */}
-      <div className="relative flex items-center">
-        <ToolbarBtn
-          onClick={() => !disabled && highlightPickerRef.current?.click()}
-          disabled={disabled}
-          title={disabled ? "Fitur dinonaktifkan" : "Highlight Color"}>
-          <span className="text-xs font-bold">🖍️</span>
-        </ToolbarBtn>
-        <input
-          ref={highlightPickerRef}
-          type="color"
-          className="absolute opacity-0 w-0 h-0 pointer-events-none"
-          onChange={onHighlightColorChange}
-        />
-      </div>
-      {/* Text Color */}
-      <div className="relative flex items-center">
-        <ToolbarBtn
-          onClick={() => !disabled && textPickerRef.current?.click()}
-          disabled={disabled}
-          title={disabled ? "Fitur dinonaktifkan" : "Text Color"}>
-          <span
-            className="text-xs font-bold"
-            style={{
-              color: editor.getAttributes("textStyle").color || "#000000",
-            }}>
-            A
-          </span>
-        </ToolbarBtn>
-        <input
-          ref={textPickerRef}
-          type="color"
-          className="absolute opacity-0 w-0 h-0 pointer-events-none"
-          onChange={onTextColorChange}
-        />
-      </div>
-      {/* Field Inserter */}
-      <FieldInserter
-        editor={editor}
-        fields={fields}
-        onAddField={onAddField}
-        disabled={disabled}
-      />
-
-      {/* Line Spacing Dropdown (presets + custom at bottom) */}
-      <div className="relative ml-1" id="line-spacing-root">
-        {/* Toggle button */}
-        <LineSpacingToggle />
-      </div>
-      <div className="h-6 w-px bg-gray-100" />
-      <ToolbarBtn
-        onClick={addLink}
-        active={editor.isActive("link")}
-        title="Link">
-        <LinkIcon className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <ToolbarBtn onClick={uploadImage} title="Insert Image">
-        <ImageIcon className="h-3.5 w-3.5" />
-      </ToolbarBtn>
-      <div className="h-6 w-px bg-gray-100" />
-
-      {/* Font Size */}
-      <div className="flex items-center gap-0.5">
-        <ToolbarBtn
-          onClick={() => {
-            // @ts-expect-error: Custom extension command
-            editor.chain().focus().decreaseFontSize().run();
-          }}
-          title="Decrease Font Size">
-          <Minus className="h-3.5 w-3.5" />
-        </ToolbarBtn>
-        <select
-          value={currentFontSize}
-          onChange={(e) => setFontSize(e.target.value)}
-          title="Font Size"
-          className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700">
-          {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72].map(
-            (size) => (
-              <option key={size} value={`${size}px`}>
-                {size}px
-              </option>
-            ),
-          )}
-          {![
-            "8px",
-            "9px",
-            "10px",
-            "11px",
-            "12px",
-            "14px",
-            "16px",
-            "18px",
-            "20px",
-            "24px",
-            "30px",
-            "36px",
-            "48px",
-            "60px",
-            "72px",
-          ].includes(currentFontSize) && (
-            <option value={currentFontSize}>{currentFontSize}</option>
-          )}
-        </select>
-        <ToolbarBtn
-          onClick={() => {
-            // @ts-expect-error: Custom extension command
-            editor.chain().focus().increaseFontSize().run();
-          }}
-          title="Increase Font Size">
-          <Plus className="h-3.5 w-3.5" />
-        </ToolbarBtn>
-      </div>
-    </div>
-  );
-}
+// (Editor Toolbar has been extracted to src/components/editor/EditorToolbar.tsx)
 
 function Field({
   label,
@@ -1134,6 +432,7 @@ export default function ContractEditorPage() {
   const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] =
     useState<boolean>(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [pageMargin, setPageMargin] = useState<MarginStyle>(MARGIN_PRESETS[0].value);
 
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -1254,7 +553,22 @@ export default function ContractEditorPage() {
       FontSize,
       LineHeight,
       HorizontalRule,
-      Table.configure({ resizable: true }),
+      Table.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            borderType: {
+              default: "all",
+              parseHTML: (element) => element.getAttribute("data-border-type"),
+              renderHTML: (attributes) => ({
+                "data-border-type": attributes.borderType,
+              }),
+            },
+          };
+        },
+      }).configure({
+        resizable: true,
+      }),
       TableRow,
       TableHeader,
       TableCell,
@@ -1295,9 +609,15 @@ export default function ContractEditorPage() {
     content: "",
     editorProps: {
       attributes: {
-        class:
-          "outline-none min-h-[500px] px-10 py-8 text-sm leading-7 text-gray-800",
+        class: "outline-none text-sm leading-7 text-gray-800",
       },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
+      if (html && html !== "<p></p>") {
+        localStorage.setItem(draftKey, html);
+      }
     },
   });
 
@@ -1332,7 +652,16 @@ export default function ContractEditorPage() {
           const [d, m, y] = c.end_date.split("-");
           setEndDate(`${y}-${m}-${d}`);
         }
-        if (c.content) editor.commands.setContent(c.content);
+        // Load draft if exists, otherwise load from DB
+        const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
+        const savedDraft = localStorage.getItem(draftKey);
+
+        if (savedDraft) {
+          editor.commands.setContent(savedDraft);
+        } else if (c.content) {
+          editor.commands.setContent(c.content);
+        }
+
         // load partner name (manual input only)
         if (c && c.partner) {
           setSelectedPartnerName(c.partner ?? "");
@@ -1396,6 +725,8 @@ export default function ContractEditorPage() {
       } else {
         await createContract(buildPayload("draft"));
       }
+      const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
+      localStorage.removeItem(draftKey);
       navigate("/contracts");
     } catch {
       setSaveError("Gagal menyimpan. Coba lagi.");
@@ -1412,15 +743,16 @@ export default function ContractEditorPage() {
     setIsSaving(true);
     setSaveError(null);
     try {
+      let res;
       if (isEdit) {
-        const res = await updateContract(Number(id), buildPayload("review"));
-        setIsReadOnlyAfterSubmit(true);
-        return res as ContractRow;
+        res = await updateContract(Number(id), buildPayload("review"));
       } else {
-        const res = await createContract(buildPayload("review"));
-        setIsReadOnlyAfterSubmit(true);
-        return res as ContractRow;
+        res = await createContract(buildPayload("review"));
       }
+      setIsReadOnlyAfterSubmit(true);
+      const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
+      localStorage.removeItem(draftKey);
+      return res as ContractRow;
     } catch {
       setSaveError("Gagal mengajukan kontrak. Coba lagi.");
     } finally {
@@ -1655,7 +987,6 @@ export default function ContractEditorPage() {
                           className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
                           disabled={isReadOnlyAfterSubmit}
                         />
-                        <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                       </div>
                     </Field>
 
@@ -1668,7 +999,6 @@ export default function ContractEditorPage() {
                           className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
                           disabled={isReadOnlyAfterSubmit}
                         />
-                        <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                       </div>
                     </Field>
 
@@ -1731,14 +1061,7 @@ export default function ContractEditorPage() {
                   </div>
                 </div>
 
-                {/* Pratinjau PDF — pinned */}
-                <div className="p-3 border-t border-gray-200 bg-white shrink-0">
-                  <button
-                    className={`w-full flex items-center justify-center gap-2 py-2 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors font-medium ${isReadOnlyAfterSubmit ? "opacity-50 cursor-not-allowed" : ""}`}
-                    disabled={isReadOnlyAfterSubmit}>
-                    <FileText className="h-3.5 w-3.5" /> Pratinjau PDF
-                  </button>
-                </div>
+
 
                 {/* read-only state handled by disabling individual controls; no overlay so back button stays clickable */}
               </div>
@@ -1749,14 +1072,45 @@ export default function ContractEditorPage() {
             {/* CENTER flexible */}
             <Panel minSize={320}>
               <div className="h-full flex flex-col bg-white overflow-hidden">
-                <EditorToolbar
-                  editor={editor}
-                  fields={fields}
-                  onAddField={() => setShowFieldModal(true)}
-                  disabled={isReadOnlyAfterSubmit}
-                />
+                <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-200 bg-white flex-wrap shrink-0">
+                  <HistoryButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <HeadingButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <FormattingButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <AlignmentButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <BulletDropdown editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <NumberingDropdown editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <ToolbarBtn
+                    onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+                    disabled={isReadOnlyAfterSubmit}
+                    title="Horizontal Rule">
+                    <span className="text-xs font-bold">―</span>
+                  </ToolbarBtn>
+                  <MarginDropdown margin={pageMargin} setMargin={setPageMargin} disabled={isReadOnlyAfterSubmit} />
+                  <TableDropdown editor={editor!} disabled={isReadOnlyAfterSubmit} />
+                  <HighlightColorPicker editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <TextColorPicker editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <FieldInserter
+                    editor={editor}
+                    fields={fields}
+                    onAddField={() => setShowFieldModal(true)}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <div className="relative ml-1">
+                    <LineSpacingToggle editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  </div>
+                  <ToolbarDivider />
+                  <LinkButton editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ImageUploadButton editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <ToolbarDivider />
+                  <FontSizeSelector editor={editor} disabled={isReadOnlyAfterSubmit} />
+                </div>
                 <div
-                  className="flex-1 overflow-y-auto"
+                  className="flex-1 overflow-y-auto bg-[#f3f4f6] py-8"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
@@ -1766,24 +1120,52 @@ export default function ContractEditorPage() {
                       editor.chain().focus().insertContent(tag).run();
                     }
                   }}>
-                  <EditorContent editor={editor} />
+                  
+                  {/* Paper Wrapper */}
+                  <div 
+                    className="mx-auto bg-white shadow-md border border-gray-200 flex flex-col relative"
+                    style={{
+                      width: '21.5cm',
+                      minHeight: '33cm',
+                      backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)'
+                    }}
+                  >
+                    <div 
+                      className="flex-1"
+                      style={{ 
+                        paddingTop: pageMargin.top, 
+                        paddingBottom: pageMargin.bottom, 
+                        paddingLeft: pageMargin.left, 
+                        paddingRight: pageMargin.right 
+                      }}
+                    >
+                      <EditorContent editor={editor} className="h-full" />
+                    </div>
 
-                  {/*  Tanda Tangan  */}
-                  <div className="px-10 pb-10 pt-4 mt-2 border-t border-dashed border-gray-200">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 text-center">
-                      Tanda Tangan
-                    </p>
-                    <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
-                      {signers.map((s) => (
-                        <SignatureBox
-                          key={s.id}
-                          isExternal={s.type === "external"}
-                          name={s.name || undefined}
-                          title={s.title || undefined}
-                          email={s.email || undefined}
-                          date={startDate}
-                        />
-                      ))}
+                    {/*  Tanda Tangan  */}
+                    <div 
+                      className="pt-8 mt-auto border-t border-dashed border-gray-200"
+                      style={{ 
+                        paddingBottom: pageMargin.bottom, 
+                        paddingLeft: pageMargin.left, 
+                        paddingRight: pageMargin.right 
+                      }}
+                    >
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 text-center">
+                        Tanda Tangan
+                      </p>
+                      <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
+                        {signers.map((s) => (
+                          <SignatureBox
+                            key={s.id}
+                            isExternal={s.type === "external"}
+                            name={s.name || undefined}
+                            title={s.title || undefined}
+                            email={s.email || undefined}
+                            date={startDate}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>

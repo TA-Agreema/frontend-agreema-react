@@ -46,3 +46,5 @@ export const toggleTemplateStatus = async (id: number): Promise<Template> => {
   );
   return res.data.data;
 };
+
+

@@ -121,8 +121,8 @@ export default function CategoryFormModal({
                   value={isActive ? "active" : "inactive"}
                   onChange={(e) => setIsActive(e.target.value === "active")}
                   className="w-full appearance-none rounded-md border border-gray-200 bg-white px-3 py-2 pr-9 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all cursor-pointer">
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Nonaktif</option>
                 </select>
                 {/* Custom chevron */}
                 <svg

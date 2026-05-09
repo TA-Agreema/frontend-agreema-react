@@ -148,12 +148,51 @@
   width: 100%;
   margin: 1rem 0;
   overflow: hidden;
+  transition: all 0.2s;
+}
+
+/* Default / All Borders */
+.ProseMirror table:not([data-border-type]),
+.ProseMirror table[data-border-type="all"] {
+  border: 1px solid #000000 !important;
+}
+.ProseMirror table:not([data-border-type]) td,
+.ProseMirror table:not([data-border-type]) th,
+.ProseMirror table[data-border-type="all"] td,
+.ProseMirror table[data-border-type="all"] th {
+  border: 1px solid #000000 !important;
+}
+
+/* No Borders */
+.ProseMirror table[data-border-type="none"] {
+  border: none !important;
+}
+.ProseMirror table[data-border-type="none"] td,
+.ProseMirror table[data-border-type="none"] th {
+  border: 1px dashed #e5e7eb !important;
+}
+
+/* Outside Borders Only */
+.ProseMirror table[data-border-type="outside"] {
+  border: 1px solid #000000 !important;
+}
+.ProseMirror table[data-border-type="outside"] td,
+.ProseMirror table[data-border-type="outside"] th {
+  border: 1px dashed #f3f4f6 !important;
+}
+
+/* Inside Borders Only */
+.ProseMirror table[data-border-type="inside"] {
+  border: none !important;
+}
+.ProseMirror table[data-border-type="inside"] td,
+.ProseMirror table[data-border-type="inside"] th {
+  border: 1px solid #000000 !important;
 }
 
 .ProseMirror table td,
 .ProseMirror table th {
   min-width: 1em;
-  border: 1px solid #000000;
   padding: 8px 10px;
   vertical-align: top;
   box-sizing: border-box;

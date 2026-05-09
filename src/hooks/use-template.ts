@@ -29,7 +29,7 @@ export interface UpdateTemplatePayload extends CreateTemplatePayload {
   id: number;
 }
 
-//  Hook 
+//  Hook
 
 interface UseTemplatesReturn {
   templates: Template[];
@@ -39,7 +39,6 @@ interface UseTemplatesReturn {
   updateTemplate: (payload: UpdateTemplatePayload) => Promise<void>;
   deleteTemplate: (id: number) => Promise<void>;
   getTemplate: (id: number) => Promise<Template | undefined>;
-  downloadPdf: (id: number) => Promise<void>;
   toggleTemplateStatus: (id: number) => Promise<void>;
   refetch: () => void;
 }
@@ -55,7 +54,7 @@ export function useTemplates(): UseTemplatesReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  //  Fetch all 
+  //  Fetch all
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -75,7 +74,7 @@ export function useTemplates(): UseTemplatesReturn {
     fetchAll();
   }, [fetchAll]);
 
-  //  Get single 
+  //  Get single
 
   const getTemplate = useCallback(async (id: number) => {
     try {
@@ -85,7 +84,7 @@ export function useTemplates(): UseTemplatesReturn {
     }
   }, []);
 
-  //  Create 
+  //  Create
 
   const createTemplate = useCallback(
     async (payload: CreateTemplatePayload) => {
@@ -106,7 +105,7 @@ export function useTemplates(): UseTemplatesReturn {
     [fetchAll],
   );
 
-  //  Update 
+  //  Update
 
   const updateTemplate = useCallback(
     async (payload: UpdateTemplatePayload) => {
@@ -127,23 +126,20 @@ export function useTemplates(): UseTemplatesReturn {
     [fetchAll],
   );
 
-  //  Delete 
+  //  Delete
 
-  const deleteTemplate = useCallback(
-    async (id: number) => {
-      setLoading(true);
-      try {
-        await apiDeleteTemplate(id);
-        // Hapus dari state lokal agar UI langsung update tanpa refetch
-        setTemplates((prev) => prev.filter((t) => t.id !== id));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const deleteTemplate = useCallback(async (id: number) => {
+    setLoading(true);
+    try {
+      await apiDeleteTemplate(id);
+      // Hapus dari state lokal agar UI langsung update tanpa refetch
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  //  Toggle Status 
+  //  Toggle Status
 
   const toggleTemplateStatus = useCallback(async (id: number) => {
     setLoading(true);
@@ -158,21 +154,7 @@ export function useTemplates(): UseTemplatesReturn {
     }
   }, []);
 
-  //  Download PDF 
 
-  const downloadPdf = useCallback(async (id: number) => {
-    // TODO: ganti dengan endpoint Laravel saat PDF generation sudah siap
-    console.log(`[template] download PDF for template ${id}`);
-    // const response = await api.get(`/templates/${id}/export-pdf`, {
-    //   responseType: "blob",
-    // });
-    // const url = window.URL.createObjectURL(new Blob([response.data]));
-    // const a = document.createElement("a");
-    // a.href = url;
-    // a.download = `template-${id}.pdf`;
-    // a.click();
-    // window.URL.revokeObjectURL(url);
-  }, []);
 
   return {
     templates,
@@ -182,7 +164,6 @@ export function useTemplates(): UseTemplatesReturn {
     updateTemplate,
     deleteTemplate,
     getTemplate,
-    downloadPdf,
     toggleTemplateStatus,
     refetch: fetchAll,
   };
