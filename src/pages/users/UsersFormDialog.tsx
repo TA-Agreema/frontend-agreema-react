@@ -160,7 +160,7 @@ export default function UserFormDialog({
                                             onClick={() => onToggleRole(role.name)}
                                             className={`px-3 py-1 rounded-md text-sm font-medium
                         ${selectedRoles.includes(role.name)
-                                                    ? "bg-primary text-primary-foreground"
+                                                    ? "bg-emerald-600 text-white"
                                                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                                                 }`}
                                         >
@@ -204,7 +204,7 @@ export default function UserFormDialog({
                             >
                                 Batal
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                                 {isSubmitting && (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 )}

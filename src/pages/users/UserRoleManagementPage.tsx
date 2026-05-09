@@ -399,7 +399,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
                       {(user.roles as string[]).map((r) => (
                         <span
                           key={r}
-                          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-gray-100 text-gray-700">
+                          className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
                           {r}
                         </span>
                       ))}

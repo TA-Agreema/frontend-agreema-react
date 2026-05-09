@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
 import type { Permission, Role } from "@/types/roles";
+import { getPermissionLabel } from "@/lib/permission-labels";
 
 /*  form values (sinkron dengan schema di page) */
 export interface RoleFormValues {
@@ -107,7 +108,7 @@ export default function RoleFormDialog({
             <div className="space-y-4">
               <FormLabel>Permissions</FormLabel>
 
-              <div className="border rounded-lg p-4 space-y-4 max-h-[400px] overflow-y-auto">
+              <div className="border rounded-lg p-4 space-y-4 max-h-100 overflow-y-auto">
                 {Object.entries(groupedPermissions).map(([category, perms]) => (
                   <div key={category} className="space-y-2">
                     <h4 className="font-semibold text-sm capitalize">
@@ -123,10 +124,10 @@ export default function RoleFormDialog({
                           className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
                               ${
                                 selectedPermissions.includes(permission.name)
-                                  ? "bg-primary text-primary-foreground"
+                                  ? "bg-emerald-600 text-white"
                                   : "bg-muted text-muted-foreground hover:bg-muted/80"
                               }`}>
-                          {permission.name}
+                          {getPermissionLabel(permission.name)}
                         </button>
                       ))}
                     </div>
@@ -148,7 +149,7 @@ export default function RoleFormDialog({
                 disabled={isSubmitting}>
                 Batal
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">
                 {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
