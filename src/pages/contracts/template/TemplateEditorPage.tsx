@@ -63,6 +63,7 @@ import {
   fetchFieldDefinitions,
   type FieldDefinition,
 } from "@/services/field.service";
+import FieldManageModal from "@/components/modal/FieldManageModal";
 import type { Category } from "@/types/category";
 import { Navigate } from "react-router-dom";
 import PermissionGuard from "@/middlewares/PermissionGuard";
@@ -214,7 +215,7 @@ function PreviewTab({ content, name }: { content: string; name: string }) {
   }
   return (
     <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
-      <div className="max-w-2xl mx-auto bg-white border rounded-xl shadow-sm p-10 min-h-125">
+      <div className="max-w-[950px] mx-auto bg-white border rounded-xl shadow-sm p-10 min-h-125">
         {name && (
           <h1 className="text-xl font-bold text-center mb-8 pb-4 border-b">
             {name}
@@ -634,6 +635,16 @@ export default function TemplateEditorPage() {
   const { createTemplate, updateTemplate, getTemplate, loading } =
     useTemplates();
 
+  // Resizeable sidebars - use same constraints as ContractEditorPage
+  const SIDEBAR_DEFAULT_PX = 260;
+  const SIDEBAR_MIN_PX = 200;
+  const SIDEBAR_MAX_PX = 480;
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const resizingRef = useRef<null | "left" | "right">(null);
+  const [leftWidth, setLeftWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
+  const [rightWidth, setRightWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
+
   // Form state
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
@@ -641,6 +652,7 @@ export default function TemplateEditorPage() {
   const [fieldGroups, setFieldGroups] = useState<
     Map<string, FieldDefinition[]>
   >(new Map());
+  const [showFieldModal, setShowFieldModal] = useState(false);
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
   const [activeTab, setActiveTab] = useState<EditorTab>("visual");
   const [uploadedFile, setFile] = useState<File | null>(null);
@@ -694,6 +706,45 @@ export default function TemplateEditorPage() {
       }
     })();
   }, [isEditMode]);
+
+  const refreshFields = async () => {
+    try {
+      const fieldData = await fetchFieldDefinitions();
+      setFieldGroups(groupFields(fieldData));
+    } catch (err) {
+      console.error("Gagal me-refresh field:", err);
+    }
+  };
+
+  // Mouse move/up handlers for resizing
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!resizingRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      if (resizingRef.current === "left") {
+        const newWidth = Math.round(e.clientX - rect.left);
+        setLeftWidth(
+          Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, newWidth)),
+        );
+      } else if (resizingRef.current === "right") {
+        const newWidth = Math.round(rect.right - e.clientX);
+        setRightWidth(
+          Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, newWidth)),
+        );
+      }
+    };
+
+    const onUp = () => {
+      resizingRef.current = null;
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
 
   // Load existing template in edit mode
   useEffect(() => {
@@ -826,9 +877,11 @@ export default function TemplateEditorPage() {
         </header>
 
         {/*  Body: 3-column layout  */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden" ref={containerRef}>
           {/*  LEFT: Informasi Template  */}
-          <aside className="w-80 shrink-0 border-r bg-card flex flex-col overflow-y-auto">
+          <aside
+            className="shrink-0 border-r bg-card flex flex-col overflow-y-auto"
+            style={{ width: `${leftWidth}px` }}>
             <div className="p-4 space-y-1">
               {/* Section header */}
               <div className="pb-3">
@@ -896,6 +949,13 @@ export default function TemplateEditorPage() {
             </div>
           </aside>
 
+          {/* draggable divider: left */}
+          <div
+            className="w-1 cursor-col-resize bg-transparent hover:bg-border"
+            onMouseDown={() => (resizingRef.current = "left")}
+            onDoubleClick={() => setLeftWidth(SIDEBAR_DEFAULT_PX)}
+          />
+
           {/*  CENTER: Editor  */}
           <main className="flex-1 flex flex-col overflow-hidden">
             {/* Tab bar */}
@@ -943,16 +1003,37 @@ export default function TemplateEditorPage() {
             </div>
           </main>
 
+          {/* draggable divider: right */}
+          <div
+            className="w-1 cursor-col-resize bg-transparent hover:bg-border"
+            onMouseDown={() => (resizingRef.current = "right")}
+            onDoubleClick={() => setRightWidth(SIDEBAR_DEFAULT_PX)}
+          />
+
           {/*  RIGHT: Field Template  */}
-          <aside className="w-80 shrink-0 border-l bg-card flex flex-col overflow-hidden">
+          <aside
+            className="shrink-0 border-l bg-card flex flex-col overflow-y-auto"
+            style={{ width: `${rightWidth}px` }}>
             {/* Fixed header */}
-            <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                Field Template
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Klik untuk menyalin tag field
-              </p>
+            <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0 flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                  Field Template
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Klik untuk menyalin tag field
+                </p>
+              </div>
+
+              <div className="ml-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowFieldModal(true)}
+                  className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-md border bg-background hover:bg-muted transition-colors">
+                  <Plus className="h-3.5 w-3.5 text-foreground" />
+                  Kelola Field
+                </button>
+              </div>
             </div>
 
             {/* Scrollable field list */}
@@ -972,6 +1053,13 @@ export default function TemplateEditorPage() {
               </div>
             </div>
           </aside>
+          {/* Field management modal */}
+          {showFieldModal && (
+            <FieldManageModal
+              onClose={() => setShowFieldModal(false)}
+              onRefreshFields={refreshFields}
+            />
+          )}
         </div>
       </div>
     </PermissionGuard>

@@ -15,6 +15,9 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableCell from "@tiptap/extension-table-cell";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
+import OrderedList from "@tiptap/extension-ordered-list";
+import BulletList from "@tiptap/extension-bullet-list";
+import ListItem from "@tiptap/extension-list-item";
 import {
   Undo2,
   Redo2,
@@ -45,6 +48,8 @@ import {
   Pen,
   MoveVertical,
   ImageIcon,
+  List,
+  ListOrdered,
 } from "lucide-react";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
@@ -102,6 +107,19 @@ interface FeedbackEntry {
   message: string;
   date: string;
 }
+interface InternalUser {
+  id: number;
+  name: string;
+  job_title?: string;
+  email?: string;
+}
+
+// Contract detail from backend includes partner and partner_id
+type ContractDetail = ContractRow & {
+  partner_id?: number | null;
+  partner?: string | null;
+  content?: string | null;
+};
 
 // Mock data
 
@@ -183,10 +201,12 @@ function FieldInserter({
   editor,
   fields,
   onAddField,
+  disabled = false,
 }: {
   editor: ReturnType<typeof useEditor> | null;
   fields: FieldDefinition[];
   onAddField: () => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -212,18 +232,12 @@ function FieldInserter({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => !disabled && setOpen(!open)}
         type="button"
-        title="Insert Field"
-        className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700 flex items-center gap-1">
-        <span className="text-xs font-semibold">
-          {`{`}
-          {`{`}
-        </span>
-        <span className="text-xs font-semibold">
-          {`}`}
-          {`}`}
-        </span>
+        title={disabled ? "Fitur dinonaktifkan" : "Insert Field"}
+        disabled={disabled}
+        className={`px-2 py-1.5 text-sm rounded border border-gray-200 bg-white ${disabled ? "text-gray-300 cursor-not-allowed opacity-60" : "hover:bg-gray-50 cursor-pointer text-gray-700"} flex items-center gap-1`}>
+        <span className="text-xs font-semibold">Field</span>
         <ChevronDown className="h-3 w-3" />
       </button>
 
@@ -256,12 +270,246 @@ function FieldInserter({
           {/* Add Field Button - Absolute positioned */}
           <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2">
             <button
-              onClick={onAddField}
+              onClick={() => !disabled && onAddField()}
               type="button"
-              className="w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded border border-dashed border-emerald-300 text-emerald-600 hover:bg-emerald-50 transition-colors font-medium">
+              disabled={disabled}
+              className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs rounded border border-dashed border-emerald-300 ${disabled ? "text-gray-300 cursor-not-allowed bg-white/50" : "text-emerald-600 hover:bg-emerald-50"} transition-colors font-medium`}>
               <Plus className="h-3.5 w-3.5" />
               Tambah Field
             </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NumberingDropdown({
+  editor,
+  disabled = false,
+}: {
+  editor: ReturnType<typeof useEditor> | null;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  if (!editor) return null;
+
+  const toggleStyle = (type: string | null) => {
+    if (type === null) {
+      if (editor.isActive("orderedList")) {
+        editor.chain().focus().toggleOrderedList().run();
+      }
+    } else {
+      if (editor.isActive("orderedList")) {
+        editor
+          .chain()
+          .focus()
+          .updateAttributes("orderedList", { listType: type })
+          .run();
+      } else {
+        editor
+          .chain()
+          .focus()
+          .toggleOrderedList()
+          .updateAttributes("orderedList", { listType: type })
+          .run();
+      }
+    }
+    setOpen(false);
+  };
+
+  const numberingStyles = [
+    { id: "none", label: "None", type: null, preview: ["None"] },
+    { id: "decimal", label: "1, 2, 3", type: "1", preview: ["1.", "2.", "3."] },
+    { id: "alpha", label: "a, b, c", type: "a", preview: ["a.", "b.", "c."] },
+    {
+      id: "roman",
+      label: "i, ii, iii",
+      type: "i",
+      preview: ["i.", "ii.", "iii."],
+    },
+    {
+      id: "upper-alpha",
+      label: "A, B, C",
+      type: "A",
+      preview: ["A.", "B.", "C."],
+    },
+    {
+      id: "upper-roman",
+      label: "I, II, III",
+      type: "I",
+      preview: ["I.", "II.", "III."],
+    },
+  ];
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <ToolbarBtn
+        onClick={() => !disabled && setOpen(!open)}
+        active={editor.isActive("orderedList")}
+        disabled={disabled}
+        title={disabled ? "Fitur dinonaktifkan" : "Numbering Library"}>
+        <div className="flex items-center gap-0.5">
+          <ListOrdered className="h-3.5 w-3.5" />
+          <ChevronDown className="h-2.5 w-2.5" />
+        </div>
+      </ToolbarBtn>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
+            Numbering Library
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {numberingStyles.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => toggleStyle(s.type)}
+                className="flex flex-col items-center justify-center p-2 rounded border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
+                <div className="w-full aspect-square border border-gray-200 rounded bg-white mb-1.5 flex flex-col items-start justify-center text-[9px] text-gray-500 font-mono leading-tight p-2 group-hover:border-emerald-200">
+                  {s.preview.map((line, i) => (
+                    <div
+                      key={i}
+                      className="w-full flex items-center gap-1 mb-0.5 last:mb-0">
+                      <span className="shrink-0">{line}</span>
+                      <div className="h-0.5 flex-1 bg-gray-100 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[9px] text-gray-500 font-medium">
+                  {s.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BulletDropdown({
+  editor,
+  disabled = false,
+}: {
+  editor: ReturnType<typeof useEditor> | null;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!dropdownRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  if (!editor) return null;
+
+  const toggleStyle = (style: string | null) => {
+    if (style === null) {
+      if (editor.isActive("bulletList")) {
+        editor.chain().focus().toggleBulletList().run();
+      }
+    } else {
+      const className = `list-${style}`;
+      if (!editor.isActive("bulletList")) {
+        editor
+          .chain()
+          .focus()
+          .toggleBulletList()
+          .updateAttributes("bulletList", { class: className })
+          .run();
+      } else {
+        editor
+          .chain()
+          .focus()
+          .updateAttributes("bulletList", { class: className })
+          .run();
+      }
+    }
+    setOpen(false);
+  };
+
+  const bulletStyles = [
+    { id: "none", label: "None", style: null, preview: ["None"] },
+    {
+      id: "disc",
+      label: "Solid Circle",
+      style: "disc",
+      preview: ["●", "●", "●"],
+    },
+    {
+      id: "circle",
+      label: "Open Circle",
+      style: "circle",
+      preview: ["○", "○", "○"],
+    },
+    {
+      id: "square",
+      label: "Square",
+      style: "square",
+      preview: ["■", "■", "■"],
+    },
+  ];
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <ToolbarBtn
+        onClick={() => !disabled && setOpen(!open)}
+        active={editor.isActive("bulletList")}
+        disabled={disabled}
+        title={disabled ? "Fitur dinonaktifkan" : "Bullet Library"}>
+        <div className="flex items-center gap-0.5">
+          <List className="h-3.5 w-3.5" />
+          <ChevronDown className="h-2.5 w-2.5" />
+        </div>
+      </ToolbarBtn>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50 p-2">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">
+            Bullet Library
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {bulletStyles.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => toggleStyle(s.style)}
+                className="flex flex-col items-center justify-center p-2 rounded border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50 transition-all group">
+                <div className="w-full aspect-square border border-gray-200 rounded bg-white mb-1.5 flex flex-col items-start justify-center text-[10px] text-gray-500 font-mono leading-tight p-2 group-hover:border-emerald-200">
+                  {s.preview.map((line, i) => (
+                    <div
+                      key={i}
+                      className="w-full flex items-center gap-2 mb-1 last:mb-0">
+                      <span className="shrink-0">{line}</span>
+                      <div className="h-0.5 flex-1 bg-gray-100 rounded-full" />
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[9px] text-gray-500 font-medium">
+                  {s.label}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -273,10 +521,12 @@ function EditorToolbar({
   editor,
   fields,
   onAddField,
+  disabled = false,
 }: {
   editor: ReturnType<typeof useEditor> | null;
   fields: FieldDefinition[];
   onAddField: () => void;
+  disabled?: boolean;
 }) {
   const textPickerRef = useRef<HTMLInputElement>(null);
   const highlightPickerRef = useRef<HTMLInputElement>(null);
@@ -293,17 +543,95 @@ function EditorToolbar({
     };
   }, [editor]);
 
+  // Manual custom line-height input state; keep declared before any early returns
+  // customLineHeight removed per request; only presets remain
+
+  // No custom input state anymore; presets-only implementation.
+
   if (!editor) return null;
 
   const currentFontSize = editor.getAttributes("textStyle").fontSize || "16px";
-  const currentLineHeight =
-    editor.getAttributes("paragraph").lineHeight ||
-    editor.getAttributes("heading").lineHeight ||
+  // Normalize current line-height to a string with 2 decimals so the <select> matches
+  const _rawLineHeight =
+    editor.getAttributes("paragraph").lineHeight ??
+    editor.getAttributes("heading").lineHeight ??
     "1.0";
 
+  const currentLineHeight =
+    typeof _rawLineHeight === "number"
+      ? _rawLineHeight.toFixed(2)
+      : (() => {
+          const n = Number(String(_rawLineHeight));
+          return Number.isNaN(n) ? String(_rawLineHeight) : n.toFixed(2);
+        })();
+
   const setLineHeight = (value: string) => {
-    editor.chain().focus().setLineHeight(value).run();
+    // TipTap expects a string; normalize numeric values to string
+    const parsed = parseFloat(value);
+    const toSet = Number.isNaN(parsed) ? String(value) : String(parsed);
+    // Avoid calling focus() here — focusing the editor will blur the custom input
+    // and cause the dropdown to close unexpectedly while the user is typing.
+    editor.chain().setLineHeight(toSet).run();
   };
+
+  // Manual custom line-height input state/handlers
+
+  // custom input removed: presets only
+
+  // LineSpacingToggle - inline component to keep toolbar compact
+  function LineSpacingToggle() {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      if (!open) return;
+      const onClick = (e: MouseEvent) => {
+        if (!ref.current) return;
+        if (ref.current.contains(e.target as Node)) return;
+        setOpen(false);
+      };
+      document.addEventListener("mousedown", onClick);
+      return () => document.removeEventListener("mousedown", onClick);
+    }, [open]);
+
+    const presets = [1.0, 1.15, 1.5, 2.0, 2.5, 3.0];
+
+    return (
+      <div className="relative" ref={ref}>
+        <button
+          type="button"
+          onClick={() => !disabled && setOpen((s) => !s)}
+          disabled={disabled}
+          title={disabled ? "Fitur dinonaktifkan" : "Line Spacing"}
+          className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded border border-gray-200 bg-white ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"} text-gray-700`}>
+          <MoveVertical className="h-3.5 w-3.5 text-gray-400" />
+          <span className="text-xs font-medium">{currentLineHeight}</span>
+          <ChevronDown className="h-3 w-3 text-gray-400" />
+        </button>
+
+        {open && (
+          <div className="absolute left-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-2">
+            <div className="space-y-1">
+              {presets.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => {
+                    setLineHeight(p.toFixed(2));
+                    // Do not close dropdown automatically when selecting preset
+                  }}
+                  className={`w-full text-left px-2 py-1 text-sm rounded ${currentLineHeight === p.toFixed(2) ? "bg-emerald-50 text-emerald-700" : "hover:bg-gray-50"} transition-colors`}>
+                  {p.toFixed(2)}
+                </button>
+              ))}
+            </div>
+
+            {/* custom input removed; only presets available */}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const addLink = () => {
     const url = window.prompt("URL:", editor.getAttributes("link").href ?? "");
@@ -353,15 +681,15 @@ function EditorToolbar({
   return (
     <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-200 bg-white flex-wrap shrink-0">
       <ToolbarBtn
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        title="Undo">
+        onClick={() => !disabled && editor.chain().focus().undo().run()}
+        disabled={disabled || !editor.can().undo()}
+        title={disabled ? "Fitur dinonaktifkan" : "Undo"}>
         <Undo2 className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        title="Redo">
+        onClick={() => !disabled && editor.chain().focus().redo().run()}
+        disabled={disabled || !editor.can().redo()}
+        title={disabled ? "Fitur dinonaktifkan" : "Redo"}>
         <Redo2 className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <div className="h-6 w-px bg-gray-100" />
@@ -369,8 +697,10 @@ function EditorToolbar({
         <ToolbarBtn
           key={l}
           onClick={() =>
+            !disabled &&
             editor.chain().focus().toggleHeading({ level: l }).run()
           }
+          disabled={disabled}
           active={editor.isActive("heading", { level: l })}>
           <span className="font-bold text-[11px] w-4 text-center block">
             H{l}
@@ -379,45 +709,63 @@ function EditorToolbar({
       ))}
       <div className="h-6 w-px bg-gray-100" />
       <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleBold().run()}
+        onClick={() => !disabled && editor.chain().focus().toggleBold().run()}
+        disabled={disabled}
         active={editor.isActive("bold")}
-        title="Bold">
+        title={disabled ? "Fitur dinonaktifkan" : "Bold"}>
         <Bold className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleItalic().run()}
+        onClick={() => !disabled && editor.chain().focus().toggleItalic().run()}
+        disabled={disabled}
         active={editor.isActive("italic")}
-        title="Italic">
+        title={disabled ? "Fitur dinonaktifkan" : "Italic"}>
         <Italic className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        onClick={() =>
+          !disabled && editor.chain().focus().toggleUnderline().run()
+        }
+        disabled={disabled}
         active={editor.isActive("underline")}
-        title="Underline">
+        title={disabled ? "Fitur dinonaktifkan" : "Underline"}>
         <UnderlineIcon className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().toggleStrike().run()}
+        onClick={() => !disabled && editor.chain().focus().toggleStrike().run()}
+        disabled={disabled}
         active={editor.isActive("strike")}
-        title="Strikethrough">
+        title={disabled ? "Fitur dinonaktifkan" : "Strikethrough"}>
         <Strikethrough className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <div className="h-6 w-px bg-gray-100" />
       <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("left").run()}
+        onClick={() =>
+          !disabled && editor.chain().focus().setTextAlign("left").run()
+        }
+        disabled={disabled}
         active={editor.isActive({ textAlign: "left" })}>
         <AlignLeft className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("center").run()}
+        onClick={() =>
+          !disabled && editor.chain().focus().setTextAlign("center").run()
+        }
+        disabled={disabled}
         active={editor.isActive({ textAlign: "center" })}>
         <AlignCenter className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
-        onClick={() => editor.chain().focus().setTextAlign("right").run()}
+        onClick={() =>
+          !disabled && editor.chain().focus().setTextAlign("right").run()
+        }
+        disabled={disabled}
         active={editor.isActive({ textAlign: "right" })}>
         <AlignRight className="h-3.5 w-3.5" />
       </ToolbarBtn>
+      <div className="h-6 w-px bg-gray-100" />
+      <BulletDropdown editor={editor} disabled={disabled} />
+      <NumberingDropdown editor={editor} disabled={disabled} />
       <div className="h-6 w-px bg-gray-100" />
       <ToolbarBtn
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
@@ -428,8 +776,9 @@ function EditorToolbar({
       {/* Highlight */}
       <div className="relative flex items-center">
         <ToolbarBtn
-          onClick={() => highlightPickerRef.current?.click()}
-          title="Highlight Color">
+          onClick={() => !disabled && highlightPickerRef.current?.click()}
+          disabled={disabled}
+          title={disabled ? "Fitur dinonaktifkan" : "Highlight Color"}>
           <span className="text-xs font-bold">🖍️</span>
         </ToolbarBtn>
         <input
@@ -442,8 +791,9 @@ function EditorToolbar({
       {/* Text Color */}
       <div className="relative flex items-center">
         <ToolbarBtn
-          onClick={() => textPickerRef.current?.click()}
-          title="Text Color">
+          onClick={() => !disabled && textPickerRef.current?.click()}
+          disabled={disabled}
+          title={disabled ? "Fitur dinonaktifkan" : "Text Color"}>
           <span
             className="text-xs font-bold"
             style={{
@@ -460,25 +810,17 @@ function EditorToolbar({
         />
       </div>
       {/* Field Inserter */}
-      <FieldInserter editor={editor} fields={fields} onAddField={onAddField} />
+      <FieldInserter
+        editor={editor}
+        fields={fields}
+        onAddField={onAddField}
+        disabled={disabled}
+      />
 
-      {/* Line Spacing */}
-      <div className="flex items-center gap-1.5 ml-1">
-        <MoveVertical className="h-3.5 w-3.5 text-gray-400" />
-        <select
-          value={currentLineHeight}
-          onChange={(e) => setLineHeight(e.target.value)}
-          title="Line Spacing"
-          className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700">
-          {[1.0, 1.15, 1.5, 2.0, 2.5, 3.0].map((val) => (
-            <option key={val} value={val.toString()}>
-              {val.toFixed(2)}
-            </option>
-          ))}
-          {!["1.0", "1.15", "1.5", "2.0", "2.5", "3.0"].includes(
-            currentLineHeight,
-          ) && <option value={currentLineHeight}>{currentLineHeight}</option>}
-        </select>
+      {/* Line Spacing Dropdown (presets + custom at bottom) */}
+      <div className="relative ml-1" id="line-spacing-root">
+        {/* Toggle button */}
+        <LineSpacingToggle />
       </div>
       <div className="h-6 w-px bg-gray-100" />
       <ToolbarBtn
@@ -496,6 +838,7 @@ function EditorToolbar({
       <div className="flex items-center gap-0.5">
         <ToolbarBtn
           onClick={() => {
+            // @ts-expect-error: Custom extension command
             editor.chain().focus().decreaseFontSize().run();
           }}
           title="Decrease Font Size">
@@ -535,6 +878,7 @@ function EditorToolbar({
         </select>
         <ToolbarBtn
           onClick={() => {
+            // @ts-expect-error: Custom extension command
             editor.chain().focus().increaseFontSize().run();
           }}
           title="Increase Font Size">
@@ -556,38 +900,6 @@ function Field({
     <div className="space-y-1">
       <label className="text-xs font-semibold text-gray-600">{label}</label>
       {children}
-    </div>
-  );
-}
-
-function SelectField({
-  value,
-  onChange,
-  placeholder,
-  options,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  options: string[];
-  disabled?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`${inputCls} appearance-none pr-6 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}>
-        <option value="">{placeholder}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
     </div>
   );
 }
@@ -725,16 +1037,28 @@ function SignatureBox({
   name,
   title,
   email,
+  date,
   isExternal = false,
 }: {
   name?: string;
   title?: string;
   email?: string;
+  date?: string;
   isExternal?: boolean;
 }) {
+  const formattedDate = date
+    ? new Date(date)
+        .toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .replace(/\//g, "/")
+    : "[DD/MM/YYYY]";
+
   return (
     <div className="flex flex-col gap-2 w-[250px]">
-      <p className="text-[11px] text-gray-400">Tanggal: [DD/MM/YYYY]</p>
+      <p className="text-[11px] text-gray-400">Tanggal: {formattedDate}</p>
       <div className="w-full border border-gray-200 rounded-xl h-[124px] flex items-center justify-center bg-gray-50/60 hover:bg-gray-100/60 transition-colors cursor-pointer group">
         <div className="flex flex-col items-center gap-1 text-gray-300 group-hover:text-gray-400 transition-colors">
           {isExternal ? (
@@ -815,10 +1139,12 @@ export default function ContractEditorPage() {
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Internal Users
-  const [internalUsers, setInternalUsers] = useState<any[]>([]);
+  const [internalUsers, setInternalUsers] = useState<InternalUser[]>([]);
 
   // Fields for field inserter
   const [fields, setFields] = useState<FieldDefinition[]>([]);
+  // Mitra (manual input only)
+  const [selectedPartnerName, setSelectedPartnerName] = useState<string>("");
 
   const refreshFields = useCallback(async () => {
     try {
@@ -847,11 +1173,20 @@ export default function ContractEditorPage() {
     (async () => {
       try {
         const userData = await fetchSigners();
-        setInternalUsers(userData);
+        // Normalize possible nulls from API to match InternalUser type
+        const normalized = (userData || []).map((u) => ({
+          id: u.id,
+          name: u.name,
+          job_title: u.job_title ?? undefined,
+          email: u.email ?? undefined,
+        }));
+        setInternalUsers(normalized);
       } catch {
         /* silent */
       }
     })();
+
+    // no partners select — Mitra is manual input only
 
     // Auto-generate contract number once for new contracts
     if (!isEdit && !autoGeneratedRef.current) {
@@ -905,9 +1240,13 @@ export default function ContractEditorPage() {
   // Editor
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      StarterKit.configure({
+        orderedList: false,
+        bulletList: false,
+      }),
+      TextAlign.configure({
+        types: ["heading", "paragraph", "orderedList", "bulletList"],
+      }),
       Link.configure({ openOnClick: false }),
       TextStyle,
       Color,
@@ -920,6 +1259,38 @@ export default function ContractEditorPage() {
       TableHeader,
       TableCell,
       ImageResize,
+      OrderedList.extend({
+        addAttributes() {
+          return {
+            listType: {
+              default: "1",
+              parseHTML: (element) =>
+                element.getAttribute("data-list-type") ||
+                element.getAttribute("type"),
+              renderHTML: (attributes) => ({
+                "data-list-type": attributes.listType,
+                type: attributes.listType,
+              }),
+            },
+          };
+        },
+      }),
+      BulletList.extend({
+        addAttributes() {
+          return {
+            class: {
+              default: null,
+              parseHTML: (element) => element.getAttribute("class"),
+              renderHTML: (attributes) => {
+                if (!attributes.class) return {};
+                return { class: attributes.class };
+              },
+            },
+          };
+        },
+      }),
+      ListItem,
+      Underline,
     ],
     content: "",
     editorProps: {
@@ -935,7 +1306,7 @@ export default function ContractEditorPage() {
     if (!id || !editor) return;
     (async () => {
       try {
-        const c = await fetchContract(Number(id));
+        const c = (await fetchContract(Number(id))) as ContractDetail;
         setContractNumber(c.contract_number ?? "");
         setExternalContractNumber(
           (c as unknown as { external_contract_number?: string })
@@ -962,6 +1333,10 @@ export default function ContractEditorPage() {
           setEndDate(`${y}-${m}-${d}`);
         }
         if (c.content) editor.commands.setContent(c.content);
+        // load partner name (manual input only)
+        if (c && c.partner) {
+          setSelectedPartnerName(c.partner ?? "");
+        }
         // If contract is already under review, mark UI read-only
         if (c.status && c.status === "review") {
           setIsReadOnlyAfterSubmit(true);
@@ -1002,13 +1377,11 @@ export default function ContractEditorPage() {
     end_date: endDate || null,
     status,
     template_id: selectedTemplate?.id ?? null,
+    partner_name: selectedPartnerName?.trim()
+      ? selectedPartnerName.trim()
+      : null,
     content: editor?.getHTML() ?? "",
   });
-
-  const handleAddField = () => {
-    // TODO: Open modal to add new field definition
-    console.log("Tambah field");
-  };
 
   const handleSaveDraft = async () => {
     if (!title.trim()) {
@@ -1142,207 +1515,219 @@ export default function ContractEditorPage() {
               minSize={SIDEBAR_MIN_PX}
               maxSize={SIDEBAR_MAX_PX}>
               <div className="h-full flex flex-col bg-white border-r border-gray-200 overflow-hidden">
-                {/* Scrollable body */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
-                  {/* Title row */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => navigate("/contracts")}
-                      className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors shrink-0">
-                      <ArrowLeft className="h-4 w-4" />
-                    </button>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-gray-800">
-                        Detail Kontrak
-                      </p>
-                      <p className="text-[11px] text-gray-400 truncate">
-                        Diterima oleh: Satya (Software Engineer)
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Drag-to-insert contract number chips */}
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 space-y-1.5">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Seret ke Dokumen
-                    </p>
-                    {(
-                      [
-                        {
-                          label: "No. Kontrak Internal",
-                          value: contractNumber,
-                        },
-                        ...(externalContractNumber
-                          ? [
-                              {
-                                label: "No. Kontrak Eksternal",
-                                value: externalContractNumber,
-                              },
-                            ]
-                          : []),
-                      ] as { label: string; value: string }[]
-                    ).map((chip) => (
-                      <div
-                        key={chip.label}
-                        draggable
-                        onDragStart={(e) =>
-                          e.dataTransfer.setData("text/plain", chip.value)
-                        }
-                        title={`Seret untuk menyisipkan ${chip.label}`}
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border border-emerald-200 text-xs cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm transition-all select-none group">
-                        <span className="text-emerald-700 font-medium shrink-0">
-                          {chip.label}
-                        </span>
-                        <span className="text-gray-500 truncate flex-1 text-right text-[10px] font-mono bg-gray-50 px-1 rounded">
-                          {chip.value || "—"}
-                        </span>
-                        <svg
-                          className="h-3 w-3 text-gray-300 group-hover:text-emerald-400 shrink-0"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 8h16M4 16h16"
-                          />
-                        </svg>
+                {/* Scrollable body + pinned preview wrapper (so overlay can cover both) */}
+                <div className="relative flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                    {/* Title row */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate("/contracts")}
+                        className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors shrink-0">
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-gray-800">
+                          Detail Kontrak
+                        </p>
+                        <p className="text-[11px] text-gray-400 truncate">
+                          Diterima oleh: Satya (Software Engineer)
+                        </p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  <Field label="Nomor Kontrak Internal">
-                    <div className="flex gap-1.5">
-                      <input
-                        value={contractNumber}
-                        onChange={(e) => setContractNumber(e.target.value)}
-                        placeholder="PKS-001/SLAB/V/2026"
-                        className={`${inputCls} flex-1 ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                        disabled={isReadOnlyAfterSubmit}
-                      />
-                      {!isEdit && !isReadOnlyAfterSubmit && (
-                        <button
-                          type="button"
-                          title="Generate ulang nomor kontrak"
-                          onClick={() =>
-                            generateContractNumber(
-                              selectedTemplate?.category_id,
-                            )
-                              .then(setContractNumber)
-                              .catch(() => {})
+                    {/* Drag-to-insert contract number chips */}
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 space-y-1.5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        Seret ke Dokumen
+                      </p>
+                      {(
+                        [
+                          {
+                            label: "No. Kontrak Internal",
+                            value: contractNumber,
+                          },
+                          ...(externalContractNumber
+                            ? [
+                                {
+                                  label: "No. Kontrak Eksternal",
+                                  value: externalContractNumber,
+                                },
+                              ]
+                            : []),
+                        ] as { label: string; value: string }[]
+                      ).map((chip) => (
+                        <div
+                          key={chip.label}
+                          draggable={!isReadOnlyAfterSubmit}
+                          onDragStart={(e) => {
+                            if (isReadOnlyAfterSubmit) return;
+                            e.dataTransfer.setData("text/plain", chip.value);
+                          }}
+                          title={
+                            isReadOnlyAfterSubmit
+                              ? "Tidak dapat diseret — kontrak sedang ditinjau"
+                              : `Seret untuk menyisipkan ${chip.label}`
                           }
-                          className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0">
-                          ↺
-                        </button>
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border text-xs transition-all select-none group ${isReadOnlyAfterSubmit ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-60" : "border-emerald-200 cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm"}`}>
+                          <span className="text-emerald-700 font-medium shrink-0">
+                            {chip.label}
+                          </span>
+                          <span className="text-gray-500 truncate flex-1 text-right text-[10px] font-mono bg-gray-50 px-1 rounded">
+                            {chip.value || "—"}
+                          </span>
+                          <svg
+                            className="h-3 w-3 text-gray-300 group-hover:text-emerald-400 shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 8h16M4 16h16"
+                            />
+                          </svg>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Field label="Nomor Kontrak Internal">
+                      <div className="flex gap-1.5">
+                        <input
+                          value={contractNumber}
+                          onChange={(e) => setContractNumber(e.target.value)}
+                          placeholder="PKS-001/SLAB/V/2026"
+                          className={`${inputCls} flex-1 ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                          disabled={isReadOnlyAfterSubmit}
+                        />
+                        {!isEdit && !isReadOnlyAfterSubmit && (
+                          <button
+                            type="button"
+                            title="Generate ulang nomor kontrak"
+                            onClick={() =>
+                              generateContractNumber(
+                                selectedTemplate?.category_id,
+                              )
+                                .then(setContractNumber)
+                                .catch(() => {})
+                            }
+                            className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0">
+                            ↺
+                          </button>
+                        )}
+                      </div>
+                    </Field>
+
+                    <Field label="Nomor Kontrak Eksternal (Opsional)">
+                      <input
+                        value={externalContractNumber}
+                        onChange={(e) =>
+                          setExternalContractNumber(e.target.value)
+                        }
+                        placeholder="Nomor dari pihak mitra"
+                        className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                        disabled={isReadOnlyAfterSubmit}
+                      />
+                      {externalContractNumber && (
+                        <p className="text-[10px] text-gray-400 mt-0.5 pl-0.5">
+                          Dapat diseret ke dokumen sebagai{" "}
+                          <span className="">{"Nomor Kontrak Eksternal"}</span>
+                        </p>
                       )}
-                    </div>
-                  </Field>
+                    </Field>
 
-                  <Field label="Nomor Kontrak Eksternal (Opsional)">
-                    <input
-                      value={externalContractNumber}
-                      onChange={(e) =>
-                        setExternalContractNumber(e.target.value)
-                      }
-                      placeholder="Nomor dari pihak mitra"
-                      className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                      disabled={isReadOnlyAfterSubmit}
-                    />
-                    {externalContractNumber && (
-                      <p className="text-[10px] text-gray-400 mt-0.5 pl-0.5">
-                        Dapat diseret ke dokumen sebagai{" "}
-                        <span className="font-mono">
-                          {"{{external_contract_number}}"}
-                        </span>
+                    <Field label="Judul Dokumen">
+                      <input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Kontrak Sewa Vendor"
+                        className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                        disabled={isReadOnlyAfterSubmit}
+                      />
+                    </Field>
+
+                    <Field label="Tanggal Mulai">
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                          disabled={isReadOnlyAfterSubmit}
+                        />
+                        <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                      </div>
+                    </Field>
+
+                    <Field label="Tanggal Selesai">
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                          disabled={isReadOnlyAfterSubmit}
+                        />
+                        <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                      </div>
+                    </Field>
+
+                    <Field label="Mitra">
+                      <div>
+                        <input
+                          type="text"
+                          value={selectedPartnerName}
+                          onChange={(e) =>
+                            setSelectedPartnerName(e.target.value)
+                          }
+                          disabled={isReadOnlyAfterSubmit}
+                          placeholder="Ketik nama Mitra"
+                          className={`${inputCls} pr-8 ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                        />
+                      </div>
+                    </Field>
+
+                    <Field label="Kategori Kontrak">
+                      {selectedTemplate ? (
+                        <div className="text-sm px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-gray-700">
+                          {categories.find(
+                            (c) => c.id === selectedTemplate.category_id,
+                          )?.name || "Tidak ada kategori"}
+                        </div>
+                      ) : (
+                        <div className="text-sm px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-gray-400 italic">
+                          Pilih template terlebih dahulu
+                        </div>
+                      )}
+                    </Field>
+
+                    {/* Penandatangan */}
+                    <div className="space-y-2.5 pt-0.5">
+                      <p className="text-xs font-bold text-gray-700">
+                        Penandatangan
                       </p>
-                    )}
-                  </Field>
-
-                  <Field label="Judul Dokumen">
-                    <input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Kontrak Sewa Vendor"
-                      className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                      disabled={isReadOnlyAfterSubmit}
-                    />
-                  </Field>
-
-                  <Field label="Tanggal Mulai">
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                        disabled={isReadOnlyAfterSubmit}
-                      />
-                      <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                      {signers.map((s) => (
+                        <SignerRow
+                          key={s.id}
+                          signer={s}
+                          internalUsers={internalUsers}
+                          onChange={(u) => updateSigner(s.id, u)}
+                          onRemove={() => removeSigner(s.id)}
+                          disabled={isReadOnlyAfterSubmit}
+                        />
+                      ))}
+                      <button
+                        onClick={() => setShowSignerTypeModal(true)}
+                        disabled={isReadOnlyAfterSubmit || signers.length >= 2}
+                        title={
+                          signers.length >= 2
+                            ? "Maksimal 2 penandatangan"
+                            : undefined
+                        }
+                        className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit || signers.length >= 2 ? "opacity-40 cursor-not-allowed" : ""}`}>
+                        <Plus className="h-3.5 w-3.5" /> Tambah Penandatangan
+                      </button>
                     </div>
-                  </Field>
-
-                  <Field label="Tanggal Selesai">
-                    <div className="relative">
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className={`${inputCls + " pr-7 [color-scheme:light]"} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                        disabled={isReadOnlyAfterSubmit}
-                      />
-                      <CalendarDays className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                    </div>
-                  </Field>
-
-                  <Field label="Mitra">
-                    <input
-                      placeholder="Alex Rivera"
-                      className={`${inputCls} ${isReadOnlyAfterSubmit ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                      disabled={isReadOnlyAfterSubmit}
-                    />
-                  </Field>
-
-                  <Field label="Kategori Kontrak">
-                    {selectedTemplate ? (
-                      <div className="text-sm px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-gray-700">
-                        {categories.find(
-                          (c) => c.id === selectedTemplate.category_id,
-                        )?.name || "Tidak ada kategori"}
-                      </div>
-                    ) : (
-                      <div className="text-sm px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-md text-gray-400 italic">
-                        Pilih template terlebih dahulu
-                      </div>
-                    )}
-                  </Field>
-
-                  {/* Penandatangan */}
-                  <div className="space-y-2.5 pt-0.5">
-                    <p className="text-xs font-bold text-gray-700">
-                      Penandatangan
-                    </p>
-                    {signers.map((s) => (
-                      <SignerRow
-                        key={s.id}
-                        signer={s}
-                        internalUsers={internalUsers}
-                        onChange={(u) => updateSigner(s.id, u)}
-                        onRemove={() => removeSigner(s.id)}
-                        disabled={isReadOnlyAfterSubmit}
-                      />
-                    ))}
-                    <button
-                      onClick={() => setShowSignerTypeModal(true)}
-                      disabled={isReadOnlyAfterSubmit || signers.length >= 2}
-                      title={
-                        signers.length >= 2
-                          ? "Maksimal 2 penandatangan"
-                          : undefined
-                      }
-                      className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit || signers.length >= 2 ? "opacity-40 cursor-not-allowed" : ""}`}>
-                      <Plus className="h-3.5 w-3.5" /> Tambah Penandatangan
-                    </button>
                   </div>
                 </div>
 
@@ -1354,6 +1739,8 @@ export default function ContractEditorPage() {
                     <FileText className="h-3.5 w-3.5" /> Pratinjau PDF
                   </button>
                 </div>
+
+                {/* read-only state handled by disabling individual controls; no overlay so back button stays clickable */}
               </div>
             </Panel>
 
@@ -1366,12 +1753,14 @@ export default function ContractEditorPage() {
                   editor={editor}
                   fields={fields}
                   onAddField={() => setShowFieldModal(true)}
+                  disabled={isReadOnlyAfterSubmit}
                 />
                 <div
                   className="flex-1 overflow-y-auto"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
+                    if (isReadOnlyAfterSubmit) return;
                     const tag = e.dataTransfer.getData("text/plain");
                     if (tag && editor) {
                       editor.chain().focus().insertContent(tag).run();
@@ -1392,6 +1781,7 @@ export default function ContractEditorPage() {
                           name={s.name || undefined}
                           title={s.title || undefined}
                           email={s.email || undefined}
+                          date={startDate}
                         />
                       ))}
                     </div>

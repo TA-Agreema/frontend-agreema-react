@@ -358,6 +358,8 @@ export default function ContractTemplatePage() {
                     onDelete={(t) => setDeleteTarget(t)}
                     onDownload={(t) => downloadPdf(t.id)}
                     onToggleStatus={(t) => toggleTemplateStatus(t.id)}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                   />
                 </div>
               ))}

@@ -1,6 +1,13 @@
 import api from "@/lib/axios";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 
+export interface InternalSigner {
+  id: number;
+  name: string;
+  job_title?: string | null;
+  email?: string | null;
+}
+
 const BASE_PATH = "/contracts";
 
 export interface CreateContractPayload {
@@ -18,7 +25,9 @@ export interface CreateContractPayload {
 
 export type UpdateContractPayload = Partial<CreateContractPayload>;
 
-export const generateContractNumber = async (categoryId?: number | null): Promise<string> => {
+export const generateContractNumber = async (
+  categoryId?: number | null,
+): Promise<string> => {
   const url = categoryId
     ? `${BASE_PATH}/generate-number?category_id=${categoryId}`
     : `${BASE_PATH}/generate-number`;
@@ -26,8 +35,17 @@ export const generateContractNumber = async (categoryId?: number | null): Promis
   return res.data.contract_number;
 };
 
-export const fetchSigners = async (): Promise<any[]> => {
-  const res = await api.get("/signers/internal");
+export const fetchSigners = async (): Promise<InternalSigner[]> => {
+  const res = await api.get<{ data: InternalSigner[] }>("/signers/internal");
+  return res.data.data;
+};
+
+export const fetchPartners = async (): Promise<
+  { id: number; display_name: string }[]
+> => {
+  const res = await api.get<{ data: { id: number; display_name: string }[] }>(
+    "/partners",
+  );
   return res.data.data;
 };
 
