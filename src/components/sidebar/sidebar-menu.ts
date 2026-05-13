@@ -25,6 +25,7 @@ export interface SidebarMenuItemType {
   url: string;
   icon: LucideIcon;
   isActive?: boolean;
+  exact?: boolean;
   items?: SidebarMenuSubItem[];
   permissions?: string[];
   roles?: string[];
@@ -71,7 +72,8 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     title: "Daftar Kontrak",
     url: "/contracts",
     icon: FileText,
-    roles: ["hrd"],
+    roles: ["hrd", "admin", "manager"],
+    exact: true,
   },
   {
     title: "Template Kontrak",
@@ -81,9 +83,9 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
   },
   {
     title: "Arsip Kontrak",
-    url: "/contracts-archive",
+    url: "/contracts/archive",
     icon: Archive,
-    roles: ["hrd"],
+    roles: ["hrd", "admin", "manager"],
   },
 
   // Role Manager - Approval
@@ -92,10 +94,6 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     url: "/approvals",
     icon: CheckCircle,
     roles: ["manager"],
-    items: [
-      { title: "Perlu Ditinjau", url: "/approvals/pending" },
-      { title: "Riwayat kontrak", url: "/approvals/history" },
-    ],
   },
   // {
   //     title: "Tanda Tangan",
