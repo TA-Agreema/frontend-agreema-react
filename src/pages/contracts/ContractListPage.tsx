@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -12,8 +12,12 @@ import {
   Trash2,
   FileSignature,
   CalendarDays,
+  Eye,
+  Archive,
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/DeleteModal";
 import TemplateSelectModal, {
   type TemplateOption,
@@ -23,6 +27,9 @@ import {
   createContract,
   deleteContract,
 } from "@/services/contract.service";
+import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
+import AddendumModal from "@/components/modal/addendum/AddendumModal";
+import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 
 //  Types
 
@@ -31,6 +38,8 @@ export type ContractStatus =
   | "review"
   | "active"
   | "revision"
+  | "approved"
+  | "rejected"
   | "expired"
   | "terminated";
 
@@ -41,6 +50,7 @@ export interface Addendum {
   description: string;
   created_at: string; // "DD-MM-YYYY"
   effective_date: string;
+  document_path?: string;
 }
 
 export interface ContractRow {
@@ -58,6 +68,7 @@ export interface ContractRow {
   end_date: string | null;
   created_by: string;
   addendums: Addendum[];
+  terminations?: any[];
 }
 
 const PAGE_SIZE = 4;
@@ -83,6 +94,14 @@ const STATUS_CONFIG: Record<
   revision: {
     label: "Revisi",
     className: "bg-orange-50 text-orange-700 border-orange-200",
+  },
+  approved: {
+    label: "Disetujui Internal",
+    className: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  rejected: {
+    label: "Ditolak",
+    className: "bg-red-100 text-red-800 border-red-300",
   },
   expired: {
     label: "Berakhir",
@@ -110,7 +129,13 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 
 //  Addendum sub-row
 
-function AddendumRow({ addendum }: { addendum: Addendum }) {
+function AddendumRow({
+  addendum,
+  onView
+}: {
+  addendum: Addendum;
+  onView: () => void;
+}) {
   return (
     <tr className="bg-slate-50/80 border-l-4 border-l-emerald-400">
       {/* indent cell */}
@@ -144,6 +169,13 @@ function AddendumRow({ addendum }: { addendum: Addendum }) {
               </span>
             </div>
           </div>
+          <button
+            onClick={onView}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Lihat Detail
+          </button>
         </div>
       </td>
     </tr>
@@ -153,12 +185,22 @@ function AddendumRow({ addendum }: { addendum: Addendum }) {
 //  Row Action Dropdown
 function RowMenu({
   contract,
+  canEdit,
+  canManageAddendum,
+  canManageTermination,
+  canDeleteRow,
+  onView,
   onEdit,
   onAddendum,
   onTerminate,
   onDelete,
 }: {
   contract: ContractRow;
+  canEdit: boolean;
+  canManageAddendum: boolean;
+  canManageTermination: boolean;
+  canDeleteRow: boolean;
+  onView: () => void;
   onEdit: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
@@ -171,9 +213,12 @@ function RowMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Aksi yang relevan berdasarkan status
-  const canAddAddendum = ["active", "review"].includes(contract.status);
+  const canAddAddendum = ["active"].includes(contract.status);
   const canTerminate = ["active", "review", "draft"].includes(contract.status);
   const canDelete = contract.status === "draft";
+
+  const { roles } = useAuth();
+  const isHrd = roles.includes('hrd');
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -238,15 +283,28 @@ function RowMenu({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onEdit();
+              onView();
               setOpen(false);
             }}
             className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
-            <Pencil className="h-4 w-4 text-muted-foreground opacity-70" />
-            Edit
+            <Eye className="h-4 w-4 text-muted-foreground opacity-70" />
+            Lihat Detail
           </button>
 
-          {canAddAddendum && (
+          {canEdit && isHrd && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+                setOpen(false);
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+              <Pencil className="h-4 w-4 text-muted-foreground opacity-70" />
+              Edit
+            </button>
+          )}
+
+          {canManageAddendum && canAddAddendum && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -259,7 +317,7 @@ function RowMenu({
             </button>
           )}
 
-          {canTerminate && (
+          {canManageTermination && canTerminate && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -272,7 +330,7 @@ function RowMenu({
             </button>
           )}
 
-          {canDelete && (
+          {canDeleteRow && canDelete && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -295,6 +353,17 @@ function RowMenu({
 // Main Page
 export default function ContractListPage() {
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+
+  const canCreateContract = hasPermission('create.contract');
+  const canEdit = hasPermission('update.contract');
+  const canManageAddendum = hasPermission('create.addendum');
+  const canManageTermination = hasPermission('create.terminate');
+  const canDeleteRow = hasPermission('delete.contract');
+
+  const { roles } = useAuth();
+  const isManager = roles.includes('manager');
+
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -303,11 +372,36 @@ export default function ContractListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
+  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
+  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
+
+  const handleTerminationSuccess = useCallback((contractId: number) => {
+    setContracts((prev) =>
+      prev.map((c) =>
+        c.id === contractId ? { ...c, status: "terminated" } : c
+      )
+    );
+  }, []);
+
+  // Insert new addendum into local state so UI updates instantly
+  const handleAddendumSuccess = useCallback((contractId: number, newAddendum: Addendum) => {
+    setContracts((prev) =>
+      prev.map((c) =>
+        c.id === contractId
+          ? { ...c, addendums: [newAddendum, ...c.addendums] }
+          : c,
+      ),
+    );
+    // Auto-expand that contract row to show the new addendum
+    setExpanded((prev) => new Set(prev).add(contractId));
+  }, []);
 
   // Derived
-  const totalPages = Math.max(1, Math.ceil(contracts.length / PAGE_SIZE));
+  const activeContracts = contracts.filter((c) => c.status !== "terminated");
+  const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paginated = contracts.slice(
+  const paginated = activeContracts.slice(
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
@@ -404,12 +498,22 @@ export default function ContractListPage() {
               className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
             />
           </div>
-          <button
-            onClick={() => setShowTemplateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0">
-            <Plus className="h-4 w-4" />
-            Tambah Kontrak
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/contracts/archive')}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700">
+              <Archive className="h-4 w-4" />
+              Arsip
+            </button>
+            {canCreateContract && (
+              <button
+                onClick={() => setShowTemplateModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0">
+                <Plus className="h-4 w-4" />
+                Tambah Kontrak
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -484,11 +588,10 @@ export default function ContractListPage() {
                     <tr
                       key={`contract-${contract.id}`}
                       onClick={() => hasAddendums && toggleExpand(contract.id)}
-                      className={`transition-colors ${
-                        hasAddendums
-                          ? "cursor-pointer hover:bg-muted/40"
-                          : "hover:bg-muted/20"
-                      } ${isExpanded ? "bg-muted/30" : ""}`}>
+                      className={`transition-colors ${hasAddendums
+                        ? "cursor-pointer hover:bg-muted/40"
+                        : "hover:bg-muted/20"
+                        } ${isExpanded ? "bg-muted/30" : ""}`}>
                       {/* Expand icon */}
                       <td className="w-10 px-3 py-4">
                         {hasAddendums ? (
@@ -558,15 +661,22 @@ export default function ContractListPage() {
                         onClick={(e) => e.stopPropagation()}>
                         <RowMenu
                           contract={contract}
+                          canEdit={canEdit}
+                          canManageAddendum={canManageAddendum}
+                          canManageTermination={canManageTermination}
+                          canDeleteRow={canDeleteRow}
+                          onView={() => {
+                            if (isManager) {
+                              navigate(`/approvals/${contract.id}`);
+                            } else {
+                              navigate(`/contracts/${contract.id}/view`);
+                            }
+                          }}
                           onEdit={() =>
                             navigate(`/contracts/${contract.id}/edit`)
                           }
-                          onAddendum={() =>
-                            navigate(`/contracts/${contract.id}/addendum/new`)
-                          }
-                          onTerminate={() =>
-                            navigate(`/contracts/${contract.id}/terminate`)
-                          }
+                          onAddendum={() => setAddendumTarget(contract)}
+                          onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
                         />
                       </td>
@@ -578,6 +688,7 @@ export default function ContractListPage() {
                         <AddendumRow
                           key={`addendum-${addendum.id}`}
                           addendum={addendum}
+                          onView={() => setViewAddendumTarget(addendum)}
                         />
                       ))}
                   </>
@@ -588,7 +699,7 @@ export default function ContractListPage() {
         </div>
 
         {/* Pagination */}
-        {contracts.length > 0 && (
+        {activeContracts.length > 0 && (
           <Pagination
             page={safePage}
             totalPages={totalPages}
@@ -604,6 +715,32 @@ export default function ContractListPage() {
           itemName={deleteTarget.title}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {/* Addendum Modal */}
+      {addendumTarget && (
+        <AddendumModal
+          contract={addendumTarget}
+          onClose={() => setAddendumTarget(null)}
+          onSuccess={handleAddendumSuccess}
+        />
+      )}
+
+      {/* Addendum Detail/Preview Modal */}
+      {viewAddendumTarget && (
+        <AddendumDetailModal
+          addendum={viewAddendumTarget}
+          onClose={() => setViewAddendumTarget(null)}
+        />
+      )}
+
+      {/* Termination Modal */}
+      {terminateTarget && (
+        <TerminationModal
+          contract={terminateTarget}
+          onClose={() => setTerminateTarget(null)}
+          onSuccess={handleTerminationSuccess}
         />
       )}
 
