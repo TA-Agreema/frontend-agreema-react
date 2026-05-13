@@ -22,9 +22,6 @@ import {
   ChevronDown,
   Plus,
   X,
-  Clock,
-  Paperclip,
-  Send,
   Save,
   CheckCircle,
   Loader2,
@@ -67,6 +64,7 @@ import {
   createContract,
   fetchContract,
   updateContract,
+  submitContract,
   generateContractNumber,
   fetchSigners,
 } from "@/services/contract.service";
@@ -120,52 +118,7 @@ type ContractDetail = ContractRow & {
 
 // Mock data
 
-const STATUS_HISTORY: StatusEntry[] = [
-  {
-    status: "draft",
-    label: "Draft",
-    actor: "Galang Aly N (Anda)",
-    note: "Versi 1 · Kontrak Sewa Vendor",
-    date: "Baru Saja",
-  },
-  {
-    status: "review",
-    label: "Revisi",
-    actor: "Alexa Jovanca",
-    note: "Versi 1 · Kontrak Sewa Vendor",
-    date: "30-04-2026 10:00",
-  },
-  {
-    status: "revision",
-    label: "Ditinjau",
-    actor: "Galang Aly N (Anda)",
-    note: "Versi 2 · Kontrak Sewa Vendor",
-    date: "30-04-2026 10:45",
-  },
-];
-
-const MOCK_FEEDBACK: FeedbackEntry[] = [
-  {
-    id: 1,
-    author: "Alexa Jovanca",
-    role: "Legal Reviewer",
-    type: "urgent",
-    typeLabel: "Tanda Selesai",
-    message:
-      "Mohon diperbaiki klausul mengenai periode probation di Section 1. Apakah 3 bulan atau 6 bulan?",
-    date: "14 April 2026, 3:00 PM",
-  },
-  {
-    id: 2,
-    author: "Budi Santoso",
-    role: "Finance Reviewer",
-    type: "standard",
-    typeLabel: "Selesai",
-    message:
-      "Angka gaji di Section 2 belum sesuai dengan grade yang ditetapkan. Harap disesuaikan dengan struktur gaji terbaru.",
-    date: "14 April 2026, 11:15 AM",
-  },
-];
+// Data removed
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-gray-100 text-gray-500 border border-gray-200",
@@ -346,12 +299,12 @@ function SignatureBox({
 }) {
   const formattedDate = date
     ? new Date(date)
-        .toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "/")
+      .toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "/")
     : "[DD/MM/YYYY]";
 
   return (
@@ -396,6 +349,7 @@ export default function ContractEditorPage() {
   const { id } = useParams();
   const isEdit = !!id;
   const location = useLocation();
+  const isViewRoute = location.pathname.endsWith('/view');
 
   type NavState = {
     template?: TemplateOption;
@@ -421,16 +375,18 @@ export default function ContractEditorPage() {
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
-      navState?.createdContract?.title ||
-      "Kontrak Sewa Vendor",
+    navState?.createdContract?.title ||
+    "Kontrak Sewa Vendor",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [feedbackText, setFeedbackText] = useState("");
+  const [currentStatus, setCurrentStatus] = useState<string>("draft");
+  const [statusLogs, setStatusLogs] = useState<any[]>([]);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] =
-    useState<boolean>(false);
+  const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] = useState<boolean>(false);
+  const isStrictlyReadOnly = isViewRoute || isReadOnlyAfterSubmit;
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [pageMargin, setPageMargin] = useState<MarginStyle>(MARGIN_PRESETS[0].value);
 
@@ -633,6 +589,7 @@ export default function ContractEditorPage() {
             .external_contract_number ?? "",
         );
         setTitle(c.title ?? "");
+        setCurrentStatus(c.status ?? "draft");
 
         // Reconstruct template dari contract data
         if (c.template_id) {
@@ -666,9 +623,50 @@ export default function ContractEditorPage() {
         if (c && c.partner) {
           setSelectedPartnerName(c.partner ?? "");
         }
-        // If contract is already under review, mark UI read-only
-        if (c.status && c.status === "review") {
+
+        // load signers
+        if ((c as any).signers && (c as any).signers.length > 0) {
+          const allReviews: any[] = [];
+          const loadedSigners = (c as any).signers.map((s: any, index: number) => {
+            if (s.reviews && s.reviews.length > 0) {
+              const author = s.signer_type === "internal" && s.user ? s.user.name : (s.signer_name || s.external_email || "Eksternal");
+              const role = s.signer_type === "internal" && s.user ? (s.user.job_title || "Internal") : (s.signer_role || "Eksternal");
+
+              s.reviews.forEach((r: any) => {
+                if (r.notes) {
+                  allReviews.push({
+                    id: r.id,
+                    author: author,
+                    role: role,
+                    type: r.status,
+                    typeLabel: r.status === "revised" || r.status === "revision" ? "Revisi" : r.status === "rejected" ? "Ditolak" : "Catatan",
+                    message: r.notes,
+                    date: r.reviewed_at,
+                  });
+                }
+              });
+            }
+
+            return {
+              id: s.id?.toString() || `s${index}`,
+              type: s.signer_type,
+              name: s.signer_type === "internal" && s.user ? s.user.name : (s.signer_name || ""),
+              title: s.signer_type === "internal" && s.user ? (s.user.job_title || "") : (s.signer_role || ""),
+              email: s.external_email || "",
+              noUserAccount: false,
+            };
+          });
+          setSigners(loadedSigners);
+          // sort descending by ID
+          setFeedbacks(allReviews.sort((a, b) => b.id - a.id));
+        }
+        // If contract is not draft/revision, mark UI read-only
+        if (c.status && !["draft", "revision"].includes(c.status)) {
           setIsReadOnlyAfterSubmit(true);
+        }
+
+        if ((c as any).status_logs) {
+          setStatusLogs((c as any).status_logs);
         }
       } catch (e) {
         console.error(e);
@@ -692,24 +690,31 @@ export default function ContractEditorPage() {
       if (!isEdit) {
         generateContractNumber(t.category_id)
           .then(setContractNumber)
-          .catch(() => {});
+          .catch(() => { });
       }
     },
     [editor, title, isEdit],
   );
 
-  const buildPayload = (status: string) => ({
+  const buildPayload = (statusOverride?: string) => ({
     contract_number: contractNumber.trim() || undefined,
     external_contract_number: externalContractNumber.trim() || null,
     title: title.trim(),
     start_date: startDate || null,
     end_date: endDate || null,
-    status,
+    status: statusOverride || currentStatus,
     template_id: selectedTemplate?.id ?? null,
     partner_name: selectedPartnerName?.trim()
       ? selectedPartnerName.trim()
       : null,
     content: editor?.getHTML() ?? "",
+    signers: signers.map((s) => ({
+      type: s.type,
+      name: s.name,
+      title: s.title,
+      email: s.email,
+      noUserAccount: s.noUserAccount,
+    })),
   });
 
   const handleSaveDraft = async () => {
@@ -721,7 +726,7 @@ export default function ContractEditorPage() {
     setSaveError(null);
     try {
       if (isEdit) {
-        await updateContract(Number(id), buildPayload("draft"));
+        await updateContract(Number(id), buildPayload(currentStatus));
       } else {
         await createContract(buildPayload("draft"));
       }
@@ -745,9 +750,11 @@ export default function ContractEditorPage() {
     try {
       let res;
       if (isEdit) {
-        res = await updateContract(Number(id), buildPayload("review"));
+        await updateContract(Number(id), buildPayload(currentStatus));
+        res = await submitContract(Number(id));
       } else {
-        res = await createContract(buildPayload("review"));
+        const created = await createContract(buildPayload("draft"));
+        res = await submitContract(created.id);
       }
       setIsReadOnlyAfterSubmit(true);
       const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
@@ -763,8 +770,8 @@ export default function ContractEditorPage() {
   // when read-only flag changes, update editor editable state
   useEffect(() => {
     if (!editor) return;
-    editor.setEditable(!isReadOnlyAfterSubmit);
-  }, [editor, isReadOnlyAfterSubmit]);
+    editor.setEditable(!isStrictlyReadOnly);
+  }, [editor, isStrictlyReadOnly]);
 
   return (
     <>
@@ -806,28 +813,34 @@ export default function ContractEditorPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleSaveDraft}
-              disabled={isSaving || isReadOnlyAfterSubmit}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium">
-              {isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Save className="h-3.5 w-3.5" />
-              )}
-              Simpan Draft
-            </button>
-            <button
-              onClick={() => setShowSubmitConfirm(true)}
-              disabled={isSaving || isReadOnlyAfterSubmit}
-              className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
-              {isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle className="h-3.5 w-3.5" />
-              )}
-              → Ajukan
-            </button>
+          <div className="flex items-center gap-2">
+            {!isViewRoute && (
+              <>
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={isSaving || isStrictlyReadOnly}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium">
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5" />
+                  )}
+                  Simpan Draft
+                </button>
+                <button
+                  onClick={() => setShowSubmitConfirm(true)}
+                  disabled={isSaving || isStrictlyReadOnly}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-3.5 w-3.5" />
+                  )}
+                  → Ajukan
+                </button>
+              </>
+            )}
+          </div>
           </div>
         </div>
 
@@ -880,11 +893,11 @@ export default function ContractEditorPage() {
                           },
                           ...(externalContractNumber
                             ? [
-                                {
-                                  label: "No. Kontrak Eksternal",
-                                  value: externalContractNumber,
-                                },
-                              ]
+                              {
+                                label: "No. Kontrak Eksternal",
+                                value: externalContractNumber,
+                              },
+                            ]
                             : []),
                         ] as { label: string; value: string }[]
                       ).map((chip) => (
@@ -941,7 +954,7 @@ export default function ContractEditorPage() {
                                 selectedTemplate?.category_id,
                               )
                                 .then(setContractNumber)
-                                .catch(() => {})
+                                .catch(() => { })
                             }
                             className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0">
                             ↺
@@ -1120,9 +1133,9 @@ export default function ContractEditorPage() {
                       editor.chain().focus().insertContent(tag).run();
                     }
                   }}>
-                  
+
                   {/* Paper Wrapper */}
-                  <div 
+                  <div
                     className="mx-auto bg-white shadow-md border border-gray-200 flex flex-col relative"
                     style={{
                       width: '21.5cm',
@@ -1130,25 +1143,25 @@ export default function ContractEditorPage() {
                       backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)'
                     }}
                   >
-                    <div 
+                    <div
                       className="flex-1"
-                      style={{ 
-                        paddingTop: pageMargin.top, 
-                        paddingBottom: pageMargin.bottom, 
-                        paddingLeft: pageMargin.left, 
-                        paddingRight: pageMargin.right 
+                      style={{
+                        paddingTop: pageMargin.top,
+                        paddingBottom: pageMargin.bottom,
+                        paddingLeft: pageMargin.left,
+                        paddingRight: pageMargin.right
                       }}
                     >
                       <EditorContent editor={editor} className="h-full" />
                     </div>
 
                     {/*  Tanda Tangan  */}
-                    <div 
+                    <div
                       className="pt-8 mt-auto border-t border-dashed border-gray-200"
-                      style={{ 
-                        paddingBottom: pageMargin.bottom, 
-                        paddingLeft: pageMargin.left, 
-                        paddingRight: pageMargin.right 
+                      style={{
+                        paddingBottom: pageMargin.bottom,
+                        paddingLeft: pageMargin.left,
+                        paddingRight: pageMargin.right
                       }}
                     >
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 text-center">
@@ -1180,8 +1193,8 @@ export default function ContractEditorPage() {
               minSize={SIDEBAR_MIN_PX}
               maxSize={SIDEBAR_MAX_PX}>
               <RightSidebar
-                feedbackText={feedbackText}
-                setFeedbackText={setFeedbackText}
+                statusLogs={statusLogs}
+                feedbacks={feedbacks}
               />
             </Panel>
           </PanelGroup>
@@ -1225,18 +1238,12 @@ export default function ContractEditorPage() {
 
 //  Right Sidebar content
 
-function RightSidebar({
-  feedbackText,
-  setFeedbackText,
-}: {
-  feedbackText: string;
-  setFeedbackText: (v: string) => void;
-}) {
+function RightSidebar({ statusLogs, feedbacks }: { statusLogs: any[], feedbacks: any[] }) {
   return (
     <div className="h-full flex flex-col bg-white border-l border-gray-200 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Informasi Pembuat */}
-        <section>
+        {/* <section>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
             Informasi Pembuat
           </p>
@@ -1257,7 +1264,7 @@ function RightSidebar({
           </div>
         </section>
 
-        <div className="border-t border-gray-100" />
+        <div className="border-t border-gray-100" /> */}
 
         {/* Riwayat Status */}
         <section>
@@ -1270,42 +1277,44 @@ function RightSidebar({
             </button>
           </div>
           <div className="space-y-2">
-            {STATUS_HISTORY.map((entry, i) => (
-              <div key={i} className="flex gap-2">
+            {statusLogs && statusLogs.length > 0 ? statusLogs.map((log, i) => (
+              <div key={log.id} className="flex gap-2">
                 <div className="flex flex-col items-center shrink-0 pt-0.5">
                   <div
-                    className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[entry.status]}`}
+                    className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[log.new_status as keyof typeof STATUS_DOT] || "bg-gray-400"}`}
                   />
-                  {i < STATUS_HISTORY.length - 1 && (
+                  {i < statusLogs.length - 1 && (
                     <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
                   )}
                 </div>
                 <div className="pb-2 min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                     <span
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLE[entry.status]}`}>
-                      {entry.label}
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLE[log.new_status as keyof typeof STATUS_STYLE] || "bg-gray-100 text-gray-500"}`}>
+                      {log.new_status.toUpperCase()}
                     </span>
                     <span className="text-[10px] text-gray-400">
-                      {entry.date}
+                      {log.created_at}
                     </span>
                   </div>
                   <p className="text-xs font-medium text-gray-700 truncate">
-                    {entry.actor}
+                    Diperbarui oleh: {log.changed_by}
                   </p>
                   <p className="text-[11px] text-gray-400 truncate">
-                    {entry.note}
+                    Dari {log.old_status} ke {log.new_status}
                   </p>
                 </div>
               </div>
-            ))}
+            )) : (
+              <p className="text-xs text-gray-400">Belum ada riwayat status.</p>
+            )}
           </div>
         </section>
 
         <div className="border-t border-gray-100" />
 
         {/* Addendum Terkait */}
-        <section>
+        {/* <section>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
             Addendum Terkait
           </p>
@@ -1321,75 +1330,60 @@ function RightSidebar({
               </div>
             ),
           )}
-        </section>
+        </section> */}
 
-        <div className="border-t border-gray-100" />
+        {/* <div className="border-t border-gray-100" /> */}
 
         {/* Umpan Balik & Revisi */}
         <section>
-          <div className="flex items-center justify-between mb-2.5">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              Umpan Balik & Revisi
-            </p>
-            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-              {MOCK_FEEDBACK.length}
-            </span>
-          </div>
-
-          <div className="space-y-2.5">
-            {MOCK_FEEDBACK.map((fb) => (
-              <div
-                key={fb.id}
-                className="rounded-xl border border-gray-200 p-3 space-y-2 bg-white shadow-sm">
-                <div className="flex items-start justify-between gap-1.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-[10px] flex items-center justify-center font-bold shrink-0">
-                      {fb.author[0]}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-800 truncate">
-                        {fb.author}
-                      </p>
-                      <p className="text-[10px] text-gray-400">{fb.role}</p>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${
-                      fb.type === "urgent"
-                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                        : "bg-gray-100 text-gray-500 border border-gray-200"
-                    }`}>
-                    {fb.typeLabel}
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-600 leading-relaxed">
-                  {fb.message}
+          {feedbacks.length > 0 && (
+            <>
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Umpan Balik & Revisi
                 </p>
-                <p className="text-[10px] text-gray-300">{fb.date}</p>
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  {feedbacks.length}
+                </span>
               </div>
-            ))}
-          </div>
 
-          {/* Kirim balasan */}
-          <div className="mt-3 space-y-1.5">
-            <p className="text-[11px] text-gray-400">
-              Tulis balasan atau tanggapan untuk reviewer...
-            </p>
-            <textarea
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder="Tulis balasan atau tanggapan untuk reviewer..."
-              rows={3}
-              className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-2 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-            />
-            <button
-              onClick={() => setFeedbackText("")}
-              disabled={!feedbackText.trim()}
-              className="w-full flex items-center justify-center gap-2 py-2 text-xs rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 disabled:opacity-40 transition-colors">
-              <Send className="h-3.5 w-3.5" /> Kirim Balasan
-            </button>
-          </div>
+              <div className="space-y-2.5">
+                {feedbacks.map((fb) => (
+                  <div
+                    key={fb.id}
+                    className="rounded-xl border border-gray-200 p-3 space-y-2 bg-white shadow-sm">
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-[10px] flex items-center justify-center font-bold shrink-0 uppercase">
+                          {fb.author ? fb.author[0] : "?"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">
+                            {fb.author}
+                          </p>
+                          <p className="text-[10px] text-gray-400 truncate">{fb.role}</p>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${fb.type === "revised" || fb.type === "revision" || fb.type === "rejected"
+                          ? "bg-red-50 text-red-600 border border-red-200"
+                          : "bg-gray-100 text-gray-500 border border-gray-200"
+                          }`}>
+                        {fb.typeLabel}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+                      {fb.message}
+                    </p>
+                    <p className="text-[10px] text-gray-300">{fb.date}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </section>
+
+        {/* Kirim balasan UI removed for now */}
       </div>
     </div>
   );

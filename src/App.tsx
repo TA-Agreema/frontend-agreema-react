@@ -4,6 +4,7 @@ import AuthPage from "./pages/auth/AuthPage.tsx";
 import DashboardPage from "./pages/dashboard/DashboardPage.tsx";
 import UserRoleManagementPage from "./pages/users/UserRoleManagementPage.tsx";
 import ContractPage from "./pages/contracts/ContractListPage.tsx";
+import ContractArchivePage from "./pages/contracts/ContractArchivePage.tsx";
 import ContractCategoryPage from "./pages/contracts/category/ContractCategoryPage.tsx";
 import NotFoundPage from "./pages/error/NotFoundPage.tsx";
 import ServerErrorPage from "./pages/error/ServerErrorPage.tsx";
@@ -13,14 +14,20 @@ import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import ContractTemplatePage from "@/pages/contracts/template/ContractTemplatePage";
 import TemplateEditorPage from "@/pages/contracts/template/TemplateEditorPage";
 import ContractEditorPage from "@/pages/contracts/ContractEditorPage";
+import ContractReviewListPage from "@/pages/contracts/manager/ContractReviewListPage";
+import ContractReviewDetailPage from "@/pages/contracts/manager/ContractReviewDetailPage";
+import ContractReviewDetailExternalPage from "@/pages/contracts/external/ContractReviewDetailExternalPage";
 
 const Dashboard = withDashboard(DashboardPage);
 const UserRoleManagement = withDashboard(UserRoleManagementPage);
 const Contract = withDashboard(ContractPage);
+const ContractArchive = withDashboard(ContractArchivePage);
 const Category = withDashboard(ContractCategoryPage);
 const ContractTemplate = withDashboard(ContractTemplatePage);
 const TemplateEditor = TemplateEditorPage;
 const ContractEditor = ContractEditorPage;
+const ContractReviewList = withDashboard(ContractReviewListPage);
+const ContractReviewDetail = ContractReviewDetailPage;
 
 export default function App() {
   return (
@@ -30,6 +37,7 @@ export default function App() {
           {/* Public Routes */}
           <Route path="/" element={<AuthPage />} />
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/external/sign" element={<ContractReviewDetailExternalPage />} />
 
           {/* Error Pages */}
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -49,7 +57,7 @@ export default function App() {
           <Route
             path="/users"
             element={
-              <ProtectedRoute permissions={[]}>
+              <ProtectedRoute permissions={['read.all.users']}>
                 <UserRoleManagement />
               </ProtectedRoute>
             }
@@ -58,8 +66,17 @@ export default function App() {
           <Route
             path="/contracts"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['read.contracts']}>
                 <Contract />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contracts/archive"
+            element={
+              <ProtectedRoute permissions={['read.contracts']}>
+                <ContractArchive />
               </ProtectedRoute>
             }
           />
@@ -67,7 +84,7 @@ export default function App() {
           <Route
             path="/contracts/create"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['create.contract']}>
                 <ContractEditor />
               </ProtectedRoute>
             }
@@ -76,7 +93,16 @@ export default function App() {
           <Route
             path="/contracts/:id/edit"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['update.contract']}>
+                <ContractEditor />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contracts/:id/view"
+            element={
+              <ProtectedRoute permissions={['read.contracts']}>
                 <ContractEditor />
               </ProtectedRoute>
             }
@@ -85,7 +111,7 @@ export default function App() {
           <Route
             path="/categories"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['read.contract_category']}>
                 <Category />
               </ProtectedRoute>
             }
@@ -94,7 +120,7 @@ export default function App() {
           <Route
             path="/contracts-templates"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['read.template']}>
                 <ContractTemplate />
               </ProtectedRoute>
             }
@@ -103,7 +129,7 @@ export default function App() {
           <Route
             path="/contracts-templates/new"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['create.template']}>
                 <TemplateEditor />
               </ProtectedRoute>
             }
@@ -112,8 +138,27 @@ export default function App() {
           <Route
             path="/contracts-templates/:id/edit"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute permissions={['update.template']}>
                 <TemplateEditor />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Manager Approvals */}
+          <Route
+            path="/approvals"
+            element={
+              <ProtectedRoute permissions={['read.contracts']}>
+                <ContractReviewList />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/approvals/:id"
+            element={
+              <ProtectedRoute permissions={['read.contracts']}>
+                <ContractReviewDetail />
               </ProtectedRoute>
             }
           />

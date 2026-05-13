@@ -16,7 +16,10 @@ type NavMainProps = {
 export function NavMain({ items }: NavMainProps) {
   const location = useLocation();
 
-  const isActive = (url: string) => {
+  const isActive = (url: string, exact?: boolean) => {
+    if (exact) {
+      return location.pathname === url;
+    }
     return location.pathname === url || location.pathname.startsWith(url + "/");
   };
 
@@ -28,14 +31,14 @@ export function NavMain({ items }: NavMainProps) {
             asChild
             tooltip={item.title}
             className={
-              isActive(item.url)
+              isActive(item.url, item.exact)
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : ""
             }>
             <Link
               to={item.url}
               className={`flex items-center gap-2 transition-colors duration-200 ${
-                isActive(item.url)
+                isActive(item.url, item.exact)
                   ? "bg-emerald-100 text-emerald-700 font-semibold"
                   : "hover:bg-gray-100 text-gray-700"
               }`}>

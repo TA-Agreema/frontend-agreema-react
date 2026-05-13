@@ -21,6 +21,13 @@ export interface CreateContractPayload {
   category_id?: number | null;
   parent_contract_id?: number | null;
   content?: string | null;
+  signers?: Array<{
+    type: string;
+    name: string;
+    title?: string;
+    email?: string;
+    noUserAccount?: boolean;
+  }>;
 }
 
 export type UpdateContractPayload = Partial<CreateContractPayload>;
@@ -96,4 +103,9 @@ export const updateContractStatus = async (
   return res.data.data;
 };
 
-
+export const submitContract = async (id: number): Promise<ContractRow> => {
+  const res = await api.post<{ data: ContractRow }>(
+    `${BASE_PATH}/${id}/submit`,
+  );
+  return res.data.data;
+};
