@@ -1,5 +1,5 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/sidebar";
+import { AppSidebar } from "@/components/layouts/sidebar";
 import { Separator } from "@/components/ui/separator";
 
 interface DashboardLayoutProps {
