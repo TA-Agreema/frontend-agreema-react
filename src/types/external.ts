@@ -1,3 +1,11 @@
+export interface ExternalSignerSignature {
+  id: number;
+  signature_type: "canvas" | "upload";
+  signature_path: string;
+  signed_at: string;
+  iteration: number;
+}
+
 export interface ExternalContractDetail {
     message: string;
     iteration: number;
@@ -13,9 +21,11 @@ export interface ExternalContractDetail {
         signers: Array<{
             id: number;
             type: string;
+            signer_type?: string;
             name: string;
             title: string;
             email: string;
+            signatures?: ExternalSignerSignature[];
             reviews: Array<{
                 id: number;
                 status: string;

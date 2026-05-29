@@ -56,15 +56,20 @@ export const fetchPartners = async (): Promise<
   return res.data.data;
 };
 
+// Mengambil daftar kontrak
 export const fetchContracts = async (
   search?: string,
+  archive?: boolean,
 ): Promise<ContractRow[]> => {
-  const res = await api.get<{ data: ContractRow[] }>(BASE_PATH, {
-    params: search ? { search } : {},
-  });
-  return res.data.data;
-};
+  const params: Record<string, any> = {};
+  if (search) params.search = search;
+  if (archive !== undefined) params.archive = archive;
 
+  const res = await api.get<{ data: ContractRow[] }>(BASE_PATH, { params });
+    return res.data.data;
+  };
+
+// Mengambil detail kontrak berdasarkan ID
 export const fetchContract = async (id: number): Promise<ContractRow> => {
   const res = await api.get<{ data: ContractRow }>(`${BASE_PATH}/${id}`);
   return res.data.data;

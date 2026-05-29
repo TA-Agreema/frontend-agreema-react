@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
 import TerminationDetailModal from "@/components/modal/terminasi/TerminationDetailModal";
@@ -82,6 +82,30 @@ function TerminationRow({
   );
 }
 
+function RejectionRow({ notes }: { notes: string }) {
+  const raw = notes ?? "";
+  const parts = raw.split("||");
+  const reason = parts.length >= 2 ? parts[1].trim() : raw.trim();
+ 
+  return (
+    <tr className="bg-red-50/60 border-l-4 border-l-red-500">
+      <td className="pl-10 pr-3 py-3 w-8">
+        <div className="p-1.5 rounded-md bg-white border border-red-200 inline-flex">
+          <XCircle className="h-3.5 w-3.5 text-red-600" />
+        </div>
+      </td>
+      <td colSpan={6} className="px-3 py-3">
+        <div className="space-y-0.5">
+          <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">
+            Kontrak Ditolak
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{reason}</p>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export default function ContractArchivePage() {
   const navigate = useNavigate();
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -93,7 +117,7 @@ export default function ContractArchivePage() {
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
 
   // Filter ONLY terminated contracts
-  const archivedContracts = contracts.filter(c => c.status === "terminated");
+  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected");
 
   const totalPages = Math.max(1, Math.ceil(archivedContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -120,7 +144,7 @@ export default function ContractArchivePage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchContracts(search || undefined);
+        const data = await fetchContracts(search || undefined, true);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -195,15 +219,26 @@ export default function ContractArchivePage() {
               {paginated.map((contract: any) => {
                 const isExpanded = expanded.has(contract.id);
                 const hasTerminations = contract.terminations && contract.terminations.length > 0;
+                const isRejected = contract.status === "rejected";
+                console.log("contract.reviews:", contract.reviews);
+                const rejectionNotes = (() => {
+                  const reviews = contract.signers?.flatMap((s: any) => s.reviews ?? []) ?? [];
+
+                  console.log("signers:", contract.signers);
+                  console.log("all reviews:", reviews);
+
+                  return (reviews.find((r: any) => r.status === "rejected") ?? reviews[reviews.length - 1])?.notes ?? "";
+                })();
+                const isExpandable = hasTerminations || isRejected;
 
                 return (
                   <React.Fragment key={`contract-${contract.id}`}>
                     <tr
-                      onClick={() => hasTerminations && toggleExpand(contract.id)}
-                      className={`transition-colors ${hasTerminations ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${isExpanded ? "bg-muted/30" : ""}`}
+                      onClick={() => isExpandable && toggleExpand(contract.id)}
+                      className={`transition-colors ${isExpandable ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${isExpanded ? "bg-muted/30" : ""}`}
                     >
                       <td className="w-10 px-3 py-4">
-                        {hasTerminations ? (
+                        {isExpandable ? (
                           <div className="flex items-center justify-center">
                             {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                           </div>
@@ -211,12 +246,14 @@ export default function ContractArchivePage() {
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="p-2.5 rounded-md bg-red-100 text-red-700 shrink-0">
+                          <div className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-red-100 text-red-700"}`}>
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
                             <p className="font-medium text-foreground leading-tight">{contract.title}</p>
-                            {hasTerminations && <p className="text-xs text-muted-foreground mt-0.5">Dibatalkan</p>}
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {isRejected ? "Ditolak" : "Dibatalkan"}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -239,13 +276,23 @@ export default function ContractArchivePage() {
                         </td>
                       )}
                     </tr>
-                    {isExpanded && contract.terminations?.map((termination: Termination) => (
+
+                    {/* Dropdown: Termination rows */}
+                    {isExpanded && hasTerminations && contract.terminations.map((termination: Termination) => (
                       <TerminationRow
                         key={`termination-${termination.id}`}
                         termination={termination}
                         onView={() => setViewTerminationTarget(termination)}
                       />
                     ))}
+
+                    {/* Dropdown: Rejection row */}
+                    {isExpanded && isRejected && (
+                      <RejectionRow
+                        key={`rejection-${contract.id}`}
+                        notes={rejectionNotes}
+                      />
+                    )}
                   </React.Fragment>
                 );
               })}

@@ -30,6 +30,8 @@ import {
   User,
   Mail,
   Pen,
+  Info,
+  FileText,
 } from "lucide-react";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { LineHeight } from "@/lib/tiptap-line-height";
@@ -43,11 +45,18 @@ import { FormattingButtons } from "@/components/editor/FormattingButtons";
 import { AlignmentButtons } from "@/components/editor/AlignmentButtons";
 import { BulletDropdown } from "@/components/editor/BulletDropdown";
 import { NumberingDropdown } from "@/components/editor/NumberingDropdown";
-import { MarginDropdown, type MarginStyle, MARGIN_PRESETS } from "@/components/editor/MarginDropdown";
+import {
+  MarginDropdown,
+  type MarginStyle,
+  MARGIN_PRESETS,
+} from "@/components/editor/MarginDropdown";
 import { TableDropdown } from "@/components/editor/TableDropdown";
 import { HighlightColorPicker } from "@/components/editor/HighlightColorPicker";
 import { TextColorPicker } from "@/components/editor/TextColorPicker";
-import { FieldInserter, type FieldDefinition } from "@/components/editor/FieldInserter";
+import {
+  FieldInserter,
+  type FieldDefinition,
+} from "@/components/editor/FieldInserter";
 import { LineSpacingToggle } from "@/components/editor/LineSpacingToggle";
 import { LinkButton } from "@/components/editor/LinkButton";
 import { ImageUploadButton } from "@/components/editor/ImageUploadButton";
@@ -83,6 +92,8 @@ interface Signer {
   title: string;
   email: string;
   noUserAccount: boolean;
+  signaturePath?: string | null;
+  signedAt?: string | null
 }
 
 interface StatusEntry {
@@ -171,7 +182,8 @@ function SignerRow({
   const isExt = signer.type === "external";
   return (
     <div
-      className={`rounded-lg border p-2.5 space-y-2 ${isExt ? "border-blue-100 bg-blue-50/30" : "border-gray-200 bg-white"}`}>
+      className={`rounded-lg border p-2.5 space-y-2 ${isExt ? "border-blue-100 bg-blue-50/30" : "border-gray-200 bg-white"}`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           {isExt ? (
@@ -180,7 +192,8 @@ function SignerRow({
             <User className="h-3 w-3 text-emerald-600" />
           )}
           <span
-            className={`text-[11px] font-semibold ${isExt ? "text-blue-600" : "text-emerald-700"}`}>
+            className={`text-[11px] font-semibold ${isExt ? "text-blue-600" : "text-emerald-700"}`}
+          >
             {isExt ? "Pihak Eksternal" : "Pihak Internal"}
           </span>
         </div>
@@ -192,7 +205,8 @@ function SignerRow({
               ? "Penandatangan utama tidak dapat dihapus"
               : undefined
           }
-          className={`p-0.5 ${disabled || signer.id === "s1" ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:text-red-400"} transition-colors rounded`}>
+          className={`p-0.5 ${disabled || signer.id === "s1" ? "text-gray-200 cursor-not-allowed" : "text-gray-300 hover:text-red-400"} transition-colors rounded`}
+        >
           <X className="h-3 w-3" />
         </button>
       </div>
@@ -220,7 +234,8 @@ function SignerRow({
               });
             }}
             disabled={disabled}
-            className={`${inputCls} appearance-none pr-6 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}>
+            className={`${inputCls} appearance-none pr-6 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+          >
             <option value="">Pilih Nama</option>
             {internalUsers.map((u) => (
               <option key={u.id} value={u.name}>
@@ -262,22 +277,20 @@ function SignerRow({
             className={`${inputCls} ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
             disabled={disabled}
           />
-          <label
-            className={`flex items-start gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
-            <input
-              type="checkbox"
-              checked={signer.noUserAccount}
-              onChange={(e) =>
-                onChange({ ...signer, noUserAccount: e.target.checked })
-              }
-              className="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 shrink-0 h-3 w-3"
-              disabled={disabled}
-            />
-            <span
-              className={`text-[11px] leading-relaxed ${disabled ? "text-gray-300 opacity-50" : "text-gray-400"}`}>
-              Token akses dikirim ke email ini setelah tanda tangan internal.
+          <div
+            className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${
+              disabled
+                ? "border-gray-100 bg-gray-50 text-gray-300"
+                : "border-blue-100 bg-blue-50 text-blue-700"
+            }`}
+          >
+            <Info className="w-4 h-4 mt-0.5 shrink-0" />
+
+            <span>
+              Token akses akan dikirim ke email ini setelah tanda tangan
+              internal selesai.
             </span>
-          </label>
+          </div>
         </>
       )}
     </div>
@@ -290,37 +303,51 @@ function SignatureBox({
   email,
   date,
   isExternal = false,
+  signaturePath,
+  signedDocumentUrl,
 }: {
   name?: string;
   title?: string;
   email?: string;
   date?: string;
   isExternal?: boolean;
+  signaturePath?: string | null;
+  signedDocumentUrl?: string | null;
 }) {
   const formattedDate = date
     ? new Date(date)
-      .toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
-      .replace(/\//g, "/")
+        .toLocaleDateString("id-ID", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+        .replace(/\//g, "/")
     : "[DD/MM/YYYY]";
 
   return (
-    <div className="flex flex-col gap-2 w-[250px]">
+    <div className="flex flex-col gap-2 w-62.5">
       <p className="text-[11px] text-gray-400">Tanggal: {formattedDate}</p>
-      <div className="w-full border border-gray-200 rounded-xl h-[124px] flex items-center justify-center bg-gray-50/60 hover:bg-gray-100/60 transition-colors cursor-pointer group">
-        <div className="flex flex-col items-center gap-1 text-gray-300 group-hover:text-gray-400 transition-colors">
-          {isExternal ? (
-            <Mail className="h-6 w-6 stroke-[1.25]" />
-          ) : (
-            <Pen className="h-6 w-6 stroke-[1.25]" />
-          )}
-          <span className="text-[10px] tracking-wide font-medium uppercase">
-            Area Tanda Tangan
-          </span>
-        </div>
+
+      {/* Area TTD */}
+      <div className="w-full border border-gray-200 rounded-xl h-31 flex items-center justify-center bg-gray-50/60 overflow-hidden">
+        {signaturePath ? (
+          <img
+            src={signaturePath}
+            alt="Tanda Tangan"
+            className="h-full w-full object-contain p-2"
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-1 text-gray-300">
+            {isExternal ? (
+              <Mail className="h-6 w-6 stroke-[1.25]" />
+            ) : (
+              <Pen className="h-6 w-6 stroke-[1.25]" />
+            )}
+            <span className="text-[10px] tracking-wide font-medium uppercase">
+              Area Tanda Tangan
+            </span>
+          </div>
+        )}
       </div>
       <div className="space-y-0.5">
         <p className="text-sm font-semibold text-gray-800 truncate">
@@ -335,6 +362,19 @@ function SignatureBox({
           </p>
         )}
       </div>
+
+      {/* Link dokumen fisik jika ada */}
+      {signedDocumentUrl && (
+        <a
+          href={signedDocumentUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:underline mt-1"
+        >
+          <FileText className="h-3 w-3" />
+          Lihat Dokumen Fisik
+        </a>
+      )}
     </div>
   );
 }
@@ -349,7 +389,7 @@ export default function ContractEditorPage() {
   const { id } = useParams();
   const isEdit = !!id;
   const location = useLocation();
-  const isViewRoute = location.pathname.endsWith('/view');
+  const isViewRoute = location.pathname.endsWith("/view");
 
   type NavState = {
     template?: TemplateOption;
@@ -375,20 +415,26 @@ export default function ContractEditorPage() {
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
-    navState?.createdContract?.title ||
-    "Kontrak Sewa Vendor",
+      navState?.createdContract?.title ||
+      "Kontrak Sewa Vendor",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [signedDocumentUrl, setSignedDocumentUrl] = useState<string | null>(
+    null,
+  );
   const [currentStatus, setCurrentStatus] = useState<string>("draft");
   const [statusLogs, setStatusLogs] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] = useState<boolean>(false);
+  const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] =
+    useState<boolean>(false);
   const isStrictlyReadOnly = isViewRoute || isReadOnlyAfterSubmit;
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
-  const [pageMargin, setPageMargin] = useState<MarginStyle>(MARGIN_PRESETS[0].value);
+  const [pageMargin, setPageMargin] = useState<MarginStyle>(
+    MARGIN_PRESETS[0].value,
+  );
 
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -627,38 +673,66 @@ export default function ContractEditorPage() {
         // load signers
         if ((c as any).signers && (c as any).signers.length > 0) {
           const allReviews: any[] = [];
-          const loadedSigners = (c as any).signers.map((s: any, index: number) => {
-            if (s.reviews && s.reviews.length > 0) {
-              const author = s.signer_type === "internal" && s.user ? s.user.name : (s.signer_name || s.external_email || "Eksternal");
-              const role = s.signer_type === "internal" && s.user ? (s.user.job_title || "Internal") : (s.signer_role || "Eksternal");
+          const loadedSigners = (c as any).signers.map(
+            (s: any, index: number) => {
+              console.log('signer', s.signer_type, 'signatures:', s.signatures);
+              if (s.reviews && s.reviews.length > 0) {
+                const author =
+                  s.signer_type === "internal" && s.user
+                    ? s.user.name
+                    : s.signer_name || s.external_email || "Eksternal";
+                const role =
+                  s.signer_type === "internal" && s.user
+                    ? s.user.job_title || "Internal"
+                    : s.signer_role || "Eksternal";
 
-              s.reviews.forEach((r: any) => {
-                if (r.notes) {
-                  allReviews.push({
-                    id: r.id,
-                    author: author,
-                    role: role,
-                    type: r.status,
-                    typeLabel: r.status === "revised" || r.status === "revision" ? "Revisi" : r.status === "rejected" ? "Ditolak" : "Catatan",
-                    message: r.notes,
-                    date: r.reviewed_at,
-                  });
-                }
-              });
-            }
+                s.reviews.forEach((r: any) => {
+                  if (r.notes) {
+                    allReviews.push({
+                      id: r.id,
+                      author: author,
+                      role: role,
+                      type: r.status,
+                      typeLabel:
+                        r.status === "revised" || r.status === "revision"
+                          ? "Revisi"
+                          : r.status === "rejected"
+                            ? "Ditolak"
+                            : "Catatan",
+                      message: r.notes,
+                      date: r.reviewed_at,
+                    });
+                  }
+                });
+              }
 
-            return {
-              id: s.id?.toString() || `s${index}`,
-              type: s.signer_type,
-              name: s.signer_type === "internal" && s.user ? s.user.name : (s.signer_name || ""),
-              title: s.signer_type === "internal" && s.user ? (s.user.job_title || "") : (s.signer_role || ""),
-              email: s.external_email || "",
-              noUserAccount: false,
-            };
-          });
+              return {
+                id: s.id?.toString() || `s${index}`,
+                type: s.signer_type,
+                name:
+                  s.signer_type === "internal" && s.user
+                    ? s.user.name
+                    : s.signer_name || "",
+                title:
+                  s.signer_type === "internal" && s.user
+                    ? s.user.job_title || ""
+                    : s.signer_role || "",
+                email: s.external_email || "",
+                noUserAccount: false,
+                signaturePath:
+                  s.signatures?.[s.signatures.length - 1]?.signature_path ??
+                  null,
+                signedAt: s.signatures?.[s.signatures.length - 1]?.signed_at ?? null,
+              };
+            },
+          );
           setSigners(loadedSigners);
           // sort descending by ID
           setFeedbacks(allReviews.sort((a, b) => b.id - a.id));
+
+          if ((c as any).signed_document_url) {
+            setSignedDocumentUrl((c as any).signed_document_url);
+          }
         }
         // If contract is not draft/revision, mark UI read-only
         if (c.status && !["draft", "revision"].includes(c.status)) {
@@ -690,7 +764,7 @@ export default function ContractEditorPage() {
       if (!isEdit) {
         generateContractNumber(t.category_id)
           .then(setContractNumber)
-          .catch(() => { });
+          .catch(() => {});
       }
     },
     [editor, title, isEdit],
@@ -813,34 +887,36 @@ export default function ContractEditorPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            {!isViewRoute && (
-              <>
-                <button
-                  onClick={handleSaveDraft}
-                  disabled={isSaving || isStrictlyReadOnly}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium">
-                  {isSaving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Save className="h-3.5 w-3.5" />
-                  )}
-                  Simpan Draft
-                </button>
-                <button
-                  onClick={() => setShowSubmitConfirm(true)}
-                  disabled={isSaving || isStrictlyReadOnly}
-                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
-                  {isSaving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-3.5 w-3.5" />
-                  )}
-                  → Ajukan
-                </button>
-              </>
-            )}
-          </div>
+            <div className="flex items-center gap-2">
+              {!isViewRoute && (
+                <>
+                  <button
+                    onClick={handleSaveDraft}
+                    disabled={isSaving || isStrictlyReadOnly}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Simpan Draft
+                  </button>
+                  <button
+                    onClick={() => setShowSubmitConfirm(true)}
+                    disabled={isSaving || isStrictlyReadOnly}
+                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle className="h-3.5 w-3.5" />
+                    )}
+                    → Ajukan
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -853,12 +929,14 @@ export default function ContractEditorPage() {
           <PanelGroup
             orientation="horizontal"
             className="h-full"
-            id="contract-editor-layout">
+            id="contract-editor-layout"
+          >
             {/* LEFT — 320px default */}
             <Panel
               defaultSize={SIDEBAR_DEFAULT_PX}
               minSize={SIDEBAR_MIN_PX}
-              maxSize={SIDEBAR_MAX_PX}>
+              maxSize={SIDEBAR_MAX_PX}
+            >
               <div className="h-full flex flex-col bg-white border-r border-gray-200 overflow-hidden">
                 {/* Scrollable body + pinned preview wrapper (so overlay can cover both) */}
                 <div className="relative flex-1 flex flex-col min-h-0">
@@ -867,7 +945,8 @@ export default function ContractEditorPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate("/contracts")}
-                        className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors shrink-0">
+                        className="p-1.5 hover:bg-gray-100 rounded-md text-gray-400 hover:text-gray-700 transition-colors shrink-0"
+                      >
                         <ArrowLeft className="h-4 w-4" />
                       </button>
                       <div className="min-w-0">
@@ -893,11 +972,11 @@ export default function ContractEditorPage() {
                           },
                           ...(externalContractNumber
                             ? [
-                              {
-                                label: "No. Kontrak Eksternal",
-                                value: externalContractNumber,
-                              },
-                            ]
+                                {
+                                  label: "No. Kontrak Eksternal",
+                                  value: externalContractNumber,
+                                },
+                              ]
                             : []),
                         ] as { label: string; value: string }[]
                       ).map((chip) => (
@@ -913,7 +992,8 @@ export default function ContractEditorPage() {
                               ? "Tidak dapat diseret — kontrak sedang ditinjau"
                               : `Seret untuk menyisipkan ${chip.label}`
                           }
-                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border text-xs transition-all select-none group ${isReadOnlyAfterSubmit ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-60" : "border-emerald-200 cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm"}`}>
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border text-xs transition-all select-none group ${isReadOnlyAfterSubmit ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-60" : "border-emerald-200 cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm"}`}
+                        >
                           <span className="text-emerald-700 font-medium shrink-0">
                             {chip.label}
                           </span>
@@ -924,7 +1004,8 @@ export default function ContractEditorPage() {
                             className="h-3 w-3 text-gray-300 group-hover:text-emerald-400 shrink-0"
                             fill="none"
                             viewBox="0 0 24 24"
-                            stroke="currentColor">
+                            stroke="currentColor"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -954,9 +1035,10 @@ export default function ContractEditorPage() {
                                 selectedTemplate?.category_id,
                               )
                                 .then(setContractNumber)
-                                .catch(() => { })
+                                .catch(() => {})
                             }
-                            className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0">
+                            className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0"
+                          >
                             ↺
                           </button>
                         )}
@@ -1067,14 +1149,13 @@ export default function ContractEditorPage() {
                             ? "Maksimal 2 penandatangan"
                             : undefined
                         }
-                        className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit || signers.length >= 2 ? "opacity-40 cursor-not-allowed" : ""}`}>
+                        className={`w-full flex items-center justify-center gap-1.5 py-2 text-xs border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors ${isReadOnlyAfterSubmit || signers.length >= 2 ? "opacity-40 cursor-not-allowed" : ""}`}
+                      >
                         <Plus className="h-3.5 w-3.5" /> Tambah Penandatangan
                       </button>
                     </div>
                   </div>
                 </div>
-
-
 
                 {/* read-only state handled by disabling individual controls; no overlay so back button stays clickable */}
               </div>
@@ -1086,27 +1167,61 @@ export default function ContractEditorPage() {
             <Panel minSize={320}>
               <div className="h-full flex flex-col bg-white overflow-hidden">
                 <div className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-200 bg-white flex-wrap shrink-0">
-                  <HistoryButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <HistoryButtons
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
-                  <HeadingButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <HeadingButtons
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
-                  <FormattingButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <FormattingButtons
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
-                  <AlignmentButtons editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <AlignmentButtons
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
-                  <BulletDropdown editor={editor} disabled={isReadOnlyAfterSubmit} />
-                  <NumberingDropdown editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <BulletDropdown
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <NumberingDropdown
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
                   <ToolbarBtn
-                    onClick={() => editor?.chain().focus().setHorizontalRule().run()}
+                    onClick={() =>
+                      editor?.chain().focus().setHorizontalRule().run()
+                    }
                     disabled={isReadOnlyAfterSubmit}
-                    title="Horizontal Rule">
+                    title="Horizontal Rule"
+                  >
                     <span className="text-xs font-bold">―</span>
                   </ToolbarBtn>
-                  <MarginDropdown margin={pageMargin} setMargin={setPageMargin} disabled={isReadOnlyAfterSubmit} />
-                  <TableDropdown editor={editor!} disabled={isReadOnlyAfterSubmit} />
-                  <HighlightColorPicker editor={editor} disabled={isReadOnlyAfterSubmit} />
-                  <TextColorPicker editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <MarginDropdown
+                    margin={pageMargin}
+                    setMargin={setPageMargin}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <TableDropdown
+                    editor={editor!}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <HighlightColorPicker
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <TextColorPicker
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <FieldInserter
                     editor={editor}
                     fields={fields}
@@ -1114,13 +1229,25 @@ export default function ContractEditorPage() {
                     disabled={isReadOnlyAfterSubmit}
                   />
                   <div className="relative ml-1">
-                    <LineSpacingToggle editor={editor} disabled={isReadOnlyAfterSubmit} />
+                    <LineSpacingToggle
+                      editor={editor}
+                      disabled={isReadOnlyAfterSubmit}
+                    />
                   </div>
                   <ToolbarDivider />
-                  <LinkButton editor={editor} disabled={isReadOnlyAfterSubmit} />
-                  <ImageUploadButton editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <LinkButton
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
+                  <ImageUploadButton
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                   <ToolbarDivider />
-                  <FontSizeSelector editor={editor} disabled={isReadOnlyAfterSubmit} />
+                  <FontSizeSelector
+                    editor={editor}
+                    disabled={isReadOnlyAfterSubmit}
+                  />
                 </div>
                 <div
                   className="flex-1 overflow-y-auto bg-[#f3f4f6] py-8"
@@ -1132,15 +1259,16 @@ export default function ContractEditorPage() {
                     if (tag && editor) {
                       editor.chain().focus().insertContent(tag).run();
                     }
-                  }}>
-
+                  }}
+                >
                   {/* Paper Wrapper */}
                   <div
                     className="mx-auto bg-white shadow-md border border-gray-200 flex flex-col relative"
                     style={{
-                      width: '21.5cm',
-                      minHeight: '33cm',
-                      backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)'
+                      width: "21.5cm",
+                      minHeight: "33cm",
+                      backgroundImage:
+                        "repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)",
                     }}
                   >
                     <div
@@ -1149,7 +1277,7 @@ export default function ContractEditorPage() {
                         paddingTop: pageMargin.top,
                         paddingBottom: pageMargin.bottom,
                         paddingLeft: pageMargin.left,
-                        paddingRight: pageMargin.right
+                        paddingRight: pageMargin.right,
                       }}
                     >
                       <EditorContent editor={editor} className="h-full" />
@@ -1161,24 +1289,54 @@ export default function ContractEditorPage() {
                       style={{
                         paddingBottom: pageMargin.bottom,
                         paddingLeft: pageMargin.left,
-                        paddingRight: pageMargin.right
+                        paddingRight: pageMargin.right,
                       }}
                     >
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 text-center">
                         Tanda Tangan
                       </p>
-                      <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
-                        {signers.map((s) => (
-                          <SignatureBox
-                            key={s.id}
-                            isExternal={s.type === "external"}
-                            name={s.name || undefined}
-                            title={s.title || undefined}
-                            email={s.email || undefined}
-                            date={startDate}
-                          />
-                        ))}
-                      </div>
+                      {signedDocumentUrl ? (
+                        // Alur fisik: tampilkan banner + link dokumen
+                        <div className="flex flex-col items-center gap-4 py-4">
+                          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
+                            <CheckCircle className="h-8 w-8 text-emerald-600 shrink-0" />
+                            <div>
+                              <p className="text-sm font-semibold text-emerald-800">
+                                Dokumen Bertanda Tangan Telah Diupload
+                              </p>
+                              <p className="text-xs text-emerald-600 mt-0.5">
+                                Dokumen fisik yang sudah ditandatangani kedua
+                                pihak tersedia.
+                              </p>
+                            </div>
+                          </div>
+
+                          <a
+                            href={signedDocumentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                          >
+                            <FileText className="h-4 w-4 text-emerald-600" />
+                            Lihat Dokumen Bertanda Tangan
+                          </a>
+                        </div>
+                      ) : (
+                        // Alur digital: tampilkan kotak TTD per signer
+                        <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
+                          {signers.map((s) => (
+                            <SignatureBox
+                              key={s.id}
+                              isExternal={s.type === "external"}
+                              name={s.name || undefined}
+                              title={s.title || undefined}
+                              email={s.email || undefined}
+                              date={s.signedAt || startDate}
+                              signaturePath={s.signaturePath}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1191,11 +1349,9 @@ export default function ContractEditorPage() {
             <Panel
               defaultSize={SIDEBAR_DEFAULT_PX}
               minSize={SIDEBAR_MIN_PX}
-              maxSize={SIDEBAR_MAX_PX}>
-              <RightSidebar
-                statusLogs={statusLogs}
-                feedbacks={feedbacks}
-              />
+              maxSize={SIDEBAR_MAX_PX}
+            >
+              <RightSidebar statusLogs={statusLogs} feedbacks={feedbacks} />
             </Panel>
           </PanelGroup>
         </div>
@@ -1238,7 +1394,13 @@ export default function ContractEditorPage() {
 
 //  Right Sidebar content
 
-function RightSidebar({ statusLogs, feedbacks }: { statusLogs: any[], feedbacks: any[] }) {
+function RightSidebar({
+  statusLogs,
+  feedbacks,
+}: {
+  statusLogs: any[];
+  feedbacks: any[];
+}) {
   return (
     <div className="h-full flex flex-col bg-white border-l border-gray-200 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -1277,35 +1439,38 @@ function RightSidebar({ statusLogs, feedbacks }: { statusLogs: any[], feedbacks:
             </button>
           </div>
           <div className="space-y-2">
-            {statusLogs && statusLogs.length > 0 ? statusLogs.map((log, i) => (
-              <div key={log.id} className="flex gap-2">
-                <div className="flex flex-col items-center shrink-0 pt-0.5">
-                  <div
-                    className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[log.new_status as keyof typeof STATUS_DOT] || "bg-gray-400"}`}
-                  />
-                  {i < statusLogs.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
-                  )}
-                </div>
-                <div className="pb-2 min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                    <span
-                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLE[log.new_status as keyof typeof STATUS_STYLE] || "bg-gray-100 text-gray-500"}`}>
-                      {log.new_status.toUpperCase()}
-                    </span>
-                    <span className="text-[10px] text-gray-400">
-                      {log.created_at}
-                    </span>
+            {statusLogs && statusLogs.length > 0 ? (
+              statusLogs.map((log, i) => (
+                <div key={log.id} className="flex gap-2">
+                  <div className="flex flex-col items-center shrink-0 pt-0.5">
+                    <div
+                      className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[log.new_status as keyof typeof STATUS_DOT] || "bg-gray-400"}`}
+                    />
+                    {i < statusLogs.length - 1 && (
+                      <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
+                    )}
                   </div>
-                  <p className="text-xs font-medium text-gray-700 truncate">
-                    Diperbarui oleh: {log.changed_by}
-                  </p>
-                  <p className="text-[11px] text-gray-400 truncate">
-                    Dari {log.old_status} ke {log.new_status}
-                  </p>
+                  <div className="pb-2 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                      <span
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLE[log.new_status as keyof typeof STATUS_STYLE] || "bg-gray-100 text-gray-500"}`}
+                      >
+                        {log.new_status.toUpperCase()}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        {log.created_at}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium text-gray-700 truncate">
+                      Diperbarui oleh: {log.changed_by}
+                    </p>
+                    <p className="text-[11px] text-gray-400 truncate">
+                      Dari {log.old_status} ke {log.new_status}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )) : (
+              ))
+            ) : (
               <p className="text-xs text-gray-400">Belum ada riwayat status.</p>
             )}
           </div>
@@ -1351,7 +1516,8 @@ function RightSidebar({ statusLogs, feedbacks }: { statusLogs: any[], feedbacks:
                 {feedbacks.map((fb) => (
                   <div
                     key={fb.id}
-                    className="rounded-xl border border-gray-200 p-3 space-y-2 bg-white shadow-sm">
+                    className="rounded-xl border border-gray-200 p-3 space-y-2 bg-white shadow-sm"
+                  >
                     <div className="flex items-start justify-between gap-1.5">
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-[10px] flex items-center justify-center font-bold shrink-0 uppercase">
@@ -1361,14 +1527,20 @@ function RightSidebar({ statusLogs, feedbacks }: { statusLogs: any[], feedbacks:
                           <p className="text-xs font-semibold text-gray-800 truncate">
                             {fb.author}
                           </p>
-                          <p className="text-[10px] text-gray-400 truncate">{fb.role}</p>
+                          <p className="text-[10px] text-gray-400 truncate">
+                            {fb.role}
+                          </p>
                         </div>
                       </div>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${fb.type === "revised" || fb.type === "revision" || fb.type === "rejected"
-                          ? "bg-red-50 text-red-600 border border-red-200"
-                          : "bg-gray-100 text-gray-500 border border-gray-200"
-                          }`}>
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${
+                          fb.type === "revised" ||
+                          fb.type === "revision" ||
+                          fb.type === "rejected"
+                            ? "bg-red-50 text-red-600 border border-red-200"
+                            : "bg-gray-100 text-gray-500 border border-gray-200"
+                        }`}
+                      >
                         {fb.typeLabel}
                       </span>
                     </div>
