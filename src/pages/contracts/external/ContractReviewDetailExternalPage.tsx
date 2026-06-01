@@ -42,6 +42,39 @@ interface ReviewItem {
   date: string;
 }
 
+// Token
+const TOKEN_EXPIRY_DAYS = 7;
+const TOKEN_EXPIRY_MS = TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+
+/**
+ * Membuat storage key unik per token.
+ * Format: `ext_token:<token>`
+ */
+function tokenKey(token: string) {
+  return `ext_token:${token}`;
+}
+
+interface TokenMeta {
+  firstAccessAt: number; // kapan pertama kali token dibuka
+  usedAt?: number;       // kapan token dipakai (TTD / revisi)
+}
+
+/** Ambil metadata token dari localStorage. */
+function getTokenMeta(token: string): TokenMeta | null {
+  try {
+    const raw = localStorage.getItem(tokenKey(token));
+    return raw ? (JSON.parse(raw) as TokenMeta) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Simpan / perbarui metadata token di localStorage. */
+function setTokenMeta(token: string, meta: TokenMeta) {
+  localStorage.setItem(tokenKey(token), JSON.stringify(meta));
+}
+
+
 export default function ContractReviewDetailExternalPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -61,6 +94,8 @@ export default function ContractReviewDetailExternalPage() {
 
   //Pop up Confirmation Modal
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  const [hasSignedByCanvas, setHasSignedByCanvas] = useState(false);
 
   // Read-only editor
   const editor = useEditor({
@@ -116,6 +151,34 @@ useEffect(() => {
   }
   if (!editor) return;
 
+  // Cek status token di localStorage 
+  const now = Date.now();
+  let meta = getTokenMeta(token);
+
+  if (meta) {
+    // 1. Token sudah pernah dipakai (TTD / revisi) → tolak akses
+    if (meta.usedAt) {
+      setErrorMsg(
+        "Token ini sudah digunakan dan tidak dapat diakses kembali. Silakan hubungi pihak yang mengirimkan kontrak jika ada pertanyaan."
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    // 2. Token sudah melebihi 7 hari sejak pertama dibuka → kadaluarsa
+    if (now - meta.firstAccessAt > TOKEN_EXPIRY_MS) {
+      setErrorMsg(
+        `Token ini telah kadaluarsa (lebih dari ${TOKEN_EXPIRY_DAYS} hari sejak pertama diakses). Silakan minta tautan baru.`
+      );
+      setIsLoading(false);
+      return;
+    }
+  } else {
+    // Pertama kali dibuka → catat waktu akses pertama
+    meta = { firstAccessAt: now };
+    setTokenMeta(token, meta);
+  }
+
   loadContract();
 }, [token, editor]); // editor masuk dependency → re-run saat editor siap
 
@@ -131,6 +194,10 @@ useEffect(() => {
     setSubmitError(null);
     try {
       await submitExternalContractReview({ token, status, notes });
+      //Tandai token sudah dipakai setelah berhasil submit review (TTD atau revisi)
+      const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
+      setTokenMeta(token, { ...existing, usedAt: Date.now() });
+      
       setIsSubmitted(true);
     } catch (error: unknown) {
       let errorMessage = "Gagal mengirim tanggapan. Coba lagi.";
@@ -452,8 +519,8 @@ useEffect(() => {
               </button>
             </div>
 
-          {/* ✅ Kondisi: upload → popup konfirmasi, canvas/null → popup TTD */}
-          {contract.signed_document_url ? (
+          {/* Kondisi: ada doc upload DAN belum TTD canvas → popup konfirmasi upload manual */}
+          {contract.signed_document_url && !hasSignedByCanvas ? (
             <button
               onClick={() => setShowConfirmModal(true)}
               disabled={isSubmitting}
@@ -469,14 +536,14 @@ useEffect(() => {
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4"/>
-              Setujui Kontrak
+              Setujui &amp; Tanda Tangan Digital
             </button>
           )}
           </div>
         </div>
       </div>
 
-      {/* ✅ Popup Konfirmasi — hanya muncul jika signMethod = upload */}
+      {/*Popup Konfirmasi — hanya muncul jika signMethod = upload */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl p-6 space-y-4">
@@ -489,19 +556,19 @@ useEffect(() => {
                 <p className="text-xs text-gray-500 mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
               </div>
             </div>
-
+ 
             <p className="text-sm text-gray-600 leading-relaxed">
               Apakah Anda yakin ingin <strong>menyetujui</strong> kontrak ini?
               Dengan menyetujui, kontrak akan resmi aktif dan berlaku.
             </p>
-
+ 
             {submitError && (
               <p className="text-xs text-red-500 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 {submitError}
               </p>
             )}
-
+ 
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -526,7 +593,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-
+ 
       {/* Pakai ContractApprovalSignPage langsung dengan prop token */}
       {showSignModal && token && (
         <ContractApprovalSignPage
@@ -534,16 +601,16 @@ useEffect(() => {
           contractTitle={contract.title}
           contractNumber={contract.contract_number}
           onClose={() => setShowSignModal(false)}
-          onSuccess={async (contractStatus?: string) => {
-          setShowSignModal(false);
-            if (contractStatus === "active") {
-              // Semua pihak sudah TTD → kontrak aktif
-              setIsSubmitted(true);
-            } else {
-              // Refresh data agar tanda tangan tampil, lalu tutup modal
-              await loadContract();
-              setIsSubmitted(true);
-            }
+          onSuccess={async () => {
+            setShowSignModal(false);
+            setHasSignedByCanvas(true); // tandai sudah TTD canvas
+ 
+            // Tandai token sudah dipakai
+            const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
+            setTokenMeta(token, { ...existing, usedAt: Date.now() });
+ 
+            // Langsung selesai tanpa konfirmasi tambahan
+            setIsSubmitted(true);
           }}
         />
       )}
