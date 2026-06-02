@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { X, FileSignature, CalendarDays, Upload, Loader2 } from "lucide-react";
 import { createAddendum } from "@/services/addendum.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
+import { Button } from "@/components/ui/button";
 
 interface AddendumFormData {
   title: string;
@@ -107,6 +108,23 @@ export default function AddendumModal({
           >
             <X className="h-4 w-4" />
           </button>
+        </div>
+
+        {/* Template Addendum */}
+        <div className="px-6 py-4 border-b bg-muted/30 space-y-2">
+          <h3 className="text-sm font-medium text-foreground">Template Addendum</h3>
+          <p className="text-xs text-muted-foreground">
+            Gunakan template addendum yang tersedia untuk mempercepat proses pembuatan.
+          </p>
+          <div>
+            <a
+              href="/templates/template_addendum.docx"
+              download="Template_Addendum_Terbaru.docx"
+              className="inline-flex items-center justify-center rounded-md text-xs font-medium h-9 px-3 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow"
+            >
+              Download Template
+            </a>
+          </div>
         </div>
 
         {/* Form */}
@@ -220,22 +238,22 @@ export default function AddendumModal({
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2 border-t">
-            <button
+            <Button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="px-4 py-2 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={submitting}
               className="flex items-center gap-2 px-5 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-60 font-medium"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? "Menyimpan..." : "Simpan Addendum"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
