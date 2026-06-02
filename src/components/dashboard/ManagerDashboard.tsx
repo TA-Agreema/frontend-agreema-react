@@ -24,7 +24,7 @@ export default function ManagerDashboard({ data }: { data: DashboardData }) {
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
-          title="Total Kontrak Aktif (Sistem)"
+          title="Total Kontrak Aktif (Keseluruhan)"
           value={metrics.total_system_active?.toString() || "0"}
           icon={CheckCircle}
           color="bg-blue-600"
@@ -36,7 +36,7 @@ export default function ManagerDashboard({ data }: { data: DashboardData }) {
           color="bg-emerald-600"
         />
         <StatCard
-          title="Ditolak / Revisi Bulan Ini"
+          title="Ditolak Bulan Ini"
           value={metrics.revision_requested_this_month?.toString() || "0"}
           icon={XCircle}
           color="bg-rose-600"
