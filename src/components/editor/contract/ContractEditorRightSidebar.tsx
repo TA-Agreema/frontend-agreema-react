@@ -1,3 +1,5 @@
+import type { ContractVersion } from "@/types/contractVersion";
+
 type ContractStatusLog = {
   id: number | string;
   old_status: string;
@@ -33,9 +35,13 @@ const STATUS_DOT: Record<string, string> = {
 export function ContractEditorRightSidebar({
   statusLogs,
   feedbacks,
+  versions = [],
+  onViewVersion,
 }: {
   statusLogs: ContractStatusLog[];
   feedbacks: ContractFeedback[];
+  versions?: ContractVersion[];
+  onViewVersion?: (version: ContractVersion) => void;
 }) {
   return (
     <div className="h-full flex flex-col bg-white border-l border-gray-200 overflow-hidden">
@@ -88,6 +94,42 @@ export function ContractEditorRightSidebar({
               ))
             ) : (
               <p className="text-xs text-gray-400">Belum ada riwayat status.</p>
+            )}
+          </div>
+        </section>
+
+        <div className="border-t border-gray-100" />
+
+        <section>
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Riwayat Versi
+            </p>
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+              {versions.length}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {versions.length > 0 ? (
+              [...versions]
+                .sort((a, b) => b.id - a.id)
+                .map((version) => (
+                  <button
+                    key={version.id}
+                    type="button"
+                    onClick={() => onViewVersion?.(version)}
+                    className="w-full rounded-lg border border-gray-200 bg-white p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40"
+                  >
+                    <p className="text-xs font-semibold text-gray-700">
+                      Versi {version.version_number}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-gray-400">
+                      {version.created_at}
+                    </p>
+                  </button>
+                ))
+            ) : (
+              <p className="text-xs text-gray-400">Belum ada riwayat versi.</p>
             )}
           </div>
         </section>

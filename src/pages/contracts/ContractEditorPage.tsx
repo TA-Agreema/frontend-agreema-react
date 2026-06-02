@@ -80,6 +80,7 @@ import {
 } from "@/services/field.service";
 import type { Category } from "@/types/category";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
+import type { ContractVersion } from "@/types/contractVersion";
 
 //  Types
 
@@ -91,6 +92,7 @@ type ContractDetail = ContractRow & {
   signers?: ContractSignerDetail[];
   signed_document_url?: string | null;
   status_logs?: ContractStatusLog[];
+  versions?: ContractVersion[];
 };
 
 type ContractSignerDetail = {
@@ -174,8 +176,8 @@ export default function ContractEditorPage() {
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
-      navState?.createdContract?.title ||
-      "Kontrak Sewa Vendor",
+    navState?.createdContract?.title ||
+    "Kontrak Sewa Vendor",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -198,6 +200,10 @@ export default function ContractEditorPage() {
   const [paperSize, setPaperSize] = useState<PaperSize>(
     normalizePaperSize(initialTemplate?.paper_size),
   );
+
+  // Versions
+  const [versions, setVersions] = useState<ContractVersion[]>([]);
+  const [viewingVersion, setViewingVersion] = useState<ContractVersion | null>(null);
 
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -236,6 +242,7 @@ export default function ContractEditorPage() {
       }
     })();
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshFields();
 
     // Fetch Internal Users
@@ -521,6 +528,10 @@ export default function ContractEditorPage() {
         if (c.status_logs) {
           setStatusLogs(c.status_logs);
         }
+
+        if (c.versions) {
+          setVersions(c.versions);
+        }
       } catch (e) {
         console.error(e);
       }
@@ -560,7 +571,7 @@ export default function ContractEditorPage() {
       if (!isEdit) {
         generateContractNumber(t.category_id)
           .then(setContractNumber)
-          .catch(() => {});
+          .catch(() => { });
       }
     },
     [editor, title, isEdit, fields],
@@ -898,6 +909,8 @@ export default function ContractEditorPage() {
               <ContractEditorRightSidebar
                 statusLogs={statusLogs}
                 feedbacks={feedbacks}
+                versions={versions}
+                onViewVersion={setViewingVersion}
               />
             </Panel>
           </PanelGroup>
@@ -951,6 +964,46 @@ export default function ContractEditorPage() {
           onRefreshFields={refreshFields}
         />
       )}
+
+      {/* Modal Preview Versi Lama */}
+      {viewingVersion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50/80">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  Pratinjau Versi {viewingVersion.version_number}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Dibuat oleh <span className="font-semibold text-gray-700">{viewingVersion.created_by}</span> pada {viewingVersion.created_at}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingVersion(null)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Tutup Preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100/50">
+              <div
+                className="bg-white mx-auto shadow-md border border-gray-200 p-12 min-h-[29.7cm] text-sm text-gray-800 leading-7"
+                style={{ width: "21cm" }}
+              >
+                {/* Render Konten Lama */}
+                <div
+                  className="outline-none"
+                  dangerouslySetInnerHTML={{ __html: viewingVersion.content }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+
+
+

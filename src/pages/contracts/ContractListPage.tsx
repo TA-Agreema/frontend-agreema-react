@@ -33,6 +33,7 @@ import { downloadBlobResponse } from "@/services/download.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
+import type { Termination } from "@/types/termination";
 
 //  Types
 
@@ -79,7 +80,7 @@ export interface ContractRow {
     value?: string | null;
   }>;
   addendums: Addendum[];
-  terminations?: any[];
+  terminations?: Termination[];
 }
 
 const PAGE_SIZE = 4;
@@ -227,7 +228,7 @@ function RowMenu({
 
   // Aksi yang relevan berdasarkan status
   const canAddAddendum = ["active"].includes(contract.status);
-  const canTerminate = ["active", "review", "draft"].includes(contract.status);
+  const canTerminate = ["active"].includes(contract.status);
   const canDelete = contract.status === "draft";
 
   const { roles } = useAuth();
@@ -376,12 +377,12 @@ function RowMenu({
 // Main Page
 export default function ContractListPage() {
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, hasAnyPermission } = usePermissions();
 
   const canCreateContract = hasPermission('create.contract');
   const canEdit = hasPermission('update.contract');
-  const canManageAddendum = hasPermission('create.addendum');
-  const canManageTermination = hasPermission('create.terminate');
+  const canManageAddendum = hasAnyPermission(['create.addendum', 'create.contract_addendum']);
+  const canManageTermination = hasAnyPermission(['create.terminate', 'terminate.contract']);
   const canDeleteRow = hasPermission('delete.contract');
 
   const { roles } = useAuth();
