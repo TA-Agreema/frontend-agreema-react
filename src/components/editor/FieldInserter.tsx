@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useEditor } from "@tiptap/react";
 import { ChevronDown, Plus } from "lucide-react";
+import { insertContractField } from "@/lib/tiptap-contract-field";
 
 export interface FieldDefinition {
   id: number;
@@ -36,9 +37,7 @@ export function FieldInserter({
   }, [open]);
 
   const insertField = (field: FieldDefinition) => {
-    if (!editor) return;
-    const fieldTag = `{{${field.field_key}}}`;
-    editor.chain().focus().insertContent(fieldTag).run();
+    insertContractField(editor, field, { display: "label" });
     setOpen(false);
   };
 
@@ -65,7 +64,6 @@ export function FieldInserter({
                   type="button"
                   className="w-full text-left px-3 py-2 text-xs hover:bg-emerald-50 transition-colors border-b border-gray-100 last:border-0">
                   <div className="font-semibold text-gray-800">{field.field_label}</div>
-                  <div className="text-[10px] text-gray-500 font-mono">{`{{${field.field_key}}}`}</div>
                 </button>
               ))
             ) : (
@@ -79,7 +77,7 @@ export function FieldInserter({
               disabled={disabled}
               className={`w-full flex items-center justify-center gap-1.5 py-1.5 text-xs rounded border border-dashed border-emerald-300 ${disabled ? "text-gray-300 cursor-not-allowed bg-white/50" : "text-emerald-600 hover:bg-emerald-50"} transition-colors font-medium`}>
               <Plus className="h-3.5 w-3.5" />
-              Tambah Field
+              Kelola Field
             </button>
           </div>
         </div>

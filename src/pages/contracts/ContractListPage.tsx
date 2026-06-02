@@ -14,19 +14,22 @@ import {
   CalendarDays,
   Eye,
   Archive,
+  Download,
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
-import DeleteModal from "@/components/modal/DeleteModal";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 import TemplateSelectModal, {
   type TemplateOption,
-} from "@/components/modal/TemplateSelectModal";
+} from "@/components/modal/template/TemplateSelectModal";
 import {
   fetchContracts,
   createContract,
   deleteContract,
+  downloadContractPdf,
 } from "@/services/contract.service";
+import { downloadBlobResponse } from "@/services/download.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
@@ -60,6 +63,7 @@ export interface ContractRow {
   external_contract_number: string | null;
   title: string;
   content?: string;
+  paper_size?: "a4" | "f4" | null;
   partner: string; // nama pihak eksternal
   category: string;
   category_id: number | null;
@@ -68,6 +72,13 @@ export interface ContractRow {
   start_date: string; // "DD-MM-YYYY"
   end_date: string | null;
   created_by: string;
+  field_values?: Array<{
+    id: number;
+    field_definition_id: number;
+    field_label?: string | null;
+    field_key?: string | null;
+    value?: string | null;
+  }>;
   addendums: Addendum[];
   terminations?: Termination[];
 }
@@ -195,6 +206,7 @@ function RowMenu({
   onAddendum,
   onTerminate,
   onDelete,
+  onDownloadPdf,
 }: {
   contract: ContractRow;
   canEdit: boolean;
@@ -206,6 +218,7 @@ function RowMenu({
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
+  onDownloadPdf: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -344,6 +357,16 @@ function RowMenu({
             </button>
           )}
 
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDownloadPdf();
+              setOpen(false);
+            }}
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+            <Download className="h-4 w-4 text-muted-foreground opacity-70" />
+            Download PDF
+          </button>
 
         </div>
       )}
@@ -432,6 +455,19 @@ export default function ContractListPage() {
       alert("Gagal menghapus kontrak. Coba lagi.");
     } finally {
       setDeleteTarget(null);
+    }
+  };
+
+  const handleDownloadPdf = async (contract: ContractRow) => {
+    try {
+      const response = await downloadContractPdf(contract.id);
+      downloadBlobResponse(
+        response,
+        `${contract.contract_number || contract.title || "kontrak"}.pdf`,
+      );
+    } catch (err) {
+      console.error("Gagal mengunduh PDF kontrak:", err);
+      alert("Gagal mengunduh PDF kontrak. Coba lagi.");
     }
   };
 
@@ -679,6 +715,7 @@ export default function ContractListPage() {
                           onAddendum={() => setAddendumTarget(contract)}
                           onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
+                          onDownloadPdf={() => handleDownloadPdf(contract)}
                         />
                       </td>
                     </tr>
@@ -755,6 +792,7 @@ export default function ContractListPage() {
                 title: template.name,
                 template_id: template.id,
                 category_id: template.category_id,
+                paper_size: template.paper_size,
                 status: "draft",
               });
 

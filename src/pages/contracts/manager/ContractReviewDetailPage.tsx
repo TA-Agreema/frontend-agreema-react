@@ -28,10 +28,13 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import { Table } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
 import Link from "@tiptap/extension-link";
+import { PageBreak } from "@/lib/tiptap-page-break";
+import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
+import {
+  BorderedTableCell,
+  BorderedTableHeader,
+} from "@/lib/tiptap-table-cell-borders";
 
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
@@ -70,11 +73,12 @@ export default function ContractReviewDetailPage() {
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      PageBreak,
       HorizontalRule,
       Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      ResizableTableRow,
+      BorderedTableHeader,
+      BorderedTableCell,
       Underline,
     ],
     content: "",

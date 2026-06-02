@@ -7,6 +7,7 @@ import {
   deleteFieldDefinition,
   type FieldDefinition 
 } from "@/services/field.service";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 
 interface FieldManageModalProps {
   onClose: () => void;
@@ -21,6 +22,10 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<FieldDefinition[]>([]);
+  const [fieldToDelete, setFieldToDelete] = useState<FieldDefinition | null>(
+    null,
+  );
+  const [deleting, setDeleting] = useState(false);
   
   // Form State
   const [editingField, setEditingField] = useState<FieldDefinition | null>(null);
@@ -89,14 +94,19 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus field ini?")) return;
+  const handleDelete = async () => {
+    if (!fieldToDelete) return;
+
+    setDeleting(true);
     try {
-      await deleteFieldDefinition(id);
+      await deleteFieldDefinition(fieldToDelete.id);
       await loadFields();
       onRefreshFields();
+      setFieldToDelete(null);
     } catch (err) {
-      alert("Gagal menghapus field.");
+      setError("Gagal menghapus field.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -182,7 +192,7 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button 
-                        onClick={() => handleDelete(field.id)}
+                        onClick={() => setFieldToDelete(field)}
                         className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -306,6 +316,15 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
           )}
         </div>
       </div>
+      {fieldToDelete && (
+        <DeleteModal
+          title="Hapus Field"
+          itemName={fieldToDelete.field_label}
+          isLoading={deleting}
+          onClose={() => setFieldToDelete(null)}
+          onConfirm={handleDelete}
+        />
+      )}
     </div>
   );
 }
