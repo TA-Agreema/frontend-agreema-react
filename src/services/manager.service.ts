@@ -38,7 +38,7 @@ export interface ManagerContractDetail extends ContractRow {
   content?: string;
   reviews?: ReviewHistory[];
   signed_document_url?: string | null;
-  status_logs?: {         
+  status_logs?: {
     id: number;
     old_status: string;
     new_status: string;
@@ -52,6 +52,7 @@ export interface ManagerContractDetail extends ContractRow {
     signer_role: string | null;
     external_email: string | null;
     user: { name: string; job_title: string | null } | null;
+    signatures?: SignatureItem[];
   }[];
 }
 

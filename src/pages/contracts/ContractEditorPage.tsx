@@ -80,6 +80,8 @@ import {
 import { fetchFieldDefinitions } from "@/services/field.service";
 import type { Category } from "@/types/category";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
+import type { ContractVersion } from "@/types/contractVersion";
+import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 
 //  Types
 
@@ -96,23 +98,23 @@ interface Signer {
   signedAt?: string | null
 }
 
-interface StatusEntry {
-  status: "draft" | "review" | "active" | "revision";
-  label: string;
-  actor: string;
-  note: string;
-  date: string;
-}
+// interface StatusEntry {
+//   status: "draft" | "review" | "active" | "revision";
+//   label: string;
+//   actor: string;
+//   note: string;
+//   date: string;
+// }
 
-interface FeedbackEntry {
-  id: number;
-  author: string;
-  role: string;
-  type: "urgent" | "standard" | "resolved";
-  typeLabel: string;
-  message: string;
-  date: string;
-}
+// interface FeedbackEntry {
+//   id: number;
+//   author: string;
+//   role: string;
+//   type: "urgent" | "standard" | "resolved";
+//   typeLabel: string;
+//   message: string;
+//   date: string;
+// }
 interface InternalUser {
   id: number;
   name: string;
@@ -125,6 +127,9 @@ type ContractDetail = ContractRow & {
   partner_id?: number | null;
   partner?: string | null;
   content?: string | null;
+  signed_document_url?: string | null;
+  status_logs?: StatusEntry[];
+  versions?: ContractVersion[];
 };
 
 // Mock data
@@ -278,11 +283,10 @@ function SignerRow({
             disabled={disabled}
           />
           <div
-            className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${
-              disabled
-                ? "border-gray-100 bg-gray-50 text-gray-300"
-                : "border-blue-100 bg-blue-50 text-blue-700"
-            }`}
+            className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-[11px] leading-relaxed ${disabled
+              ? "border-gray-100 bg-gray-50 text-gray-300"
+              : "border-blue-100 bg-blue-50 text-blue-700"
+              }`}
           >
             <Info className="w-4 h-4 mt-0.5 shrink-0" />
 
@@ -316,12 +320,12 @@ function SignatureBox({
 }) {
   const formattedDate = date
     ? new Date(date)
-        .toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "/")
+      .toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+      .replace(/\//g, "/")
     : "[DD/MM/YYYY]";
 
   return (
@@ -415,8 +419,8 @@ export default function ContractEditorPage() {
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
-      navState?.createdContract?.title ||
-      "Kontrak Sewa Vendor",
+    navState?.createdContract?.title ||
+    "Kontrak Sewa Vendor",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -424,8 +428,8 @@ export default function ContractEditorPage() {
     null,
   );
   const [currentStatus, setCurrentStatus] = useState<string>("draft");
-  const [statusLogs, setStatusLogs] = useState<any[]>([]);
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [statusLogs, setStatusLogs] = useState<StatusEntry[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isReadOnlyAfterSubmit, setIsReadOnlyAfterSubmit] =
@@ -435,6 +439,10 @@ export default function ContractEditorPage() {
   const [pageMargin, setPageMargin] = useState<MarginStyle>(
     MARGIN_PRESETS[0].value,
   );
+
+  // Versions
+  const [versions, setVersions] = useState<ContractVersion[]>([]);
+  const [viewingVersion, setViewingVersion] = useState<ContractVersion | null>(null);
 
   // Categories
   const [categories, setCategories] = useState<Category[]>([]);
@@ -468,6 +476,7 @@ export default function ContractEditorPage() {
       }
     })();
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshFields();
 
     // Fetch Internal Users
@@ -672,7 +681,7 @@ export default function ContractEditorPage() {
 
         // load signers
         if ((c as any).signers && (c as any).signers.length > 0) {
-          const allReviews: any[] = [];
+          const allReviews: FeedbackEntry[] = [];
           const loadedSigners = (c as any).signers.map(
             (s: any, index: number) => {
               console.log('signer', s.signer_type, 'signatures:', s.signatures);
@@ -730,8 +739,8 @@ export default function ContractEditorPage() {
           // sort descending by ID
           setFeedbacks(allReviews.sort((a, b) => b.id - a.id));
 
-          if ((c as any).signed_document_url) {
-            setSignedDocumentUrl((c as any).signed_document_url);
+          if (c.signed_document_url) {
+            setSignedDocumentUrl(c.signed_document_url);
           }
         }
         // If contract is not draft/revision, mark UI read-only
@@ -739,8 +748,12 @@ export default function ContractEditorPage() {
           setIsReadOnlyAfterSubmit(true);
         }
 
-        if ((c as any).status_logs) {
-          setStatusLogs((c as any).status_logs);
+        if (c.status_logs) {
+          setStatusLogs(c.status_logs);
+        }
+
+        if (c.versions) {
+          setVersions(c.versions);
         }
       } catch (e) {
         console.error(e);
@@ -764,7 +777,7 @@ export default function ContractEditorPage() {
       if (!isEdit) {
         generateContractNumber(t.category_id)
           .then(setContractNumber)
-          .catch(() => {});
+          .catch(() => { });
       }
     },
     [editor, title, isEdit],
@@ -972,11 +985,11 @@ export default function ContractEditorPage() {
                           },
                           ...(externalContractNumber
                             ? [
-                                {
-                                  label: "No. Kontrak Eksternal",
-                                  value: externalContractNumber,
-                                },
-                              ]
+                              {
+                                label: "No. Kontrak Eksternal",
+                                value: externalContractNumber,
+                              },
+                            ]
                             : []),
                         ] as { label: string; value: string }[]
                       ).map((chip) => (
@@ -1035,7 +1048,7 @@ export default function ContractEditorPage() {
                                 selectedTemplate?.category_id,
                               )
                                 .then(setContractNumber)
-                                .catch(() => {})
+                                .catch(() => { })
                             }
                             className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0"
                           >
@@ -1351,7 +1364,12 @@ export default function ContractEditorPage() {
               minSize={SIDEBAR_MIN_PX}
               maxSize={SIDEBAR_MAX_PX}
             >
-              <RightSidebar statusLogs={statusLogs} feedbacks={feedbacks} />
+              <RightSidebar
+                statusLogs={statusLogs}
+                feedbacks={feedbacks}
+                versions={versions}
+                onViewVersion={(v) => setViewingVersion(v)}
+              />
             </Panel>
           </PanelGroup>
         </div>
@@ -1388,6 +1406,43 @@ export default function ContractEditorPage() {
           onRefreshFields={refreshFields}
         />
       )}
+
+      {/* Modal Preview Versi Lama */}
+      {viewingVersion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50/80">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  Pratinjau Versi {viewingVersion.version_number}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Dibuat oleh <span className="font-semibold text-gray-700">{viewingVersion.created_by}</span> pada {viewingVersion.created_at}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewingVersion(null)}
+                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Tutup Preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100/50">
+              <div
+                className="bg-white mx-auto shadow-md border border-gray-200 p-12 min-h-[29.7cm] text-sm text-gray-800 leading-7"
+                style={{ width: "21cm" }}
+              >
+                {/* Render Konten Lama */}
+                <div
+                  className="outline-none"
+                  dangerouslySetInnerHTML={{ __html: viewingVersion.content }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -1397,9 +1452,13 @@ export default function ContractEditorPage() {
 function RightSidebar({
   statusLogs,
   feedbacks,
+  versions,
+  onViewVersion,
 }: {
-  statusLogs: any[];
-  feedbacks: any[];
+  statusLogs: StatusEntry[];
+  feedbacks: FeedbackEntry[];
+  versions: ContractVersion[];
+  onViewVersion: (v: ContractVersion) => void;
 }) {
   return (
     <div className="h-full flex flex-col bg-white border-l border-gray-200 overflow-hidden">
@@ -1478,6 +1537,52 @@ function RightSidebar({
 
         <div className="border-t border-gray-100" />
 
+        {/* Riwayat Versi */}
+        <section>
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              Riwayat Versi
+            </p>
+            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+              {versions?.length || 0}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {versions && versions.length > 0 ? (
+              [...versions]
+                .sort((a, b) => b.id - a.id) // Sort descending by ID so newest version is on top
+                .map((v) => (
+                  <div
+                    key={v.id}
+                    onClick={() => onViewVersion(v)}
+                    className="rounded-xl border border-gray-200 p-3 space-y-1.5 bg-white shadow-sm flex items-center justify-between hover:bg-gray-50 hover:border-emerald-200 transition-colors cursor-pointer group"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md border border-blue-100 shrink-0">
+                          {v.version_number}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-800 truncate">
+                          Oleh: {v.created_by}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 truncate">
+                        {v.created_at}
+                      </p>
+                    </div>
+                    <button className="text-[10px] text-emerald-600 font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                      Lihat
+                    </button>
+                  </div>
+                ))
+            ) : (
+              <p className="text-xs text-gray-400">Belum ada riwayat versi.</p>
+            )}
+          </div>
+        </section>
+
+        <div className="border-t border-gray-100" />
+
         {/* Addendum Terkait */}
         {/* <section>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
@@ -1533,13 +1638,12 @@ function RightSidebar({
                         </div>
                       </div>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${
-                          fb.type === "revised" ||
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${fb.type === "revised" ||
                           fb.type === "revision" ||
                           fb.type === "rejected"
-                            ? "bg-red-50 text-red-600 border border-red-200"
-                            : "bg-gray-100 text-gray-500 border border-gray-200"
-                        }`}
+                          ? "bg-red-50 text-red-600 border border-red-200"
+                          : "bg-gray-100 text-gray-500 border border-gray-200"
+                          }`}
                       >
                         {fb.typeLabel}
                       </span>

@@ -65,7 +65,7 @@ export default function ContractReviewListPage() {
             Perlu Ditinjau
           </span>
         );
-      case "revised":
+      case "revision":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
             <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>

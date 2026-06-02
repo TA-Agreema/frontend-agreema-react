@@ -4,6 +4,7 @@ import { createTermination } from "@/services/termination.service";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 import type { Termination } from "@/types/termination";
 import { isAxiosError } from "axios";
+import { Button } from "@/components/ui/button";
 
 interface Props {
     contract: ContractRow;
@@ -60,6 +61,23 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                     </button>
                 </div>
 
+                {/* Template Terminasi */}
+                <div className="px-6 py-4 border-b bg-muted/30 space-y-2">
+                    <h3 className="text-sm font-medium text-foreground">Template Terminasi</h3>
+                    <p className="text-xs text-muted-foreground">
+                        Gunakan template terminasi yang tersedia untuk mempercepat proses pembuatan.
+                    </p>
+                    <div>
+                        <a
+                            href="/templates/template_terminasi.docx"
+                            download="Template_Terminasi_Terbaru.docx"
+                            className="inline-flex items-center justify-center rounded-md text-xs font-medium h-9 px-3 bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow"
+                        >
+                            Download Template
+                        </a>
+                    </div>
+                </div>
+
                 <div className="p-6 overflow-y-auto flex-1">
                     {errorMsg && (
                         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg flex items-start gap-2 text-sm">
@@ -114,10 +132,10 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                 </div>
 
                 <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
-                    <button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Batal</button>
-                    <button type="submit" form="terminationForm" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
+                    <Button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Batal</Button>
+                    <Button type="submit" form="terminationForm" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
                         {loading ? "Memproses..." : "Terminasi Kontrak"}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

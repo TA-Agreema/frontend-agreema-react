@@ -10,12 +10,15 @@ import {
   Loader2,
   Clock,
   FileText,
+  FileSignature,
+  CalendarDays,
 } from "lucide-react";
 import {
   fetchManagerContractDetail,
   submitContractReview,
   type ManagerContractDetail,
 } from "@/services/manager.service";
+import type { Addendum } from "@/pages/contracts/ContractListPage";
 
 // Define TipTap extensions similarly to Editor but without UI plugins
 import Underline from "@tiptap/extension-underline";
@@ -33,6 +36,7 @@ import Link from "@tiptap/extension-link";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
 import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
+import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
@@ -52,8 +56,8 @@ export default function ContractReviewDetailPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
 
   // Riwayat status
-  const [statusLogs, setStatusLogs] = useState<any[]>([]);
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [statusLogs, setStatusLogs] = useState<StatusEntry[]>([]);
+  const [feedbacks] = useState<FeedbackEntry[]>([]);
 
   // Read-only editor
   const editor = useEditor({
@@ -99,7 +103,9 @@ export default function ContractReviewDetailPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadContract();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, editor]);
 
   const handleAction = async (status: "approved" | "revised" | "rejected") => {
@@ -175,6 +181,58 @@ export default function ContractReviewDetailPage() {
           <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
             <EditorContent editor={editor} />
 
+            {contract.addendums && contract.addendums.length > 0 && (
+              <div className="border-t border-gray-200 px-8 py-8 bg-emerald-50/40">
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-widest">
+                      Daftar Addendum
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Addendum yang melekat pada kontrak ini.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <FileSignature className="h-3.5 w-3.5" />
+                    {contract.addendums.length} addendum
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {contract.addendums.map((addendum: Addendum) => (
+                    <div
+                      key={addendum.id}
+                      className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                            {addendum.addendum_number}
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {addendum.title}
+                          </p>
+                          <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">
+                            {addendum.description || "Tidak ada deskripsi."}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-gray-500">
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              Dibuat: {addendum.created_at}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              Efektif: {addendum.effective_date}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* section tanda tangan di sini */}
             {contract.signers && contract.signers.length > 0 && (
               <div className="border-t border-gray-200 px-8 py-10">
@@ -241,17 +299,16 @@ export default function ContractReviewDetailPage() {
                             Tanggal:{" "}
                             {isSigned && signedAt
                               ? new Date(signedAt).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
                               : "[DD/MM/YYYY]"}
                           </p>
 
                           <div
-                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${
-                              isSigned ? "w-45 h-25" : "w-full h-25"
-                            }`}
+                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${isSigned ? "w-45 h-25" : "w-full h-25"
+                              }`}
                           >
                             {signer.signer_type === "internal" && isSigned ? (
                               <img
@@ -366,13 +423,12 @@ export default function ContractReviewDetailPage() {
                           {rev.user?.name || "System"}
                         </span>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${
-                            rev.status === "approved"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : rev.status === "rejected"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-orange-100 text-orange-700"
-                          }`}
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${rev.status === "approved"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : rev.status === "rejected"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-orange-100 text-orange-700"
+                            }`}
                         >
                           {rev.status}
                         </span>
