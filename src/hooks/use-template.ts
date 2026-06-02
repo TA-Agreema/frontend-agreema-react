@@ -12,6 +12,7 @@ import {
   toggleTemplateStatus as apiToggleStatus,
 } from "@/services/template.service";
 import type { Template, TemplatePayload } from "@/types/template";
+import type { PaperSize } from "@/lib/editor-paper";
 
 // Re-export types agar kompatibel dengan page yang sudah ada
 export type TemplateStatus = "Aktif" | "Nonaktif";
@@ -21,6 +22,7 @@ export interface CreateTemplatePayload {
   name: string;
   category_id: number;
   is_active?: boolean;
+  paper_size?: PaperSize;
   content: string;
   uploadedFile?: File;
 }
@@ -93,6 +95,7 @@ export function useTemplates(): UseTemplatesReturn {
         const apiPayload: TemplatePayload = {
           name: payload.name,
           content: payload.content,
+          paper_size: payload.paper_size,
           category_id: payload.category_id,
           is_active: payload.is_active ?? true,
         };
@@ -114,6 +117,7 @@ export function useTemplates(): UseTemplatesReturn {
         const apiPayload: Partial<TemplatePayload> = {
           name: payload.name,
           content: payload.content,
+          paper_size: payload.paper_size,
           category_id: payload.category_id,
           is_active: payload.is_active,
         };

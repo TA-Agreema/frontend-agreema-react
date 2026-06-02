@@ -1,5 +1,155 @@
 
 /* Editor Shell */
+.editor-paper {
+  --page-gap: 10px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #ffffff 0,
+      #ffffff calc(var(--paper-height) - 1px),
+      #d1d5db calc(var(--paper-height) - 1px),
+      #d1d5db var(--paper-height),
+      #f3f4f6 var(--paper-height),
+      #f3f4f6 calc(var(--paper-height) + var(--page-gap))
+    );
+  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.12));
+}
+
+.editor-paper-continuous {
+  background: #ffffff;
+}
+
+.editor-paper-continuous::before {
+  display: none;
+}
+
+.editor-paper-preview-page {
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.editor-paper-preview-page::before {
+  display: none;
+}
+
+.editor-paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--paper-height) - 1px),
+      rgba(15, 23, 42, 0.18) calc(var(--paper-height) - 1px),
+      rgba(15, 23, 42, 0.18) var(--paper-height),
+      transparent var(--paper-height),
+      transparent calc(var(--paper-height) + var(--page-gap))
+    );
+  z-index: 2;
+}
+
+.editor-paper-content {
+  position: relative;
+  z-index: 1;
+}
+
+.tiptap-preview-content {
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+.tiptap-preview-content > :first-child {
+  margin-top: 0 !important;
+}
+
+.tiptap-preview-content > :last-child {
+  margin-bottom: 0 !important;
+}
+
+.ProseMirror img,
+.tiptap-preview img {
+  height: auto;
+  max-width: 100%;
+}
+
+.tiptap-preview [data-preview-image-wrapper] {
+  max-width: 100%;
+}
+
+.tiptap-preview [data-preview-image-container] {
+  max-width: 100%;
+}
+
+.tiptap-preview [data-preview-image-container][style*="margin: 0 auto"] {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.tiptap-preview [data-preview-image-container][style*="margin: 0 0 0 auto"] {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+.tiptap-preview [data-preview-image-container][style*="margin: 0 auto 0 0"] {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.tiptap-preview img[data-preview-image-layout="true"] {
+  display: block;
+  max-height: var(--paper-content-height);
+  object-fit: contain;
+}
+
+.ProseMirror [style*="text-align: center"] img,
+.tiptap-preview [style*="text-align: center"] img,
+.tiptap-preview img[style*="text-align: center"],
+.tiptap-preview img[style*="margin-left: auto"][style*="margin-right: auto"] {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ProseMirror [style*="text-align: right"] img,
+.tiptap-preview [style*="text-align: right"] img,
+.tiptap-preview img[style*="text-align: right"],
+.tiptap-preview img[style*="float: right"] {
+  display: block;
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.tiptap-preview img[style*="float: left"] {
+  display: block;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.ProseMirror > [data-auto-page-overflow="true"] {
+  outline: 1px dashed #f59e0b;
+  outline-offset: 3px;
+}
+
+body.table-row-resize-cursor,
+body.table-row-resize-cursor * {
+  cursor: ns-resize !important;
+  user-select: none;
+}
+
+.ProseMirror table td::before,
+.ProseMirror table th::before {
+  bottom: -5px;
+  content: "";
+  cursor: ns-resize;
+  height: 10px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  z-index: 3;
+}
+
 .ProseMirror {
   outline: none;
   min-height: 400px;
@@ -42,6 +192,13 @@
   margin: 0.875rem 0 0.5rem;
 }
 
+.ProseMirror .docx-subtitle,
+.tiptap-preview .docx-subtitle {
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
 /* Paragraph */
 .ProseMirror p {
   margin: 0.4rem 0;
@@ -67,6 +224,14 @@
   margin: 0.5rem 0;
 }
 .ProseMirror li { margin: 0.2rem 0; }
+.ProseMirror li::marker,
+.tiptap-preview li::marker {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  color: inherit;
+}
 
 /* Numbering Styles */
 .ProseMirror ol { list-style-type: decimal !important; }
@@ -111,6 +276,40 @@
   margin: 1rem 0;
 }
 
+.ProseMirror .page-break,
+.tiptap-preview .page-break,
+.contract-body .page-break {
+  break-after: page;
+  page-break-after: always;
+  border: none;
+  border-top: 1px dashed #94a3b8;
+  color: #64748b;
+  height: 2rem;
+  margin: 1.25rem 0;
+  position: relative;
+}
+
+.ProseMirror .page-break::after,
+.tiptap-preview .page-break::after {
+  background: #ffffff;
+  content: "Page Break";
+  font-size: 10px;
+  font-weight: 700;
+  left: 50%;
+  letter-spacing: 0.08em;
+  padding: 0 0.5rem;
+  position: absolute;
+  text-transform: uppercase;
+  top: -0.45rem;
+  transform: translateX(-50%);
+}
+
+.contract-body .page-break {
+  border: 0;
+  height: 0;
+  margin: 0;
+}
+
 /* Link */
 .ProseMirror a {
   color: #059669;
@@ -136,70 +335,155 @@
   color: #713f12;
 }
 
+.ProseMirror .contract-field-token,
+.tiptap-preview .contract-field-token {
+  background: #ecfdf5;
+  border-radius: 0.2rem;
+  box-shadow: inset 0 -1px 0 #10b981;
+  padding: 0 0.1em;
+}
+
 /* Selection */
 .ProseMirror ::selection {
   background: #d1fae5;
 }
 
 /* Tables */
-.ProseMirror table {
+.ProseMirror table,
+.tiptap-preview table {
   border-collapse: collapse;
   table-layout: fixed;
-  width: 100%;
+  max-width: 100%;
+  width: 100% !important;
   margin: 1rem 0;
   overflow: hidden;
   transition: all 0.2s;
 }
 
+.tiptap-preview table.paginated-table-fragment,
+.tiptap-preview .paginated-table-fragment-wrapper table {
+  margin-bottom: 0;
+  margin-top: 0;
+}
+
+.ProseMirror table colgroup col,
+.tiptap-preview table colgroup col {
+  max-width: 100%;
+}
+
+.ProseMirror .tableWrapper table,
+.tiptap-preview table {
+  min-width: 0 !important;
+}
+
+.ProseMirror table[style],
+.tiptap-preview table[style] {
+  width: 100% !important;
+}
+
 /* Default / All Borders */
 .ProseMirror table:not([data-border-type]),
-.ProseMirror table[data-border-type="all"] {
+.ProseMirror table[data-border-type="all"],
+.tiptap-preview table:not([data-border-type]),
+.tiptap-preview table[data-border-type="all"] {
   border: 1px solid #000000 !important;
 }
 .ProseMirror table:not([data-border-type]) td,
 .ProseMirror table:not([data-border-type]) th,
 .ProseMirror table[data-border-type="all"] td,
-.ProseMirror table[data-border-type="all"] th {
+.ProseMirror table[data-border-type="all"] th,
+.tiptap-preview table:not([data-border-type]) td,
+.tiptap-preview table:not([data-border-type]) th,
+.tiptap-preview table[data-border-type="all"] td,
+.tiptap-preview table[data-border-type="all"] th {
   border: 1px solid #000000 !important;
 }
 
 /* No Borders */
-.ProseMirror table[data-border-type="none"] {
+.ProseMirror table[data-border-type="none"],
+.tiptap-preview table[data-border-type="none"] {
   border: none !important;
 }
 .ProseMirror table[data-border-type="none"] td,
+.ProseMirror table[data-border-type="none"] th,
+.tiptap-preview table[data-border-type="none"] td,
+.tiptap-preview table[data-border-type="none"] th {
+  border: none !important;
+}
+
+.ProseMirror table[data-border-type="none"] td,
 .ProseMirror table[data-border-type="none"] th {
-  border: 1px dashed #e5e7eb !important;
+  outline: 1px dashed #e5e7eb;
+  outline-offset: -1px;
 }
 
 /* Outside Borders Only */
-.ProseMirror table[data-border-type="outside"] {
+.ProseMirror table[data-border-type="outside"],
+.tiptap-preview table[data-border-type="outside"] {
   border: 1px solid #000000 !important;
 }
 .ProseMirror table[data-border-type="outside"] td,
-.ProseMirror table[data-border-type="outside"] th {
+.ProseMirror table[data-border-type="outside"] th,
+.tiptap-preview table[data-border-type="outside"] td,
+.tiptap-preview table[data-border-type="outside"] th {
   border: 1px dashed #f3f4f6 !important;
 }
 
 /* Inside Borders Only */
-.ProseMirror table[data-border-type="inside"] {
+.ProseMirror table[data-border-type="inside"],
+.tiptap-preview table[data-border-type="inside"] {
   border: none !important;
 }
 .ProseMirror table[data-border-type="inside"] td,
-.ProseMirror table[data-border-type="inside"] th {
+.ProseMirror table[data-border-type="inside"] th,
+.tiptap-preview table[data-border-type="inside"] td,
+.tiptap-preview table[data-border-type="inside"] th {
   border: 1px solid #000000 !important;
 }
 
+.ProseMirror table td[data-border-top="none"],
+.ProseMirror table th[data-border-top="none"],
+.tiptap-preview table td[data-border-top="none"],
+.tiptap-preview table th[data-border-top="none"] {
+  border-top: none !important;
+}
+
+.ProseMirror table td[data-border-right="none"],
+.ProseMirror table th[data-border-right="none"],
+.tiptap-preview table td[data-border-right="none"],
+.tiptap-preview table th[data-border-right="none"] {
+  border-right: none !important;
+}
+
+.ProseMirror table td[data-border-bottom="none"],
+.ProseMirror table th[data-border-bottom="none"],
+.tiptap-preview table td[data-border-bottom="none"],
+.tiptap-preview table th[data-border-bottom="none"] {
+  border-bottom: none !important;
+}
+
+.ProseMirror table td[data-border-left="none"],
+.ProseMirror table th[data-border-left="none"],
+.tiptap-preview table td[data-border-left="none"],
+.tiptap-preview table th[data-border-left="none"] {
+  border-left: none !important;
+}
+
 .ProseMirror table td,
-.ProseMirror table th {
+.ProseMirror table th,
+.tiptap-preview table td,
+.tiptap-preview table th {
   min-width: 1em;
   padding: 8px 10px;
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.ProseMirror table th {
+.ProseMirror table th,
+.tiptap-preview table th {
   font-weight: bold;
   text-align: left;
   background-color: transparent;
@@ -229,7 +513,8 @@
 
 .ProseMirror .tableWrapper {
   margin: 1.5rem 0;
-  overflow-x: auto;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .ProseMirror .resize-cursor {

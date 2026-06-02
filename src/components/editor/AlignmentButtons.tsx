@@ -1,6 +1,6 @@
 import React from "react";
 import { useEditor } from "@tiptap/react";
-import { AlignLeft, AlignCenter, AlignRight } from "lucide-react";
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";
 
 export function AlignmentButtons({
@@ -31,6 +31,12 @@ export function AlignmentButtons({
         disabled={disabled}
         active={editor.isActive({ textAlign: "right" })}>
         <AlignRight className="h-3.5 w-3.5" />
+      </ToolbarBtn>
+      <ToolbarBtn
+        onClick={() => !disabled && editor.chain().focus().setTextAlign("justify").run()}
+        disabled={disabled}
+        active={editor.isActive({ textAlign: "justify" })}>
+        <AlignJustify className="h-3.5 w-3.5" />
       </ToolbarBtn>
     </>
   );

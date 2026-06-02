@@ -9,11 +9,15 @@ import {
   Trash2,
   Tag,
   ToggleLeft,
+  Download,
 } from "lucide-react";
 import { useTemplates, type ContractTemplate } from "@/hooks/use-template";
+import { downloadTemplatePdf } from "@/services/template.service";
+import { downloadBlobResponse } from "@/services/download.service";
+import axios from "axios";
 import Pagination from "@/components/Pagination";
 import { useAuth } from "@/contexts/AuthContext";
-import DeleteModal from "@/components/modal/DeleteModal";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
 
 const PAGE_SIZE = 4;
@@ -25,6 +29,7 @@ function RowMenu({
   onEdit,
   onDelete,
   onToggleStatus,
+  onDownloadPdf,
   canEdit = false,
   canDelete = false,
 }: {
@@ -32,6 +37,7 @@ function RowMenu({
   onEdit: (t: ContractTemplate) => void;
   onDelete: (t: ContractTemplate) => void;
   onToggleStatus: (t: ContractTemplate) => void;
+  onDownloadPdf: (t: ContractTemplate) => void;
   canEdit?: boolean;
   canDelete?: boolean;
 }) {
@@ -161,6 +167,16 @@ function RowMenu({
             <Trash2 className="h-4 w-4" />
             Hapus
           </button>
+
+          <button
+            onClick={() => {
+              onDownloadPdf(template);
+              setOpen(false);
+            }}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors hover:bg-muted">
+            <Download className="h-4 w-4 text-muted-foreground" />
+            Download PDF
+          </button>
         </div>
       )}
     </div>
@@ -214,6 +230,27 @@ export default function ContractTemplatePage() {
       setDeleteTarget(null);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleDownloadPdf = async (template: ContractTemplate) => {
+    try {
+      const response = await downloadTemplatePdf(template.id);
+      downloadBlobResponse(response, `${template.name || "template"}.pdf`);
+    } catch (err) {
+      console.error("Gagal mengunduh PDF template:", err);
+      let message: string | null = null;
+      if (axios.isAxiosError(err) && err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          message = JSON.parse(text)?.message ?? null;
+        } catch {
+          message = null;
+        }
+      } else if (axios.isAxiosError(err)) {
+        message = (err.response?.data as { message?: string })?.message ?? null;
+      }
+      alert(message || "Gagal mengunduh PDF template.");
     }
   };
 
@@ -345,6 +382,7 @@ export default function ContractTemplatePage() {
                     }
                     onDelete={(t) => setDeleteTarget(t)}
                     onToggleStatus={(t) => toggleTemplateStatus(t.id)}
+                    onDownloadPdf={handleDownloadPdf}
                     canEdit={canEdit}
                     canDelete={canDelete}
                   />

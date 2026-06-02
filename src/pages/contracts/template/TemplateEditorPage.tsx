@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -9,44 +9,48 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import { Table } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
-import mammoth from "mammoth";
 import {
   Upload,
   Eye,
   LayoutTemplate,
-  Copy,
-  X,
   ChevronDown,
-  Info,
   Loader2,
   AlertCircle,
-  Plus,
 } from "lucide-react";
 
-// Shared Editor Components
-import { ToolbarBtn, ToolbarDivider } from "@/components/editor/ToolbarBtn";
-import { HistoryButtons } from "@/components/editor/HistoryButtons";
-import { HeadingButtons } from "@/components/editor/HeadingButtons";
-import { FormattingButtons } from "@/components/editor/FormattingButtons";
-import { AlignmentButtons } from "@/components/editor/AlignmentButtons";
-import { BulletDropdown } from "@/components/editor/BulletDropdown";
-import { NumberingDropdown } from "@/components/editor/NumberingDropdown";
-import { MarginDropdown, type MarginStyle, MARGIN_PRESETS } from "@/components/editor/MarginDropdown";
-import { TableDropdown } from "@/components/editor/TableDropdown";
-import { HighlightColorPicker } from "@/components/editor/HighlightColorPicker";
-import { TextColorPicker } from "@/components/editor/TextColorPicker";
-import { LineSpacingToggle } from "@/components/editor/LineSpacingToggle";
-import { LinkButton } from "@/components/editor/LinkButton";
-import { ImageUploadButton } from "@/components/editor/ImageUploadButton";
-import { FontSizeSelector } from "@/components/editor/FontSizeSelector";
+import {
+  type MarginStyle,
+  MARGIN_PRESETS,
+} from "@/components/editor/MarginDropdown";
+import { EditorPaper } from "@/components/editor/EditorPaper";
+import { EditorToolbar } from "@/components/editor/EditorToolbar";
+import {
+  EditorModeTabButton,
+  TemplateFieldSidebar,
+  TemplatePreviewTab,
+  TemplateUploadTab,
+} from "@/components/editor/template/TemplateEditorPanels";
 
 import { FontSize } from "@/lib/tiptap-font-size";
+import { FontFamily } from "@/lib/tiptap-font-family";
 import { LineHeight } from "@/lib/tiptap-line-height";
+import { ContractField, insertContractField } from "@/lib/tiptap-contract-field";
+import { prepareContractContentForEditor } from "@/lib/contract-field-values";
+import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
+import { convertDocxToEditorHtml } from "@/lib/mammoth-docx-converter";
+import { PageBreak } from "@/lib/tiptap-page-break";
+import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
+import {
+  BorderedTableCell,
+  BorderedTableHeader,
+} from "@/lib/tiptap-table-cell-borders";
+import {
+  DEFAULT_PAPER_SIZE,
+  normalizePaperSize,
+  type PaperSize,
+} from "@/lib/editor-paper";
 import {
   useTemplates,
   type CreateTemplatePayload,
@@ -57,7 +61,8 @@ import {
   fetchFieldDefinitions,
   type FieldDefinition,
 } from "@/services/field.service";
-import FieldManageModal from "@/components/modal/FieldManageModal";
+import FieldManageModal from "@/components/modal/contract/FieldManageModal";
+import UnsavedChangesModal from "@/components/modal/common/UnsavedChangesModal";
 import type { Category } from "@/types/category";
 import { Navigate } from "react-router-dom";
 import PermissionGuard from "@/middlewares/PermissionGuard";
@@ -66,280 +71,9 @@ import PermissionGuard from "@/middlewares/PermissionGuard";
 
 type EditorTab = "visual" | "upload" | "preview";
 
-function resolveGroup(field: FieldDefinition): string {
-  // Jika API sudah mengembalikan field_group, gunakan langsung
-  if (field.field_group) return field.field_group;
-
-  // Fallback: deteksi dari prefix field_key
-  const key = field.field_key.toLowerCase();
-  if (key.startsWith("pihak_") || key.startsWith("party_")) return "Data Pihak";
-  if (key.startsWith("nomor_mitra") || key.startsWith("partner_number"))
-    return "Nomor Kontrak";
-  return "Field Umum";
-}
-
-function groupFields(
-  fields: FieldDefinition[],
-): Map<string, FieldDefinition[]> {
-  // Urutan tampilan group
-  const ORDER = ["Field Umum", "Data Pihak", "Nomor Kontrak"];
-  const map = new Map<string, FieldDefinition[]>();
-
-  for (const f of fields) {
-    const group = resolveGroup(f);
-    if (!map.has(group)) map.set(group, []);
-    map.get(group)!.push(f);
-  }
-
-  // Sort entries by ORDER, unknown groups go last
-  return new Map(
-    [...map.entries()].sort(([a], [b]) => {
-      const ia = ORDER.indexOf(a);
-      const ib = ORDER.indexOf(b);
-      return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-    }),
-  );
-}
-
-//  Toolbar
-
-// Tab Button
-function TabBtn({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 justify-center items-center gap-1.5 px-3 py-2 text-xs rounded-t-none border-b-2 transition-colors ${
-        active
-          ? "border-emerald-600 text-emerald-700 font-medium bg-emerald-50/50"
-          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
-      }`}>
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-// Upload Tab
-function UploadTab({
-  file,
-  onSelect,
-  onRemove,
-}: {
-  file: File | null;
-  onSelect: (f: File) => void;
-  onRemove: () => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) onSelect(dropped);
-  };
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto">
-      {file ? (
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto bg-blue-50 rounded-xl flex items-center justify-center">
-            <Upload className="h-8 w-8 text-blue-500" />
-          </div>
-          <div>
-            <p className="text-sm font-medium">{file.name}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {(file.size / 1024).toFixed(1)} KB
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="flex items-center gap-1.5 mx-auto text-xs text-red-600 hover:text-red-700 transition-colors">
-            <X className="h-3.5 w-3.5" /> Hapus file
-          </button>
-        </div>
-      ) : (
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => inputRef.current?.click()}
-          className="w-full max-w-sm border-2 border-dashed border-border rounded-xl p-12 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition-all group">
-          <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
-          <p className="text-sm font-medium">Klik atau seret file ke sini</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Mendukung .docx, .pdf (maks. 10 MB)
-          </p>
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".docx,.pdf"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onSelect(f);
-            }}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Preview Tab
-function PreviewTab({ content, name }: { content: string; name: string }) {
-  const isEmpty =
-    !content || content === "<p></p>" || content === "<p><br></p>";
-  if (isEmpty) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <div className="text-center space-y-2">
-          <Eye className="h-8 w-8 mx-auto opacity-30" />
-          <p className="text-sm">Belum ada konten untuk di-preview</p>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex-1 overflow-y-auto bg-muted/30 p-6">
-      <div className="max-w-[950px] mx-auto bg-white border rounded-xl shadow-sm p-10 min-h-125">
-        {name && (
-          <h1 className="text-xl font-bold text-center mb-8 pb-4 border-b">
-            {name}
-          </h1>
-        )}
-        <div
-          className="prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// How-To Callout
-function HowToUse() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 w-full rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-left hover:bg-emerald-100 transition-colors">
-        <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-          <Info className="h-3 w-3 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-emerald-800">
-            Cara Menggunakan
-          </p>
-          <p className="text-xs text-emerald-600">Begini caranya...</p>
-        </div>
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-emerald-600 transition-transform shrink-0 ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="mt-1 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 space-y-1.5">
-          <p className="font-medium">Cara pakai Field Template:</p>
-          <ol className="list-decimal list-inside space-y-1 text-emerald-700">
-            <li>Klik field → langsung sisip ke kursor</li>
-            <li>Ikon copy → salin tag, paste manual</li>
-            <li>
-              <code className="bg-emerald-100 px-1 rounded">{"{{tag}}"}</code>{" "}
-              diganti data saat kontrak dibuat
-            </li>
-          </ol>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Field Sidebar Item
-function FieldItem({
-  label,
-  tag,
-  onInsert,
-  copiedTag,
-  onCopy,
-}: {
-  label: string;
-  tag: string;
-  onInsert: (t: string) => void;
-  copiedTag: string | null;
-  onCopy: (t: string) => void;
-}) {
-  const isCopied = copiedTag === tag;
-  return (
-    <div
-      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border cursor-pointer group"
-      onClick={() => onInsert(tag)}>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-foreground truncate">{label}</p>
-        <p className="text-xs text-muted-foreground font-mono truncate">
-          {tag}
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onCopy(tag);
-        }}
-        title="Salin tag"
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-background transition-all shrink-0 ml-2">
-        {isCopied ? (
-          <span className="text-emerald-600 text-xs font-bold">✓</span>
-        ) : (
-          <Copy className="h-3 w-3 text-muted-foreground" />
-        )}
-      </button>
-    </div>
-  );
-}
-
-// Field Group Section
-function FieldGroup({
-  title,
-  fields,
-  onInsert,
-  copiedTag,
-  onCopy,
-}: {
-  title: string;
-  fields: FieldDefinition[];
-  onInsert: (t: string) => void;
-  copiedTag: string | null;
-  onCopy: (t: string) => void;
-}) {
-  return (
-    <div className="space-y-0.5">
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 pt-3 pb-1.5">
-        {title}
-      </p>
-      {fields.map((f) => (
-        <FieldItem
-          key={f.id}
-          label={f.field_label}
-          tag={`{{${f.field_key}}}`}
-          onInsert={onInsert}
-          copiedTag={copiedTag}
-          onCopy={onCopy}
-        />
-      ))}
-    </div>
-  );
-}
-
-// EditorToolbar has been extracted to src/components/editor/EditorToolbar.tsx
+const SIDEBAR_DEFAULT_PX = 260;
+const SIDEBAR_MIN_PX = 200;
+const SIDEBAR_MAX_PX = 480;
 
 //  Main Page
 
@@ -350,14 +84,12 @@ export default function TemplateEditorPage() {
 
   const { createTemplate, updateTemplate, getTemplate, loading } =
     useTemplates();
-
-  // Resizeable sidebars - use same constraints as ContractEditorPage
-  const SIDEBAR_DEFAULT_PX = 260;
-  const SIDEBAR_MIN_PX = 200;
-  const SIDEBAR_MAX_PX = 480;
+  const draftKey = isEditMode ? `template_draft_${id}` : "template_draft_new";
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const resizingRef = useRef<null | "left" | "right">(null);
+  const templateLoadedRef = useRef(false);
+  const newDraftLoadedRef = useRef(false);
   const [leftWidth, setLeftWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
   const [rightWidth, setRightWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
 
@@ -365,17 +97,20 @@ export default function TemplateEditorPage() {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [categories, setCategories] = useState<Category[]>([]);
-  const [fieldGroups, setFieldGroups] = useState<
-    Map<string, FieldDefinition[]>
-  >(new Map());
+  const [fields, setFields] = useState<FieldDefinition[]>([]);
+  const [fieldsLoaded, setFieldsLoaded] = useState(false);
   const [showFieldModal, setShowFieldModal] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
   const [activeTab, setActiveTab] = useState<EditorTab>("visual");
   const [uploadedFile, setFile] = useState<File | null>(null);
-  const [copiedTag, setCopiedTag] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [initialising, setInit] = useState(true);
-  const [pageMargin, setPageMargin] = useState<MarginStyle>(MARGIN_PRESETS[0].value);
+  const [editorHtml, setEditorHtml] = useState("");
+  const [pageMargin, setPageMargin] = useState<MarginStyle>(
+    MARGIN_PRESETS[0].value,
+  );
+  const [paperSize, setPaperSize] = useState<PaperSize>(DEFAULT_PAPER_SIZE);
 
   // TipTap
   const editor = useEditor({
@@ -387,8 +122,11 @@ export default function TemplateEditorPage() {
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      FontFamily,
       FontSize,
       LineHeight,
+      ContractField,
+      PageBreak,
       HorizontalRule,
       Table.extend({
         addAttributes() {
@@ -405,10 +143,12 @@ export default function TemplateEditorPage() {
         },
       }).configure({
         resizable: true,
+        lastColumnResizable: true,
+        cellMinWidth: 24,
       }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      ResizableTableRow,
+      BorderedTableHeader,
+      BorderedTableCell,
       ImageResize,
     ],
     content: "",
@@ -419,47 +159,58 @@ export default function TemplateEditorPage() {
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      const draftKey = id ? `template_draft_${id}` : "template_draft_new";
+      setEditorHtml(html);
       if (html && html !== "<p></p>") {
         localStorage.setItem(draftKey, html);
       }
     },
   });
 
-  // Load categories + field definitions + Restore "New" Draft
+  const refreshFields = useCallback(async () => {
+    try {
+      const fieldData = await fetchFieldDefinitions();
+      setFields(fieldData.filter((field: FieldDefinition) => field.is_active));
+    } catch (err) {
+      console.error("Gagal me-refresh field:", err);
+    } finally {
+      setFieldsLoaded(true);
+    }
+  }, []);
+
+  // Load categories + field definitions
   useEffect(() => {
     (async () => {
       try {
-        const [catData, fieldData] = await Promise.all([
-          fetchCategories(),
-          fetchFieldDefinitions(),
-        ]);
+        const catData = await fetchCategories();
         setCategories(catData.filter((c: Category) => c.is_active));
-        setFieldGroups(groupFields(fieldData));
-
-        // Restore draft for new template
-        if (!isEditMode && editor) {
-          const savedDraft = localStorage.getItem("template_draft_new");
-          if (savedDraft) {
-            editor.commands.setContent(savedDraft);
-          }
-        }
       } catch (err) {
         console.error("Gagal memuat data awal:", err);
-      } finally {
-        if (!isEditMode) setInit(false);
       }
     })();
-  }, [isEditMode, editor]);
 
-  const refreshFields = async () => {
-    try {
-      const fieldData = await fetchFieldDefinitions();
-      setFieldGroups(groupFields(fieldData));
-    } catch (err) {
-      console.error("Gagal me-refresh field:", err);
+    refreshFields();
+  }, [refreshFields]);
+
+  // Restore new template draft after fields are ready, so old {{field_key}}
+  // placeholders can be converted to the latest field mark format.
+  useEffect(() => {
+    if (isEditMode || !editor || !fieldsLoaded || newDraftLoadedRef.current) {
+      return;
     }
-  };
+
+    const savedDraft = localStorage.getItem(draftKey);
+    if (savedDraft) {
+      const preparedContent = prepareContractContentForEditor(
+        savedDraft,
+        fields,
+      );
+      setEditorContentWithoutHistory(editor, preparedContent);
+      setEditorHtml(preparedContent);
+    }
+
+    newDraftLoadedRef.current = true;
+    setInit(false);
+  }, [isEditMode, editor, fieldsLoaded, fields, draftKey]);
 
   // Mouse move/up handlers for resizing
   useEffect(() => {
@@ -493,59 +244,57 @@ export default function TemplateEditorPage() {
 
   // Load existing template in edit mode
   useEffect(() => {
-    if (!isEditMode || !editor) return;
+    if (
+      !isEditMode ||
+      !editor ||
+      !fieldsLoaded ||
+      templateLoadedRef.current
+    ) {
+      return;
+    }
+
     (async () => {
       setInit(true);
       const template = await getTemplate(Number(id));
+      templateLoadedRef.current = true;
       if (template) {
         setName(template.name);
         setCategoryId(template.category_id ?? "");
         setStatus(template.status === "Aktif" ? "Active" : "Inactive");
-        
+        setPaperSize(normalizePaperSize(template.paper_size));
+
         // Load draft if exists, otherwise load from DB
-        const savedDraft = localStorage.getItem(`template_draft_${id}`);
+        const savedDraft = localStorage.getItem(draftKey);
         if (savedDraft) {
-          editor.commands.setContent(savedDraft);
+          const preparedContent = prepareContractContentForEditor(
+            savedDraft,
+            fields,
+          );
+          setEditorContentWithoutHistory(editor, preparedContent);
+          setEditorHtml(preparedContent);
         } else if (template.content) {
-          editor.commands.setContent(template.content);
+          const preparedContent = prepareContractContentForEditor(
+            template.content,
+            fields,
+          );
+          setEditorContentWithoutHistory(editor, preparedContent);
+          setEditorHtml(preparedContent);
         }
       }
       setInit(false);
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEditMode, editor]);
-
-  const insertField = useCallback(
-    (tag: string) => {
-      editor?.chain().focus().insertContent(tag).run();
-    },
-    [editor],
-  );
-
-  const copyTag = useCallback((tag: string) => {
-    navigator.clipboard.writeText(tag).then(() => {
-      setCopiedTag(tag);
-      setTimeout(() => setCopiedTag(null), 1500);
-    });
-  }, []);
+  }, [isEditMode, editor, fieldsLoaded, getTemplate, id, draftKey, fields]);
 
   const handleFileSelect = async (f: File) => {
     setFile(f);
     if (f.name.toLowerCase().endsWith(".docx")) {
       try {
         const arrayBuffer = await f.arrayBuffer();
-        const options = {
-          convertImage: mammoth.images.imgElement((image) => {
-            return image.read("base64").then((imageBuffer) => {
-              return {
-                src: `data:${image.contentType};base64,${imageBuffer}`,
-              };
-            });
-          }),
-        };
-        const result = await mammoth.convertToHtml({ arrayBuffer }, options);
+        const html = await convertDocxToEditorHtml(arrayBuffer);
         if (editor) {
-          editor.commands.setContent(result.value);
+          const preparedContent = prepareContractContentForEditor(html, fields);
+          setEditorContentWithoutHistory(editor, preparedContent);
+          setEditorHtml(preparedContent);
           setActiveTab("visual");
         }
       } catch (err) {
@@ -561,7 +310,11 @@ export default function TemplateEditorPage() {
       setSaveError("Nama template wajib diisi.");
       return;
     }
-    const content = editor?.getHTML() ?? "";
+    if (!categoryId) {
+      setSaveError("Kategori template wajib dipilih.");
+      return;
+    }
+    const content = editorHtml || editor?.getHTML() || "";
     try {
       if (isEditMode) {
         const payload: UpdateTemplatePayload = {
@@ -569,6 +322,7 @@ export default function TemplateEditorPage() {
           name,
           category_id: Number(categoryId),
           is_active: status === "Active",
+          paper_size: paperSize,
           content,
           uploadedFile:
             activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
@@ -579,6 +333,7 @@ export default function TemplateEditorPage() {
           name,
           category_id: Number(categoryId),
           is_active: status === "Active",
+          paper_size: paperSize,
           content,
           uploadedFile:
             activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
@@ -586,11 +341,17 @@ export default function TemplateEditorPage() {
         await createTemplate(payload);
       }
       // Clear draft on success
-      localStorage.removeItem(isEditMode ? `template_draft_${id}` : "template_draft_new");
+      localStorage.removeItem(draftKey);
       navigate("/contracts-templates");
     } catch {
       setSaveError("Gagal menyimpan template. Coba lagi.");
     }
+  };
+
+  const handleConfirmCancel = () => {
+    localStorage.removeItem(draftKey);
+    setShowCancelConfirm(false);
+    navigate("/contracts-templates");
   };
 
   if (initialising) {
@@ -623,7 +384,7 @@ export default function TemplateEditorPage() {
             )}
             <button
               type="button"
-              onClick={() => navigate("/contracts-templates")}
+              onClick={() => setShowCancelConfirm(true)}
               disabled={loading}
               className="px-4 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50">
               Batal
@@ -723,19 +484,19 @@ export default function TemplateEditorPage() {
           <main className="flex-1 flex flex-col overflow-hidden">
             {/* Tab bar */}
             <div className="flex items-center w-full pt-3 border-b bg-card shrink-0">
-              <TabBtn
+              <EditorModeTabButton
                 active={activeTab === "visual"}
                 onClick={() => setActiveTab("visual")}
                 icon={<LayoutTemplate className="h-3.5 w-3.5" />}
                 label="Editor Visual"
               />
-              <TabBtn
+              <EditorModeTabButton
                 active={activeTab === "upload"}
                 onClick={() => setActiveTab("upload")}
                 icon={<Upload className="h-3.5 w-3.5" />}
                 label="Upload Dokumen"
               />
-              <TabBtn
+              <EditorModeTabButton
                 active={activeTab === "preview"}
                 onClick={() => setActiveTab("preview")}
                 icon={<Eye className="h-3.5 w-3.5" />}
@@ -747,69 +508,33 @@ export default function TemplateEditorPage() {
             <div className="flex-1 flex flex-col overflow-hidden bg-background">
               {activeTab === "visual" && (
                 <div className="flex flex-col flex-1 overflow-hidden">
-                  <div className="flex items-center gap-0.5 px-3 py-2 border-b bg-muted/20 flex-wrap shrink-0">
-                    <HistoryButtons editor={editor} />
-                    <ToolbarDivider />
-                    <HeadingButtons editor={editor} />
-                    <ToolbarDivider />
-                    <FormattingButtons editor={editor} />
-                    <ToolbarDivider />
-                    <AlignmentButtons editor={editor} />
-                    <ToolbarDivider />
-                    <BulletDropdown editor={editor} />
-                    <NumberingDropdown editor={editor} />
-                    <ToolbarDivider />
-                    <ToolbarBtn
-                      onClick={() => editor?.chain().focus().setHorizontalRule().run()}
-                      title="Horizontal Rule">
-                      <span className="text-xs font-bold">―</span>
-                    </ToolbarBtn>
-                    <MarginDropdown margin={pageMargin} setMargin={setPageMargin} />
-                    <TableDropdown editor={editor!} />
-                    <HighlightColorPicker editor={editor} />
-                    <TextColorPicker editor={editor} />
-                    <div className="relative ml-1">
-                      <LineSpacingToggle editor={editor} />
-                    </div>
-                    <ToolbarDivider />
-                    <LinkButton editor={editor} />
-                    <ImageUploadButton editor={editor} />
-                    <ToolbarDivider />
-                    <FontSizeSelector editor={editor} />
-                  </div>
-                  <div className="flex-1 overflow-y-auto bg-[#f3f4f6] py-8">
-                    <div 
-                      className="mx-auto bg-white shadow-md border border-gray-200 flex flex-col relative"
-                      style={{
-                        width: '21.5cm',
-                        minHeight: '33cm',
-                        backgroundImage: 'repeating-linear-gradient(transparent, transparent calc(33cm - 1px), #d1d5db calc(33cm - 1px), #d1d5db 33cm)'
-                      }}
-                    >
-                      <div 
-                        className="flex-1"
-                        style={{ 
-                          paddingTop: pageMargin.top, 
-                          paddingBottom: pageMargin.bottom, 
-                          paddingLeft: pageMargin.left, 
-                          paddingRight: pageMargin.right 
-                        }}
-                      >
-                        <EditorContent editor={editor} className="h-full" />
-                      </div>
-                    </div>
-                  </div>
+                  <EditorToolbar
+                    editor={editor}
+                    pageMargin={pageMargin}
+                    setPageMargin={setPageMargin}
+                    paperSize={paperSize}
+                    setPaperSize={setPaperSize}
+                  />
+                  <EditorPaper
+                    editor={editor}
+                    pageMargin={pageMargin}
+                    paperSize={paperSize}
+                  />
                 </div>
               )}
               {activeTab === "upload" && (
-                <UploadTab
+                <TemplateUploadTab
                   file={uploadedFile}
                   onSelect={handleFileSelect}
                   onRemove={() => setFile(null)}
                 />
               )}
               {activeTab === "preview" && (
-                <PreviewTab content={editor?.getHTML() ?? ""} name={name} />
+                <TemplatePreviewTab
+                  content={editorHtml || editor?.getHTML() || ""}
+                  pageMargin={pageMargin}
+                  paperSize={paperSize}
+                />
               )}
             </div>
           </main>
@@ -821,54 +546,27 @@ export default function TemplateEditorPage() {
             onDoubleClick={() => setRightWidth(SIDEBAR_DEFAULT_PX)}
           />
 
-          {/*  RIGHT: Field Template  */}
-          <aside
-            className="shrink-0 border-l bg-card flex flex-col overflow-y-auto"
-            style={{ width: `${rightWidth}px` }}>
-            {/* Fixed header */}
-            <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0 flex items-start justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                  Field Template
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Klik untuk menyalin tag field
-                </p>
-              </div>
+          <TemplateFieldSidebar
+            width={rightWidth}
+            fields={fields}
+            onInsert={(field) =>
+              insertContractField(editor, field, { display: "label" })
+            }
+            onManageFields={() => setShowFieldModal(true)}
+          />
 
-              <div className="ml-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowFieldModal(true)}
-                  className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-md border bg-background hover:bg-muted transition-colors">
-                  <Plus className="h-3.5 w-3.5 text-foreground" />
-                  Kelola Field
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable field list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
-              <HowToUse />
-              <div>
-                {[...fieldGroups.entries()].map(([title, fields]) => (
-                  <FieldGroup
-                    key={title}
-                    title={title}
-                    fields={fields}
-                    onInsert={insertField}
-                    copiedTag={copiedTag}
-                    onCopy={copyTag}
-                  />
-                ))}
-              </div>
-            </div>
-          </aside>
           {/* Field management modal */}
           {showFieldModal && (
             <FieldManageModal
               onClose={() => setShowFieldModal(false)}
               onRefreshFields={refreshFields}
+            />
+          )}
+          {showCancelConfirm && (
+            <UnsavedChangesModal
+              message="Template belum disimpan. Jika tetap keluar, progres edit dan draft lokal akan dihapus."
+              onClose={() => setShowCancelConfirm(false)}
+              onConfirm={handleConfirmCancel}
             />
           )}
         </div>

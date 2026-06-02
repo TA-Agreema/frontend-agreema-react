@@ -40,6 +40,12 @@ export const deleteTemplate = async (id: number): Promise<void> => {
   await api.delete(`${BASE_PATH}/${id}`);
 };
 
+export const downloadTemplatePdf = async (id: number) => {
+  return api.get<Blob>(`${BASE_PATH}/${id}/download`, {
+    responseType: "blob",
+  });
+};
+
 export const toggleTemplateStatus = async (id: number): Promise<Template> => {
   const res = await api.patch<TemplateItemResponse>(
     `${BASE_PATH}/${id}/toggle-status`,

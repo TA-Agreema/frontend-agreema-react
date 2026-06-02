@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
+import type { PaperSize } from "@/lib/editor-paper";
 
 export interface InternalSigner {
   id: number;
@@ -21,6 +22,11 @@ export interface CreateContractPayload {
   category_id?: number | null;
   parent_contract_id?: number | null;
   content?: string | null;
+  paper_size?: PaperSize | null;
+  field_values?: Array<{
+    field_definition_id: number;
+    value?: string | null;
+  }>;
   signers?: Array<{
     type: string;
     name: string;
@@ -95,6 +101,12 @@ export const updateContract = async (
 
 export const deleteContract = async (id: number): Promise<void> => {
   await api.delete(`${BASE_PATH}/${id}`);
+};
+
+export const downloadContractPdf = async (id: number) => {
+  return api.get<Blob>(`/manager/contracts/${id}/download`, {
+    responseType: "blob",
+  });
 };
 
 export const updateContractStatus = async (
