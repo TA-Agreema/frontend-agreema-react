@@ -7,7 +7,7 @@ import {
   // FolderKanban,
   // ScrollText,
   // Bell,
-  Settings,
+  // Settings,
   ClipboardList,
   Archive,
 } from "lucide-react";
@@ -61,20 +61,12 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     icon: FileText,
     roles: ["admin"],
   },
-  {
-    title: "Pengaturan",
-    url: "/settings",
-    icon: Settings,
-    roles: ["admin"],
-  },
-
-  {
-    title: "Daftar Kontrak",
-    url: "/contracts",
-    icon: FileText,
-    roles: ["hrd", "admin", "manager"],
-    exact: true,
-  },
+  // {
+  //   title: "Pengaturan",
+  //   url: "/settings",
+  //   icon: Settings,
+  //   roles: ["admin"],
+  // },
   {
     title: "Template Kontrak",
     url: "/contracts-templates",
@@ -82,10 +74,11 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     roles: ["hrd"],
   },
   {
-    title: "Arsip Kontrak",
-    url: "/contracts/archive",
-    icon: Archive,
-    roles: ["hrd", "admin", "manager"],
+    title: "Daftar Kontrak",
+    url: "/contracts",
+    icon: FileText,
+    roles: ["hrd"],
+    exact: true,
   },
 
   // Role Manager - Approval
@@ -94,6 +87,14 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     url: "/approvals",
     icon: CheckCircle,
     roles: ["manager"],
+  },
+
+  // Role HRD & Manager - Arsip Kontrak
+  {
+    title: "Arsip Kontrak",
+    url: "/contracts/archive",
+    icon: Archive,
+    roles: ["hrd", "manager"],
   },
   // {
   //     title: "Tanda Tangan",

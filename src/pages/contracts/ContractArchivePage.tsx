@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle } from "lucide-react";
+import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle, FileSignature } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
+import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import TerminationDetailModal from "@/components/modal/terminasi/TerminationDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ContractRow, ContractStatus } from "./ContractListPage";
+import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
 const PAGE_SIZE = 4;
@@ -34,10 +35,12 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 
 function TerminationRow({
   termination,
-  onView
+  onView,
+  colSpan,
 }: {
   termination: Termination;
   onView: () => void;
+  colSpan: number;
 }) {
   return (
     <tr className="bg-slate-50/80 border-l-4 border-l-red-400">
@@ -46,7 +49,7 @@ function TerminationRow({
           <FileText className="h-3.5 w-3.5 text-red-600" />
         </div>
       </td>
-      <td colSpan={6} className="px-3 py-3">
+      <td colSpan={colSpan} className="px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -82,11 +85,63 @@ function TerminationRow({
   );
 }
 
+function AddendumRow({
+  addendum,
+  onView,
+  colSpan,
+}: {
+  addendum: Addendum;
+  onView: () => void;
+  colSpan: number;
+}) {
+  return (
+    <tr className="bg-emerald-50/70 border-l-4 border-l-emerald-400">
+      <td className="pl-10 pr-3 py-3 w-8">
+        <div className="p-1.5 rounded-md bg-white border border-emerald-200 inline-flex">
+          <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+        </div>
+      </td>
+      <td colSpan={colSpan} className="px-3 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+              {addendum.addendum_number}
+            </p>
+            <p className="text-sm font-semibold text-foreground">
+              {addendum.title}
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {addendum.description || "Tidak ada deskripsi."}
+            </p>
+            <div className="flex items-center gap-4 pt-1">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3" />
+                Dibuat: {addendum.created_at}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3" />
+                Efektif: {addendum.effective_date}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onView}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Lihat Detail
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function RejectionRow({ notes }: { notes: string }) {
   const raw = notes ?? "";
   const parts = raw.split("||");
   const reason = parts.length >= 2 ? parts[1].trim() : raw.trim();
- 
+
   return (
     <tr className="bg-red-50/60 border-l-4 border-l-red-500">
       <td className="pl-10 pr-3 py-3 w-8">
@@ -114,6 +169,7 @@ export default function ContractArchivePage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
 
   // Filter ONLY terminated contracts
@@ -128,6 +184,8 @@ export default function ContractArchivePage() {
 
   const { roles } = useAuth();
   const isHrd = roles.includes('hrd');
+  const tableColSpan = isHrd ? 8 : 7;
+  const detailColSpan = tableColSpan - 1;
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -207,29 +265,28 @@ export default function ContractArchivePage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading && <tr><td colSpan={7} className="py-16 text-center text-muted-foreground text-sm">Memuat daftar kontrak...</td></tr>}
-              {error && !loading && <tr><td colSpan={7} className="py-16 text-center text-red-600 text-sm">{error}</td></tr>}
+              {loading && <tr><td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">Memuat daftar kontrak...</td></tr>}
+              {error && !loading && <tr><td colSpan={tableColSpan} className="py-16 text-center text-red-600 text-sm">{error}</td></tr>}
               {!loading && !error && paginated.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-muted-foreground text-sm">
+                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
                     {search ? "Tidak ada kontrak yang cocok dengan pencarian" : "Belum ada arsip kontrak"}
                   </td>
                 </tr>
               )}
               {paginated.map((contract: any) => {
                 const isExpanded = expanded.has(contract.id);
-                const hasTerminations = contract.terminations && contract.terminations.length > 0;
+                const addendums = contract.addendums ?? [];
+                const terminations = contract.terminations ?? [];
+                const hasAddendums = addendums.length > 0;
+                const hasTerminations = terminations.length > 0;
                 const isRejected = contract.status === "rejected";
-                console.log("contract.reviews:", contract.reviews);
                 const rejectionNotes = (() => {
                   const reviews = contract.signers?.flatMap((s: any) => s.reviews ?? []) ?? [];
 
-                  console.log("signers:", contract.signers);
-                  console.log("all reviews:", reviews);
-
                   return (reviews.find((r: any) => r.status === "rejected") ?? reviews[reviews.length - 1])?.notes ?? "";
                 })();
-                const isExpandable = hasTerminations || isRejected;
+                const isExpandable = hasAddendums || hasTerminations || isRejected;
 
                 return (
                   <React.Fragment key={`contract-${contract.id}`}>
@@ -246,13 +303,13 @@ export default function ContractArchivePage() {
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-red-100 text-red-700"}`}>
+                          <div className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
                             <p className="font-medium text-foreground leading-tight">{contract.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {isRejected ? "Ditolak" : "Dibatalkan"}
+                              {hasAddendums ? `${addendums.length} addendum` : isRejected ? "Ditolak" : "Dibatalkan"}
                             </p>
                           </div>
                         </div>
@@ -278,10 +335,20 @@ export default function ContractArchivePage() {
                     </tr>
 
                     {/* Dropdown: Termination rows */}
-                    {isExpanded && hasTerminations && contract.terminations.map((termination: Termination) => (
+                    {isExpanded && hasAddendums && addendums.map((addendum: Addendum) => (
+                      <AddendumRow
+                        key={`addendum-${addendum.id}`}
+                        addendum={addendum}
+                        colSpan={detailColSpan}
+                        onView={() => setViewAddendumTarget(addendum)}
+                      />
+                    ))}
+
+                    {isExpanded && hasTerminations && terminations.map((termination: Termination) => (
                       <TerminationRow
                         key={`termination-${termination.id}`}
                         termination={termination}
+                        colSpan={detailColSpan}
                         onView={() => setViewTerminationTarget(termination)}
                       />
                     ))}
@@ -301,6 +368,13 @@ export default function ContractArchivePage() {
         </div>
         {archivedContracts.length > 0 && <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />}
       </div>
+
+      {viewAddendumTarget && (
+        <AddendumDetailModal
+          addendum={viewAddendumTarget}
+          onClose={() => setViewAddendumTarget(null)}
+        />
+      )}
 
       {viewTerminationTarget && (
         <TerminationDetailModal
