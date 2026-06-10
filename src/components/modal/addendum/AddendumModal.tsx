@@ -9,6 +9,7 @@ interface AddendumFormData {
   addendum_number: string;
   description: string;
   document: File | null;
+  effective_date?: string;
 }
 
 const ADDENDUM_EMPTY: AddendumFormData = {
@@ -16,6 +17,7 @@ const ADDENDUM_EMPTY: AddendumFormData = {
   addendum_number: "",
   description: "",
   document: null,
+  effective_date: "",
 };
 
 export default function AddendumModal({
@@ -49,6 +51,7 @@ export default function AddendumModal({
         addendum_number: form.addendum_number.trim(),
         description: form.description.trim() || undefined,
         document: form.document || undefined,
+        effective_date: form.effective_date || undefined,
       });
       onSuccess(contract.id, {
         id: result.id,
@@ -180,25 +183,23 @@ export default function AddendumModal({
             />
           </div>
 
-          {/* Tanggal Efektif — otomatis dari masa berakhir kontrak */}
+          {/* Tanggal Efektif */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-sm font-medium text-foreground" htmlFor="effective-date">
               Tanggal Efektif
             </label>
-            <div className="flex items-center gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground cursor-not-allowed select-none">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-              <span className="flex-1">
-                {contract.end_date
-                  ? contract.end_date
-                  : <span className="italic">Kontrak tidak memiliki tanggal berakhir</span>}
-              </span>
-              <span className="text-xs bg-muted rounded px-1.5 py-0.5 border text-muted-foreground/70">
-                Otomatis
-              </span>
+            <div className="relative flex items-center rounded-md border bg-background focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all">
+              <div className="absolute left-3 pointer-events-none text-muted-foreground/70">
+                <CalendarDays className="h-4 w-4" />
+              </div>
+              <input
+                id="effective-date"
+                type="date"
+                value={form.effective_date}
+                onChange={(e) => set("effective_date", e.target.value)}
+                className="w-full bg-transparent pl-10 pr-3 py-2 text-sm focus:outline-none text-foreground color-scheme-dark"
+              />
             </div>
-            <p className="text-xs text-muted-foreground/60">
-              Tanggal efektif mengikuti masa berakhir kontrak dan tidak dapat diubah.
-            </p>
           </div>
 
           {/* Upload Dokumen */}

@@ -12,6 +12,7 @@ export const createAddendum = async (
     form.append("addendum_number", payload.addendum_number);
     if (payload.description) form.append("description", payload.description);
     if (payload.document) form.append("document", payload.document);
+    if (payload.effective_date) form.append("effective_date", payload.effective_date);
 
     const res = await api.post<{ data: ContractAddendumData }>(
         `${BASE_PATH}/${contractId}/addendums`,

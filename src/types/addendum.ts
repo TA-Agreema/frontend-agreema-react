@@ -3,6 +3,7 @@ export interface AddendumPayload {
     addendum_number: string;
     description?: string;
     document?: File | null;
+    effective_date?: string;
 }
 
 export interface ContractAddendumData {
