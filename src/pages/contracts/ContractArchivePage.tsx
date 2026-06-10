@@ -173,7 +173,7 @@ export default function ContractArchivePage() {
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
 
   // Filter ONLY terminated contracts
-  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected");
+  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected" || c.status === "expired");
 
   const totalPages = Math.max(1, Math.ceil(archivedContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);

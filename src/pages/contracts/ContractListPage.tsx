@@ -400,11 +400,29 @@ export default function ContractListPage() {
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
 
-  const handleTerminationSuccess = useCallback((contractId: number) => {
+  const handleTerminationSuccess = useCallback((contractId: number, terminationData: any) => {
     setContracts((prev) =>
-      prev.map((c) =>
-        c.id === contractId ? { ...c, status: "terminated" } : c
-      )
+      prev.map((c) => {
+        if (c.id === contractId) {
+          const effectiveDateStr = terminationData?.data?.effective_date || terminationData?.effective_date;
+          let isTerminatedNow = true;
+
+          if (effectiveDateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const effectiveDate = new Date(effectiveDateStr);
+            effectiveDate.setHours(0, 0, 0, 0);
+            isTerminatedNow = effectiveDate.getTime() <= today.getTime();
+          }
+
+          return {
+            ...c,
+            status: isTerminatedNow ? "terminated" : c.status,
+            end_date: effectiveDateStr || c.end_date
+          };
+        }
+        return c;
+      })
     );
   }, []);
 
@@ -422,7 +440,7 @@ export default function ContractListPage() {
   }, []);
 
   // Derived
-  const activeContracts = contracts.filter((c) => c.status !== "terminated");
+  const activeContracts = contracts.filter((c) => c.status !== "terminated" && c.status !== "expired");
   const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = activeContracts.slice(
