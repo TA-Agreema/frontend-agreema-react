@@ -10,8 +10,8 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         <StatCard
           title="Kontrak Aktif (Sistem)"
           value={metrics.total_system_active?.toString() || "0"}
@@ -23,30 +23,33 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
           value={metrics.my_contracts?.toString() || "0"}
           icon={FileEdit}
           color="bg-emerald-600"
+          href="/contracts"
         />
         <StatCard
           title="Butuh Aksi (Draft/Revisi)"
           value={metrics.action_needed?.toString() || "0"}
           icon={FileEdit}
           color="bg-rose-500"
+          href="/contracts"
         />
         <StatCard
           title="Menunggu Review Manager"
           value={metrics.waiting_review?.toString() || "0"}
           icon={Clock}
           color="bg-amber-500"
+          href="/contracts"
         />
         <StatCard
           title="Disetujui"
           value={metrics.approved?.toString() || "0"}
           icon={CheckCircle}
           color="bg-purple-600"
+          href="/contracts"
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Chart My Contracts */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm col-span-1">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Kontrak Saya</h3>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -75,8 +78,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
           </div>
         </div>
 
-        {/* Chart System Contracts */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm col-span-1">
+        <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Sistem Keseluruhan</h3>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -105,8 +107,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
           </div>
         </div>
 
-        {/* Logs */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm col-span-1">
+        <div className="rounded-xl border bg-white p-6 shadow-sm grid-cols-1 md:col-span-2 xl:col-span-1">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Aktivitas Terkini Kontrak Saya</h3>
           <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
             <RecentLogsList logs={recent_logs || []} />
@@ -114,7 +115,6 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {/* Expiring Contracts */}
       <div className="rounded-xl border bg-white p-0 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 bg-gray-50/50">
           <h3 className="text-lg font-semibold text-gray-800">Kontrak Saya Akan Kedaluwarsa</h3>

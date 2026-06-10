@@ -9,17 +9,19 @@ export default function ManagerDashboard({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Hero Stats */}
-      <div className="rounded-xl border bg-gradient-to-r from-amber-500 to-orange-500 p-8 shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
-          <h2 className="text-3xl font-bold mb-2">
-            {metrics.waiting_approval} Dokumen
-          </h2>
-          <p className="text-amber-50 font-medium text-lg">
-            Menunggu Persetujuan / Review Anda
-          </p>
+      <Link to="/approvals" className="cursor-pointer rounded-xl border bg-gradient-to-r from-amber-500 to-orange-500 p-8 shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-6">
+        <div >
+          <div>
+            <h2 className="text-3xl font-bold mb-2">
+              {metrics.waiting_approval} Dokumen
+            </h2>
+            <p className="text-amber-50 font-medium text-lg">
+              Menunggu Persetujuan / Review Anda
+            </p>
+          </div>
+          <Clock className="h-16 w-16 text-amber-100 opacity-80" />
         </div>
-        <Clock className="h-16 w-16 text-amber-100 opacity-80" />
-      </div>
+      </Link>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-3">
@@ -34,12 +36,14 @@ export default function ManagerDashboard({ data }: { data: DashboardData }) {
           value={metrics.approved_this_month?.toString() || "0"}
           icon={CheckCircle}
           color="bg-emerald-600"
+          href="/approvals"
         />
         <StatCard
           title="Ditolak Bulan Ini"
           value={metrics.revision_requested_this_month?.toString() || "0"}
           icon={XCircle}
           color="bg-rose-600"
+          href="/approvals"
         />
       </div>
 
