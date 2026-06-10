@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle, FileSignature } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
+import { fetchManagerArchivedContracts } from "@/services/manager.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import TerminationDetailModal from "@/components/modal/terminasi/TerminationDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 const STATUS_CONFIG: Record<ContractStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600 border-gray-200" },
@@ -172,8 +173,15 @@ export default function ContractArchivePage() {
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
 
-  // Filter ONLY terminated contracts
-  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected" || c.status === "expired");
+  const { roles } = useAuth();
+  const isHrd = roles.includes('hrd');
+  const isManager = roles.includes('manager');
+  const tableColSpan = isHrd ? 8 : 7;
+  const detailColSpan = tableColSpan - 1;
+
+  const archivedContracts = contracts.filter(
+    c => c.status === "terminated" || c.status === "rejected" || c.status === "expired"
+  );
 
   const totalPages = Math.max(1, Math.ceil(archivedContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -181,11 +189,6 @@ export default function ContractArchivePage() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
-
-  const { roles } = useAuth();
-  const isHrd = roles.includes('hrd');
-  const tableColSpan = isHrd ? 8 : 7;
-  const detailColSpan = tableColSpan - 1;
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -202,7 +205,10 @@ export default function ContractArchivePage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchContracts(search || undefined, true);
+        // Manager hanya melihat arsip kontrak yang ditanganinya sendiri
+        const data = isManager
+          ? await fetchManagerArchivedContracts(search || undefined)
+          : await fetchContracts(search || undefined, true);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -215,7 +221,7 @@ export default function ContractArchivePage() {
     };
     const t = setTimeout(load, 250);
     return () => { mounted = false; clearTimeout(t); };
-  }, [search]);
+  }, [search, isManager]);
 
   return (
     <div className="space-y-6">

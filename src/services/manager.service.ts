@@ -66,6 +66,15 @@ export const fetchManagerContracts = async (
   return res.data.data;
 };
 
+export const fetchManagerArchivedContracts = async (
+  search?: string,
+): Promise<ContractRow[]> => {
+  const res = await api.get<{ data: ContractRow[] }>(`${BASE_PATH}/archive`, {
+    params: { search },
+  });
+  return res.data.data;
+};
+
 export const fetchManagerContractDetail = async (
   id: number,
 ): Promise<ManagerContractDetail> => {
