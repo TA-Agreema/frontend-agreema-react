@@ -10,11 +10,14 @@ import {
   Eye,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import Pagination from "@/components/Pagination";
 import React from "react";
 import { fetchManagerContracts } from "@/services/manager.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 
+// 1. Ubah jumlah minimal data per halaman menjadi 10
+const PAGEINATED = 10;
 
 export default function ContractReviewListPage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -23,6 +26,7 @@ export default function ContractReviewListPage() {
   const [statusFilter, setStatusFilter] = useState("review"); // Default to pending review
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
+  const [page, setPage] = useState(1);
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -42,6 +46,8 @@ export default function ContractReviewListPage() {
       try {
         const data = await fetchManagerContracts(search, statusFilter);
         setContracts(data);
+        // Reset ke halaman 1 setiap kali filter atau pencarian berubah
+        setPage(1);
       } catch (error) {
         console.error("Failed to load contracts for review", error);
       } finally {
@@ -49,12 +55,16 @@ export default function ContractReviewListPage() {
       }
     };
 
-    // debounce search
     const timer = setTimeout(() => {
       loadContracts();
     }, 300);
     return () => clearTimeout(timer);
   }, [search, statusFilter]);
+
+  const indexOfLastContract = page * PAGEINATED;
+  const indexOfFirstContract = indexOfLastContract - PAGEINATED;
+  const currentContracts = contracts.slice(indexOfFirstContract, indexOfLastContract);
+  const totalPages = Math.ceil(contracts.length / PAGEINATED);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -144,153 +154,163 @@ export default function ContractReviewListPage() {
           </div>
 
           {/* Table Container */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="w-8 px-3 py-4" />
-                  <th className="text-left px-3 py-4 font-medium text-gray-500">Nomor & Judul Kontrak</th>
-                  <th className="text-left px-3 py-4 font-medium text-gray-500">Status</th>
-                  <th className="text-left px-3 py-4 font-medium text-gray-500">Kategori</th>
-                  <th className="text-left px-3 py-4 font-medium text-gray-500">Diajukan Oleh</th>
-                  <th className="text-left px-3 py-4 font-medium text-gray-500">Periode</th>
-                  <th className="text-right px-3 py-4 font-medium text-gray-500 pr-6">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {isLoading ? (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-emerald-500 mx-auto mb-3" />
-                      <p className="text-gray-500">Memuat data kontrak...</p>
-                    </td>
+                    <th className="w-8 px-3 py-4" />
+                    <th className="text-left px-3 py-4 font-medium text-gray-500">Nomor & Judul Kontrak</th>
+                    <th className="text-left px-3 py-4 font-medium text-gray-500">Status</th>
+                    <th className="text-left px-3 py-4 font-medium text-gray-500">Kategori</th>
+                    <th className="text-left px-3 py-4 font-medium text-gray-500">Diajukan Oleh</th>
+                    <th className="text-left px-3 py-4 font-medium text-gray-500">Periode</th>
+                    <th className="text-right px-3 py-4 font-medium text-gray-500 pr-6">Aksi</th>
                   </tr>
-                ) : contracts.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-900 font-medium mb-1">
-                        Tidak ada kontrak
-                      </p>
-                      <p className="text-gray-500 text-sm">
-                        {search
-                          ? "Tidak ada kontrak yang sesuai dengan pencarian Anda."
-                          : "Belum ada kontrak yang perlu ditinjau."}
-                      </p>
-                    </td>
-                  </tr>
-                ) : (
-                  contracts.map((contract) => {
-                    const isExpanded = expanded.has(contract.id);
-                    const hasAddendums = contract.addendums && contract.addendums.length > 0;
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-emerald-500 mx-auto mb-3" />
+                        <p className="text-gray-500">Memuat data kontrak...</p>
+                      </td>
+                    </tr>
+                  ) : contracts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-900 font-medium mb-1">
+                          Tidak ada kontrak
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          {search
+                            ? "Tidak ada kontrak yang sesuai dengan pencarian Anda."
+                            : "Belum ada kontrak yang perlu ditinjau."}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    currentContracts.map((contract) => {
+                      const isExpanded = expanded.has(contract.id);
+                      const hasAddendums = contract.addendums && contract.addendums.length > 0;
 
-                    return (
-                      <React.Fragment key={contract.id}>
-                        <tr className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-3 py-4 pl-4">
-                            {hasAddendums ? (
-                              <button
-                                onClick={() => toggleExpand(contract.id)}
-                                className="p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors"
-                              >
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
-                              </button>
-                            ) : null}
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                                <FileText className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 flex items-center gap-2">
-                                  {contract.title}
+                      return (
+                        <React.Fragment key={contract.id}>
+                          <tr className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-3 py-4 pl-4">
+                              {hasAddendums ? (
+                                <button
+                                  onClick={() => toggleExpand(contract.id)}
+                                  className="p-1 rounded-md hover:bg-gray-200 text-gray-500 transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </button>
+                              ) : null}
+                            </td>
+                            <td className="px-3 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                  <FileText className="h-4 w-4" />
                                 </div>
-                                <div className="text-xs text-gray-500 mt-0.5">
-                                  {contract.contract_number || "Draft Number"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-4">
-                            {getStatusBadge(contract.status)}
-                          </td>
-                          <td className="px-3 py-4">
-                            <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                              {contract.category || "Tanpa Kategori"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-4 text-gray-600">
-                            {contract.created_by}
-                          </td>
-                          <td className="px-3 py-4 text-gray-500 text-xs">
-                            {contract.start_date || "-"}
-                          </td>
-                          <td className="px-3 py-4 text-right pr-6">
-                            <Link
-                              to={`/approvals/${contract.id}`}
-                              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
-                            >
-                              Buka & Tinjau
-                            </Link>
-                          </td>
-                        </tr>
-
-                        {isExpanded &&
-                          contract.addendums.map((addendum) => (
-                            <tr
-                              key={`addendum-${addendum.id}`}
-                              className="bg-gray-50/80 border-l-4 border-l-emerald-400"
-                            >
-                              <td className="pl-10 pr-3 py-3 w-8">
-                                <div className="p-1.5 rounded-md bg-white border border-gray-200 inline-flex">
-                                  <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
-                                </div>
-                              </td>
-                              <td colSpan={6} className="px-3 py-3 pr-6">
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="space-y-0.5 min-w-0">
-                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                                      {addendum.addendum_number}
-                                    </p>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                      {addendum.title}
-                                    </p>
-                                    <p className="text-xs text-gray-500 leading-relaxed">
-                                      {addendum.description}
-                                    </p>
-                                    <div className="flex items-center gap-4 pt-1">
-                                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                                        <CalendarDays className="h-3 w-3" />
-                                        Dibuat: {addendum.created_at}
-                                      </span>
-                                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                                        <CalendarDays className="h-3 w-3" />
-                                        Efektif: {addendum.effective_date}
-                                      </span>
-                                    </div>
+                                <div>
+                                  <div className="font-medium text-gray-900 flex items-center gap-2">
+                                    {contract.title}
                                   </div>
-                                  <button
-                                    onClick={() => setViewAddendumTarget(addendum)}
-                                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-                                  >
-                                    <Eye className="h-3.5 w-3.5" />
-                                    Lihat Detail
-                                  </button>
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {contract.contract_number || "Draft Number"}
+                                  </div>
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                              </div>
+                            </td>
+                            <td className="px-3 py-4">
+                              {getStatusBadge(contract.status)}
+                            </td>
+                            <td className="px-3 py-4">
+                              <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                                {contract.category || "Tanpa Kategori"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-4 text-gray-600">
+                              {contract.created_by}
+                            </td>
+                            <td className="px-3 py-4 text-gray-500 text-xs">
+                              {contract.start_date || "-"}
+                            </td>
+                            <td className="px-3 py-4 text-right pr-6">
+                              <Link
+                                to={`/approvals/${contract.id}`}
+                                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
+                              >
+                                Buka & Tinjau
+                              </Link>
+                            </td>
+                          </tr>
+
+                          {isExpanded &&
+                            contract.addendums.map((addendum) => (
+                              <tr
+                                key={`addendum-${addendum.id}`}
+                                className="bg-gray-50/80 border-l-4 border-l-emerald-400"
+                              >
+                                <td className="pl-10 pr-3 py-3 w-8">
+                                  <div className="p-1.5 rounded-md bg-white border border-gray-200 inline-flex">
+                                    <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+                                  </div>
+                                </td>
+                                <td colSpan={6} className="px-3 py-3 pr-6">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="space-y-0.5 min-w-0">
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                                        {addendum.addendum_number}
+                                      </p>
+                                      <p className="text-sm font-semibold text-gray-900">
+                                        {addendum.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500 leading-relaxed">
+                                        {addendum.description}
+                                      </p>
+                                      <div className="flex items-center gap-4 pt-1">
+                                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                                          <CalendarDays className="h-3 w-3" />
+                                          Dibuat: {addendum.created_at}
+                                        </span>
+                                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                                          <CalendarDays className="h-3 w-3" />
+                                          Efektif: {addendum.effective_date}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => setViewAddendumTarget(addendum)}
+                                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                      Lihat Detail
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {!isLoading && contracts.length > 0 && (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onChange={(newPage: number) => setPage(newPage)}
+              />
+            )}
           </div>
         </div>
       </div>
