@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { X, FileSignature, CalendarDays, Upload, Loader2 } from "lucide-react";
+import { X, FileSignature, Upload, Loader2 } from "lucide-react";
 import { createAddendum } from "@/services/addendum.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface AddendumFormData {
   title: string;
@@ -77,7 +78,14 @@ export default function AddendumModal({
     }
   };
 
-  // Close on Escape
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", handler);
@@ -86,7 +94,6 @@ export default function AddendumModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
@@ -138,18 +145,17 @@ export default function AddendumModal({
             </div>
           )}
 
-          {/* Nomor Addendum */}
+          {/* Nomor*/}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground" htmlFor="add-number">
               Nomor Addendum <span className="text-red-500">*</span>
             </label>
-            <input
+            <Input
               id="add-number"
               type="text"
               placeholder="cth. ADD-001"
               value={form.addendum_number}
               onChange={(e) => set("addendum_number", e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
             />
           </div>
 
@@ -158,17 +164,16 @@ export default function AddendumModal({
             <label className="text-sm font-medium text-foreground" htmlFor="add-title">
               Judul Addendum <span className="text-red-500">*</span>
             </label>
-            <input
+            <Input
               id="add-title"
               type="text"
               placeholder="Perubahan klausul pembayaran"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
             />
           </div>
 
-          {/* Deskripsi */}
+          {/* Deskripsi*/}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground" htmlFor="add-desc">
               Deskripsi
@@ -179,7 +184,7 @@ export default function AddendumModal({
               placeholder="Jelaskan perubahan yang dilakukan..."
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none"
+              className="w-full rounded-md border border-gray-200 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all resize-none"
             />
           </div>
 
@@ -188,16 +193,13 @@ export default function AddendumModal({
             <label className="text-sm font-medium text-foreground" htmlFor="effective-date">
               Tanggal Efektif
             </label>
-            <div className="relative flex items-center rounded-md border bg-background focus-within:ring-2 focus-within:ring-emerald-500/50 focus-within:border-emerald-500 transition-all">
-              <div className="absolute left-3 pointer-events-none text-muted-foreground/70">
-                <CalendarDays className="h-4 w-4" />
-              </div>
-              <input
+            <div className="relative flex items-center">
+              <Input
                 id="effective-date"
                 type="date"
+                min={getTodayString()}
                 value={form.effective_date}
                 onChange={(e) => set("effective_date", e.target.value)}
-                className="w-full bg-transparent pl-10 pr-3 py-2 text-sm focus:outline-none text-foreground color-scheme-dark"
               />
             </div>
           </div>
