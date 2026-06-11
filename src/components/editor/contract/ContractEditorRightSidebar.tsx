@@ -1,7 +1,7 @@
 import type { ContractVersion } from "@/types/contractVersion";
 
 type ContractStatusLog = {
-  id: number | string;
+  id: number;
   old_status: string;
   new_status: string;
   changed_by: string;
@@ -9,7 +9,7 @@ type ContractStatusLog = {
 };
 
 type ContractFeedback = {
-  id: number | string;
+  id: number;
   author?: string;
   role?: string;
   type?: string;
@@ -61,9 +61,8 @@ export function ContractEditorRightSidebar({
                 <div key={log.id} className="flex gap-2">
                   <div className="flex flex-col items-center shrink-0 pt-0.5">
                     <div
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        STATUS_DOT[log.new_status] || "bg-gray-400"
-                      }`}
+                      className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[log.new_status] || "bg-gray-400"
+                        }`}
                     />
                     {index < statusLogs.length - 1 && (
                       <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
@@ -72,10 +71,9 @@ export function ContractEditorRightSidebar({
                   <div className="pb-2 min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
                       <span
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                          STATUS_STYLE[log.new_status] ||
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${STATUS_STYLE[log.new_status] ||
                           "bg-gray-100 text-gray-500"
-                        }`}
+                          }`}
                       >
                         {log.new_status.toUpperCase()}
                       </span>
@@ -169,13 +167,12 @@ export function ContractEditorRightSidebar({
                         </div>
                       </div>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${
-                          feedback.type === "revised" ||
-                          feedback.type === "revision" ||
-                          feedback.type === "rejected"
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${feedback.type === "revised" ||
+                            feedback.type === "revision" ||
+                            feedback.type === "rejected"
                             ? "bg-red-50 text-red-600 border border-red-200"
                             : "bg-gray-100 text-gray-500 border border-gray-200"
-                        }`}
+                          }`}
                       >
                         {feedback.typeLabel}
                       </span>
