@@ -53,6 +53,14 @@ export interface ManagerContractDetail extends ContractRow {
     external_email: string | null;
     user: { name: string; job_title: string | null } | null;
     signatures?: SignatureItem[];
+    reviews?: {
+      reviewed_at: string;
+      id: number;
+      status: string;
+      notes: string | null;
+      created_at: string;
+      user?: { name: string; job_title?: string | null };
+    }[];
   }[];
 }
 
