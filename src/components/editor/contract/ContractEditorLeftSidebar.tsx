@@ -85,13 +85,21 @@ export function ContractEditorLeftSidebar({
     },
     ...(externalContractNumber
       ? [
-          {
-            label: "No. Kontrak Eksternal",
-            value: externalContractNumber,
-          },
-        ]
+        {
+          label: "No. Kontrak Eksternal",
+          value: externalContractNumber,
+        },
+      ]
       : []),
   ];
+
+  const getTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   return (
     <div className="h-full flex flex-col bg-white border-r border-gray-200 overflow-hidden">
@@ -211,6 +219,7 @@ export function ContractEditorLeftSidebar({
           <ContractFormField label="Tanggal Mulai">
             <input
               type="date"
+              min={getTodayString()}
               value={startDate}
               onChange={(event) => onStartDateChange(event.target.value)}
               className={`${inputCls} pr-7 [color-scheme:light] ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
