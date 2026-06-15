@@ -52,17 +52,23 @@ import {
   type PaperSize,
 } from "@/lib/editor-paper";
 import {
-  useTemplates,
-  type CreateTemplatePayload,
-  type UpdateTemplatePayload,
-} from "@/hooks/use-template";
+  appendWatermarkToContent,
+  DEFAULT_WATERMARK_SETTINGS,
+  extractWatermarkFromContent,
+  type WatermarkSettings,
+} from "@/lib/editor-watermark";
+import { createPdfPreviewFilename } from "@/lib/pdf-preview";
+import { useTemplates } from "@/hooks/use-template";
+import { usePdfPreview } from "@/hooks/use-pdf-preview";
 import { fetchCategories } from "@/services/category.service";
 import {
   fetchFieldDefinitions,
   type FieldDefinition,
 } from "@/services/field.service";
+import { downloadTemplatePdf } from "@/services/template.service";
 import FieldManageModal from "@/components/modal/contract/FieldManageModal";
 import UnsavedChangesModal from "@/components/modal/common/UnsavedChangesModal";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import type { Category } from "@/types/category";
 import { Navigate } from "react-router-dom";
 import PermissionGuard from "@/middlewares/PermissionGuard";
@@ -74,6 +80,27 @@ type EditorTab = "visual" | "upload" | "preview";
 const SIDEBAR_DEFAULT_PX = 260;
 const SIDEBAR_MIN_PX = 200;
 const SIDEBAR_MAX_PX = 480;
+
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  const responseData = (
+    error as {
+      response?: {
+        data?: {
+          message?: string;
+          errors?: Record<string, string[]>;
+        };
+      };
+    }
+  )?.response?.data;
+
+  if (responseData?.message) return responseData.message;
+
+  const firstError = responseData?.errors
+    ? Object.values(responseData.errors)[0]?.[0]
+    : null;
+
+  return firstError ?? fallback;
+};
 
 //  Main Page
 
@@ -97,10 +124,15 @@ export default function TemplateEditorPage() {
   const [name, setName] = useState("");
   const [categoryId, setCategoryId] = useState<number | "">("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [allFields, setAllFields] = useState<FieldDefinition[]>([]);
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   const [fieldsLoaded, setFieldsLoaded] = useState(false);
   const [showFieldModal, setShowFieldModal] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [persistedTemplateId, setPersistedTemplateId] = useState<number | null>(
+    id ? Number(id) : null,
+  );
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
   const [activeTab, setActiveTab] = useState<EditorTab>("visual");
   const [uploadedFile, setFile] = useState<File | null>(null);
@@ -111,6 +143,9 @@ export default function TemplateEditorPage() {
     MARGIN_PRESETS[0].value,
   );
   const [paperSize, setPaperSize] = useState<PaperSize>(DEFAULT_PAPER_SIZE);
+  const [watermark, setWatermark] = useState<WatermarkSettings>(
+    DEFAULT_WATERMARK_SETTINGS,
+  );
 
   // TipTap
   const editor = useEditor({
@@ -161,14 +196,22 @@ export default function TemplateEditorPage() {
       const html = editor.getHTML();
       setEditorHtml(html);
       if (html && html !== "<p></p>") {
-        localStorage.setItem(draftKey, html);
+        localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
       }
     },
   });
 
+  useEffect(() => {
+    const html = editorHtml || editor?.getHTML() || "";
+    if (html && html !== "<p></p>") {
+      localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
+    }
+  }, [draftKey, editor, editorHtml, watermark]);
+
   const refreshFields = useCallback(async () => {
     try {
       const fieldData = await fetchFieldDefinitions();
+      setAllFields(fieldData);
       setFields(fieldData.filter((field: FieldDefinition) => field.is_active));
     } catch (err) {
       console.error("Gagal me-refresh field:", err);
@@ -200,9 +243,11 @@ export default function TemplateEditorPage() {
 
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
+      const extracted = extractWatermarkFromContent(savedDraft);
+      setWatermark(extracted.watermark);
       const preparedContent = prepareContractContentForEditor(
-        savedDraft,
-        fields,
+        extracted.content,
+        allFields,
       );
       setEditorContentWithoutHistory(editor, preparedContent);
       setEditorHtml(preparedContent);
@@ -210,7 +255,7 @@ export default function TemplateEditorPage() {
 
     newDraftLoadedRef.current = true;
     setInit(false);
-  }, [isEditMode, editor, fieldsLoaded, fields, draftKey]);
+  }, [isEditMode, editor, fieldsLoaded, allFields, draftKey]);
 
   // Mouse move/up handlers for resizing
   useEffect(() => {
@@ -266,16 +311,20 @@ export default function TemplateEditorPage() {
         // Load draft if exists, otherwise load from DB
         const savedDraft = localStorage.getItem(draftKey);
         if (savedDraft) {
+          const extracted = extractWatermarkFromContent(savedDraft);
+          setWatermark(extracted.watermark);
           const preparedContent = prepareContractContentForEditor(
-            savedDraft,
-            fields,
+            extracted.content,
+            allFields,
           );
           setEditorContentWithoutHistory(editor, preparedContent);
           setEditorHtml(preparedContent);
         } else if (template.content) {
+          const extracted = extractWatermarkFromContent(template.content);
+          setWatermark(extracted.watermark);
           const preparedContent = prepareContractContentForEditor(
-            template.content,
-            fields,
+            extracted.content,
+            allFields,
           );
           setEditorContentWithoutHistory(editor, preparedContent);
           setEditorHtml(preparedContent);
@@ -283,68 +332,161 @@ export default function TemplateEditorPage() {
       }
       setInit(false);
     })();
-  }, [isEditMode, editor, fieldsLoaded, getTemplate, id, draftKey, fields]);
+  }, [isEditMode, editor, fieldsLoaded, getTemplate, id, draftKey, allFields]);
 
   const handleFileSelect = async (f: File) => {
+    if (!f.name.toLowerCase().endsWith(".docx")) {
+      setUploadNotice("Hanya file .docx yang dapat diimpor ke editor.");
+      return;
+    }
+
     setFile(f);
-    if (f.name.toLowerCase().endsWith(".docx")) {
-      try {
-        const arrayBuffer = await f.arrayBuffer();
-        const html = await convertDocxToEditorHtml(arrayBuffer);
-        if (editor) {
-          const preparedContent = prepareContractContentForEditor(html, fields);
-          setEditorContentWithoutHistory(editor, preparedContent);
-          setEditorHtml(preparedContent);
-          setActiveTab("visual");
-        }
-      } catch (err) {
-        console.error("Gagal parse DOCX:", err);
-        alert("Gagal mengonversi dokumen DOCX ke HTML.");
+    try {
+      const arrayBuffer = await f.arrayBuffer();
+      const html = await convertDocxToEditorHtml(arrayBuffer);
+      if (editor) {
+        const preparedContent = prepareContractContentForEditor(
+          html,
+          allFields,
+        );
+        setWatermark(DEFAULT_WATERMARK_SETTINGS);
+        setEditorContentWithoutHistory(editor, preparedContent);
+        setEditorHtml(preparedContent);
+        setActiveTab("visual");
       }
+    } catch (err) {
+      console.error("Gagal parse DOCX:", err);
+      setUploadNotice("Gagal mengonversi dokumen DOCX ke HTML.");
+    }
+  };
+
+  const getEditorContentWithWatermark = () =>
+    appendWatermarkToContent(editorHtml || editor?.getHTML() || "", watermark);
+
+  const getPreviewCategoryId = () =>
+    categoryId ? Number(categoryId) : categories[0]?.id;
+
+  const buildTemplatePayload = (
+    overrides?: Partial<{
+      name: string;
+      category_id: number;
+    }>,
+  ) => ({
+    name: overrides?.name ?? name,
+    category_id: overrides?.category_id ?? Number(categoryId),
+    is_active: status === "Active",
+    paper_size: paperSize,
+    content: getEditorContentWithWatermark(),
+    uploadedFile:
+      activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
+  });
+
+  const createPdfPreviewSignature = () =>
+    JSON.stringify({
+      name,
+      category_id: Number(categoryId),
+      is_active: status === "Active",
+      paper_size: paperSize,
+      content: getEditorContentWithWatermark(),
+      uploaded_file:
+        activeTab === "upload" && uploadedFile
+          ? {
+              name: uploadedFile.name,
+              size: uploadedFile.size,
+              lastModified: uploadedFile.lastModified,
+            }
+          : null,
+    });
+
+  const persistTemplate = async (options?: { forPreview?: boolean }) => {
+    setSaveError(null);
+    const isPreview = options?.forPreview ?? false;
+    const previewCategoryId = getPreviewCategoryId();
+    const payloadOverrides = isPreview
+      ? {
+          name: name.trim() || "Preview Template Kontrak",
+          category_id: previewCategoryId,
+        }
+      : undefined;
+
+    if (!isPreview && !name.trim()) {
+      setSaveError("Nama template wajib diisi.");
+      return undefined;
+    }
+    if (!isPreview && !categoryId) {
+      setSaveError("Kategori template wajib dipilih.");
+      return undefined;
+    }
+    if (isPreview && !previewCategoryId) {
+      throw new Error(
+        "Kategori template belum tersedia untuk membuat preview PDF.",
+      );
+    }
+
+    try {
+      const templateId = persistedTemplateId ?? (id ? Number(id) : null);
+      if (templateId) {
+        const updated = await updateTemplate({
+          ...buildTemplatePayload(payloadOverrides),
+          id: templateId,
+        });
+        setPersistedTemplateId(updated.id);
+        localStorage.removeItem(draftKey);
+        return updated;
+      } else {
+        const created = await createTemplate(buildTemplatePayload(payloadOverrides));
+        setPersistedTemplateId(created.id);
+        localStorage.removeItem(draftKey);
+        return created;
+      }
+    } catch (error) {
+      setSaveError(getApiErrorMessage(error, "Gagal menyimpan template. Coba lagi."));
+      return undefined;
     }
   };
 
   const handleSave = async () => {
-    setSaveError(null);
-    if (!name.trim()) {
-      setSaveError("Nama template wajib diisi.");
-      return;
-    }
-    if (!categoryId) {
-      setSaveError("Kategori template wajib dipilih.");
-      return;
-    }
-    const content = editorHtml || editor?.getHTML() || "";
-    try {
-      if (isEditMode) {
-        const payload: UpdateTemplatePayload = {
-          id: Number(id),
-          name,
-          category_id: Number(categoryId),
-          is_active: status === "Active",
-          paper_size: paperSize,
-          content,
-          uploadedFile:
-            activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
-        };
-        await updateTemplate(payload);
-      } else {
-        const payload: CreateTemplatePayload = {
-          name,
-          category_id: Number(categoryId),
-          is_active: status === "Active",
-          paper_size: paperSize,
-          content,
-          uploadedFile:
-            activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
-        };
-        await createTemplate(payload);
-      }
-      // Clear draft on success
-      localStorage.removeItem(draftKey);
+    const savedTemplate = await persistTemplate();
+    if (savedTemplate) {
       navigate("/contracts-templates");
-    } catch {
-      setSaveError("Gagal menyimpan template. Coba lagi.");
+    }
+  };
+
+  const {
+    previewUrl: pdfPreviewUrl,
+    previewFilename: pdfPreviewFilename,
+    previewError: pdfPreviewError,
+    isPreparingPreview: isPreparingPdfPreview,
+    preparePreview: handleSaveAndPreviewPdf,
+  } = usePdfPreview({
+    cacheKey: "template-pdf-preview",
+    createSignature: createPdfPreviewSignature,
+    generatePdf: async () => {
+      const savedTemplate = await persistTemplate({ forPreview: true });
+      if (!savedTemplate) return;
+
+      const response = await downloadTemplatePdf(savedTemplate.id);
+      return {
+        blob: response.data,
+        filename: createPdfPreviewFilename(
+          savedTemplate.name || name,
+          "template-kontrak",
+        ),
+      };
+    },
+    getErrorMessage: (error) =>
+      getApiErrorMessage(
+        error,
+        error instanceof Error
+          ? error.message
+          : "Gagal membuat preview PDF template.",
+      ),
+  });
+
+  const handleOpenPreviewTab = () => {
+    setActiveTab("preview");
+    if (!isPreparingPdfPreview) {
+      void handleSaveAndPreviewPdf();
     }
   };
 
@@ -498,7 +640,7 @@ export default function TemplateEditorPage() {
               />
               <EditorModeTabButton
                 active={activeTab === "preview"}
-                onClick={() => setActiveTab("preview")}
+                onClick={handleOpenPreviewTab}
                 icon={<Eye className="h-3.5 w-3.5" />}
                 label="Preview"
               />
@@ -514,11 +656,14 @@ export default function TemplateEditorPage() {
                     setPageMargin={setPageMargin}
                     paperSize={paperSize}
                     setPaperSize={setPaperSize}
+                    watermark={watermark}
+                    setWatermark={setWatermark}
                   />
                   <EditorPaper
                     editor={editor}
                     pageMargin={pageMargin}
                     paperSize={paperSize}
+                    watermark={watermark}
                   />
                 </div>
               )}
@@ -531,9 +676,10 @@ export default function TemplateEditorPage() {
               )}
               {activeTab === "preview" && (
                 <TemplatePreviewTab
-                  content={editorHtml || editor?.getHTML() || ""}
-                  pageMargin={pageMargin}
-                  paperSize={paperSize}
+                  pdfPreviewUrl={pdfPreviewUrl}
+                  pdfPreviewFilename={pdfPreviewFilename}
+                  pdfPreviewError={pdfPreviewError}
+                  isPreparingPdfPreview={isPreparingPdfPreview}
                 />
               )}
             </div>
@@ -567,6 +713,18 @@ export default function TemplateEditorPage() {
               message="Template belum disimpan. Jika tetap keluar, progres edit dan draft lokal akan dihapus."
               onClose={() => setShowCancelConfirm(false)}
               onConfirm={handleConfirmCancel}
+            />
+          )}
+          {uploadNotice && (
+            <ConfirmModal
+              title="Upload Dokumen Gagal"
+              message={uploadNotice}
+              icon={AlertCircle}
+              tone="warning"
+              confirmLabel="Mengerti"
+              cancelLabel="Tutup"
+              onClose={() => setUploadNotice(null)}
+              onConfirm={() => setUploadNotice(null)}
             />
           )}
         </div>

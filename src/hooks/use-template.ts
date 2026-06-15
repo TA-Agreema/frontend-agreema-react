@@ -37,8 +37,8 @@ interface UseTemplatesReturn {
   templates: Template[];
   loading: boolean;
   error: string | null;
-  createTemplate: (payload: CreateTemplatePayload) => Promise<void>;
-  updateTemplate: (payload: UpdateTemplatePayload) => Promise<void>;
+  createTemplate: (payload: CreateTemplatePayload) => Promise<Template>;
+  updateTemplate: (payload: UpdateTemplatePayload) => Promise<Template>;
   deleteTemplate: (id: number) => Promise<void>;
   getTemplate: (id: number) => Promise<Template | undefined>;
   toggleTemplateStatus: (id: number) => Promise<void>;
@@ -99,8 +99,9 @@ export function useTemplates(): UseTemplatesReturn {
           category_id: payload.category_id,
           is_active: payload.is_active ?? true,
         };
-        await apiCreateTemplate(apiPayload);
+        const created = await apiCreateTemplate(apiPayload);
         await fetchAll();
+        return created;
       } finally {
         setLoading(false);
       }
@@ -121,8 +122,9 @@ export function useTemplates(): UseTemplatesReturn {
           category_id: payload.category_id,
           is_active: payload.is_active,
         };
-        await apiUpdateTemplate(payload.id, apiPayload);
+        const updated = await apiUpdateTemplate(payload.id, apiPayload);
         await fetchAll();
+        return updated;
       } finally {
         setLoading(false);
       }

@@ -1,13 +1,14 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
 import { Eye, LayoutTemplate } from "lucide-react";
 import { EditorModeTabButton } from "@/components/editor/EditorModeTabs";
 import { EditorPaper } from "@/components/editor/EditorPaper";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
-import { PaginatedPreview } from "@/components/editor/PaginatedPreview";
+import { PdfPreviewTab } from "@/components/editor/PdfPreviewTab";
 import type { MarginStyle } from "@/components/editor/MarginDropdown";
 import type { FieldDefinition } from "@/components/editor/FieldInserter";
 import type { PaperSize } from "@/lib/editor-paper";
+import type { WatermarkSettings } from "@/lib/editor-watermark";
 
 type ContractEditorTab = "visual" | "preview";
 
@@ -21,40 +22,15 @@ type ContractEditorWorkspaceProps = {
   fields: FieldDefinition[];
   onAddField: () => void;
   onDropText: (text: string) => void;
+  watermark: WatermarkSettings;
+  setWatermark: (watermark: WatermarkSettings) => void;
+  pdfPreviewUrl: string | null;
+  pdfPreviewFilename: string;
+  pdfPreviewError: string | null;
+  isPreparingPdfPreview: boolean;
+  onSaveAndPreviewPdf: () => Promise<void>;
   childrenAfterEditor?: ReactNode;
 };
-
-function ContractPreviewTab({
-  content,
-  pageMargin,
-  paperSize,
-}: {
-  content: string;
-  pageMargin: MarginStyle;
-  paperSize: PaperSize;
-}) {
-  const isEmpty =
-    !content || content === "<p></p>" || content === "<p><br></p>";
-
-  if (isEmpty) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <div className="text-center space-y-2">
-          <Eye className="h-8 w-8 mx-auto opacity-30" />
-          <p className="text-sm">Belum ada konten untuk di-preview</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <PaginatedPreview
-      content={content}
-      pageMargin={pageMargin}
-      paperSize={paperSize}
-    />
-  );
-}
 
 export function ContractEditorWorkspace({
   editor,
@@ -66,28 +42,23 @@ export function ContractEditorWorkspace({
   fields,
   onAddField,
   onDropText,
+  watermark,
+  setWatermark,
+  pdfPreviewUrl,
+  pdfPreviewFilename,
+  pdfPreviewError,
+  isPreparingPdfPreview,
+  onSaveAndPreviewPdf,
   childrenAfterEditor,
 }: ContractEditorWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<ContractEditorTab>("visual");
-  const [previewHtml, setPreviewHtml] = useState(editor?.getHTML() ?? "");
 
-  useEffect(() => {
-    if (!editor) return;
-
-    const syncPreview = () => setPreviewHtml(editor.getHTML());
-    syncPreview();
-
-    editor.on("update", syncPreview);
-    return () => {
-      editor.off("update", syncPreview);
-    };
-  }, [editor]);
-
-  useEffect(() => {
-    if (activeTab === "preview") {
-      setPreviewHtml(editor?.getHTML() ?? "");
+  const handleOpenPreviewTab = () => {
+    setActiveTab("preview");
+    if (!isPreparingPdfPreview) {
+      void onSaveAndPreviewPdf();
     }
-  }, [activeTab, editor]);
+  };
 
   return (
     <div className="h-full flex flex-col bg-white overflow-hidden">
@@ -100,7 +71,7 @@ export function ContractEditorWorkspace({
         />
         <EditorModeTabButton
           active={activeTab === "preview"}
-          onClick={() => setActiveTab("preview")}
+          onClick={handleOpenPreviewTab}
           icon={<Eye className="h-3.5 w-3.5" />}
           label="Preview"
         />
@@ -118,6 +89,8 @@ export function ContractEditorWorkspace({
               disabled={disabled}
               fields={fields}
               onAddField={onAddField}
+              watermark={watermark}
+              setWatermark={setWatermark}
               className="flex items-center gap-0.5 px-3 py-2 border-b border-gray-200 bg-white flex-wrap shrink-0"
             />
             <EditorPaper
@@ -125,16 +98,20 @@ export function ContractEditorWorkspace({
               pageMargin={pageMargin}
               paperSize={paperSize}
               onDropText={onDropText}
+              watermark={watermark}
               childrenAfterEditor={childrenAfterEditor}
             />
           </div>
         )}
 
         {activeTab === "preview" && (
-          <ContractPreviewTab
-            content={previewHtml}
-            pageMargin={pageMargin}
-            paperSize={paperSize}
+          <PdfPreviewTab
+            title="Preview PDF Kontrak"
+            previewUrl={pdfPreviewUrl}
+            filename={pdfPreviewFilename}
+            error={pdfPreviewError}
+            isPreparing={isPreparingPdfPreview}
+            loadingDescription="Sistem sedang menyimpan draft dan membuat preview dari renderer PDF backend."
           />
         )}
       </div>
