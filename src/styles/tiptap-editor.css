@@ -74,6 +74,17 @@
   max-width: 100%;
 }
 
+.ProseMirror .ProseMirror-selectednode img,
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid #10b981;
+  outline-offset: 3px;
+}
+
+.ProseMirror [containerstyle],
+.tiptap-preview [containerstyle] {
+  max-width: 100%;
+}
+
 .tiptap-preview [data-preview-image-wrapper] {
   max-width: 100%;
 }

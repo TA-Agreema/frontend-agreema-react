@@ -2,6 +2,7 @@ import React from "react";
 import { useEditor } from "@tiptap/react";
 import { ImageIcon } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";
+import { insertEditorImage } from "@/lib/editor-image-layout";
 
 export function ImageUploadButton({
   editor,
@@ -23,11 +24,7 @@ export function ImageUploadButton({
         const reader = new FileReader();
         reader.onload = (ev) => {
           if (ev.target?.result) {
-            editor
-              .chain()
-              .focus()
-              .setImage({ src: ev.target.result as string })
-              .run();
+            insertEditorImage(editor, ev.target.result as string);
           }
         };
         reader.readAsDataURL(file);

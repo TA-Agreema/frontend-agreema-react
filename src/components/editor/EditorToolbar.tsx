@@ -21,10 +21,13 @@ import {
 import { LineSpacingToggle } from "@/components/editor/LineSpacingToggle";
 import { LinkButton } from "@/components/editor/LinkButton";
 import { ImageUploadButton } from "@/components/editor/ImageUploadButton";
+import { ImageLayoutControls } from "@/components/editor/ImageLayoutControls";
+import { WatermarkButton } from "@/components/editor/WatermarkButton";
 import { FontFamilySelector } from "@/components/editor/FontFamilySelector";
 import { FontSizeSelector } from "@/components/editor/FontSizeSelector";
 import { PaperSizeDropdown } from "@/components/editor/PaperSizeDropdown";
 import type { PaperSize } from "@/lib/editor-paper";
+import type { WatermarkSettings } from "@/lib/editor-watermark";
 
 type EditorToolbarProps = {
   editor: Editor | null;
@@ -35,6 +38,8 @@ type EditorToolbarProps = {
   disabled?: boolean;
   fields?: FieldDefinition[];
   onAddField?: () => void;
+  watermark?: WatermarkSettings;
+  setWatermark?: (watermark: WatermarkSettings) => void;
   className?: string;
 };
 
@@ -47,6 +52,8 @@ export function EditorToolbar({
   disabled = false,
   fields,
   onAddField,
+  watermark,
+  setWatermark,
   className = "flex items-center gap-0.5 px-3 py-2 border-b bg-muted/20 flex-wrap shrink-0",
 }: EditorToolbarProps) {
   return (
@@ -89,6 +96,14 @@ export function EditorToolbar({
       <ToolbarDivider />
       <LinkButton editor={editor} disabled={disabled} />
       <ImageUploadButton editor={editor} disabled={disabled} />
+      <ImageLayoutControls editor={editor} disabled={disabled} />
+      {watermark && setWatermark && (
+        <WatermarkButton
+          watermark={watermark}
+          setWatermark={setWatermark}
+          disabled={disabled}
+        />
+      )}
       <ToolbarDivider />
       <FontFamilySelector editor={editor} disabled={disabled} />
       <FontSizeSelector editor={editor} disabled={disabled} />
