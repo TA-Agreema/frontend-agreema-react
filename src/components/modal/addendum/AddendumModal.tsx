@@ -237,7 +237,7 @@ export default function AddendumModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2 border-t">
+          <div className="flex items-center justify-between gap-3 pt-2 border-t">
             <Button
               type="button"
               onClick={onClose}

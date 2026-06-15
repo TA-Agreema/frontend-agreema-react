@@ -131,7 +131,7 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                     </form>
                 </div>
 
-                <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
+                <div className="p-4 border-t bg-gray-50 flex items-center justify-between gap-3">
                     <Button type="button" onClick={onClose} disabled={loading} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Batal</Button>
                     <Button type="submit" form="terminationForm" disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
                         {loading ? "Memproses..." : "Terminasi Kontrak"}

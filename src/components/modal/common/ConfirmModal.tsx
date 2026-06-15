@@ -79,7 +79,7 @@ export default function ConfirmModal({
             {message}
           </div>
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex items-center justify-between gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
