@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, GripVertical, Plus } from "lucide-react";
 import type { Category } from "@/types/category";
 import type { TemplateOption } from "@/components/modal/template/TemplateSelectModal";
 import {
@@ -78,19 +78,38 @@ export function ContractEditorLeftSidebar({
   onRemoveSigner,
   onAddSignerClick,
 }: ContractEditorLeftSidebarProps) {
+  const formatDate = (value: string) => {
+    if (!value) return "";
+    const [year, month, day] = value.split("-");
+    if (!year || !month || !day) return value;
+    return `${day}/${month}/${year}`;
+  };
+
   const draggableChips = [
     {
-      label: "No. Kontrak Internal",
+      label: "Judul Kontrak",
+      value: title,
+    },
+    {
+      label: "Nomor Kontrak Internal",
       value: contractNumber,
     },
-    ...(externalContractNumber
-      ? [
-          {
-            label: "No. Kontrak Eksternal",
-            value: externalContractNumber,
-          },
-        ]
-      : []),
+    {
+      label: "Nomor Kontrak Eksternal",
+      value: externalContractNumber,
+    },
+    {
+      label: "Tanggal Mulai",
+      value: formatDate(startDate),
+    },
+    {
+      label: "Tanggal Selesai",
+      value: formatDate(endDate),
+    },
+    {
+      label: "Mitra",
+      value: selectedPartnerName,
+    },
   ];
 
   return (
@@ -121,17 +140,20 @@ export function ContractEditorLeftSidebar({
             {draggableChips.map((chip) => (
               <div
                 key={chip.label}
-                draggable={!disabled}
+                draggable={!disabled && Boolean(chip.value)}
                 onDragStart={(event) => {
-                  if (disabled) return;
+                  if (disabled || !chip.value) return;
                   event.dataTransfer.setData("text/plain", chip.value);
+                  event.dataTransfer.effectAllowed = "copy";
                 }}
                 title={
                   disabled
                     ? "Tidak dapat diseret karena kontrak sedang ditinjau"
+                    : !chip.value
+                      ? "Isi data terlebih dahulu sebelum diseret"
                     : `Seret untuk menyisipkan ${chip.label}`
                 }
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border text-xs transition-all select-none group ${disabled ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-60" : "border-emerald-200 cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm"}`}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white border text-xs transition-all select-none group ${disabled || !chip.value ? "border-gray-200 text-gray-300 cursor-not-allowed opacity-60" : "border-emerald-200 cursor-grab active:cursor-grabbing hover:border-emerald-400 hover:shadow-sm"}`}
               >
                 <span className="text-emerald-700 font-medium shrink-0">
                   {chip.label}
@@ -139,19 +161,7 @@ export function ContractEditorLeftSidebar({
                 <span className="text-gray-500 truncate flex-1 text-right text-[10px] font-mono bg-gray-50 px-1 rounded">
                   {chip.value || "-"}
                 </span>
-                <svg
-                  className="h-3 w-3 text-gray-300 group-hover:text-emerald-400 shrink-0"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 8h16M4 16h16"
-                  />
-                </svg>
+                <GripVertical className="h-3.5 w-3.5 text-gray-300 group-hover:text-emerald-400 shrink-0" />
               </div>
             ))}
           </div>

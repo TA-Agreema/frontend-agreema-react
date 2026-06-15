@@ -143,7 +143,7 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 
 function AddendumRow({
   addendum,
-  onView
+  onView,
 }: {
   addendum: Addendum;
   onView: () => void;
@@ -183,8 +183,7 @@ function AddendumRow({
           </div>
           <button
             onClick={onView}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-          >
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors">
             <Eye className="h-3.5 w-3.5" />
             Lihat Detail
           </button>
@@ -232,7 +231,7 @@ function RowMenu({
   const canDelete = contract.status === "draft";
 
   const { roles } = useAuth();
-  const isHrd = roles.includes('hrd');
+  const isHrd = roles.includes("hrd");
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -367,7 +366,6 @@ function RowMenu({
             <Download className="h-4 w-4 text-muted-foreground opacity-70" />
             Download PDF
           </button>
-
         </div>
       )}
     </div>
@@ -379,14 +377,20 @@ export default function ContractListPage() {
   const navigate = useNavigate();
   const { hasPermission, hasAnyPermission } = usePermissions();
 
-  const canCreateContract = hasPermission('create.contract');
-  const canEdit = hasPermission('update.contract');
-  const canManageAddendum = hasAnyPermission(['create.addendum', 'create.contract_addendum']);
-  const canManageTermination = hasAnyPermission(['create.terminate', 'terminate.contract']);
-  const canDeleteRow = hasPermission('delete.contract');
+  const canCreateContract = hasPermission("create.contract");
+  const canEdit = hasPermission("update.contract");
+  const canManageAddendum = hasAnyPermission([
+    "create.addendum",
+    "create.contract_addendum",
+  ]);
+  const canManageTermination = hasAnyPermission([
+    "create.terminate",
+    "terminate.contract",
+  ]);
+  const canDeleteRow = hasPermission("delete.contract");
 
   const { roles } = useAuth();
-  const isManager = roles.includes('manager');
+  const isManager = roles.includes("manager");
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -396,30 +400,39 @@ export default function ContractListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
-  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
-  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
-  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
+  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(
+    null,
+  );
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(
+    null,
+  );
+  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(
+    null,
+  );
 
   const handleTerminationSuccess = useCallback((contractId: number) => {
     setContracts((prev) =>
       prev.map((c) =>
-        c.id === contractId ? { ...c, status: "terminated" } : c
-      )
+        c.id === contractId ? { ...c, status: "terminated" } : c,
+      ),
     );
   }, []);
 
   // Insert new addendum into local state so UI updates instantly
-  const handleAddendumSuccess = useCallback((contractId: number, newAddendum: Addendum) => {
-    setContracts((prev) =>
-      prev.map((c) =>
-        c.id === contractId
-          ? { ...c, addendums: [newAddendum, ...c.addendums] }
-          : c,
-      ),
-    );
-    // Auto-expand that contract row to show the new addendum
-    setExpanded((prev) => new Set(prev).add(contractId));
-  }, []);
+  const handleAddendumSuccess = useCallback(
+    (contractId: number, newAddendum: Addendum) => {
+      setContracts((prev) =>
+        prev.map((c) =>
+          c.id === contractId
+            ? { ...c, addendums: [newAddendum, ...c.addendums] }
+            : c,
+        ),
+      );
+      // Auto-expand that contract row to show the new addendum
+      setExpanded((prev) => new Set(prev).add(contractId));
+    },
+    [],
+  );
 
   // Derived
   const activeContracts = contracts.filter((c) => c.status !== "terminated");
@@ -463,7 +476,7 @@ export default function ContractListPage() {
       const response = await downloadContractPdf(contract.id);
       downloadBlobResponse(
         response,
-        `${contract.contract_number || contract.title || "kontrak"}.pdf`,
+        `${contract.title || contract.contract_number || "kontrak"}.pdf`,
       );
     } catch (err) {
       console.error("Gagal mengunduh PDF kontrak:", err);
@@ -537,7 +550,7 @@ export default function ContractListPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate('/contracts/archive')}
+              onClick={() => navigate("/contracts/archive")}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700">
               <Archive className="h-4 w-4" />
               Arsip
@@ -625,10 +638,11 @@ export default function ContractListPage() {
                     <tr
                       key={`contract-${contract.id}`}
                       onClick={() => hasAddendums && toggleExpand(contract.id)}
-                      className={`transition-colors ${hasAddendums
-                        ? "cursor-pointer hover:bg-muted/40"
-                        : "hover:bg-muted/20"
-                        } ${isExpanded ? "bg-muted/30" : ""}`}>
+                      className={`transition-colors ${
+                        hasAddendums
+                          ? "cursor-pointer hover:bg-muted/40"
+                          : "hover:bg-muted/20"
+                      } ${isExpanded ? "bg-muted/30" : ""}`}>
                       {/* Expand icon */}
                       <td className="w-10 px-3 py-4">
                         {hasAddendums ? (

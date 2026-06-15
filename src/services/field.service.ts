@@ -15,6 +15,12 @@ export interface FieldDefinitionResponse {
   data: FieldDefinition[];
 }
 
+export interface FieldDeleteResponse {
+  message: string;
+  action?: "deleted" | "deactivated";
+  data?: FieldDefinition;
+}
+
 export const fetchFieldDefinitions = async (): Promise<FieldDefinition[]> => {
   const res = await api.get<FieldDefinitionResponse>("/field-definitions");
   return res.data.data;
@@ -38,6 +44,9 @@ export const updateFieldDefinition = async (
   return res.data.data;
 };
 
-export const deleteFieldDefinition = async (id: number): Promise<void> => {
-  await api.delete(`/field-definitions/${id}`);
+export const deleteFieldDefinition = async (
+  id: number,
+): Promise<FieldDeleteResponse> => {
+  const res = await api.delete<FieldDeleteResponse>(`/field-definitions/${id}`);
+  return res.data;
 };

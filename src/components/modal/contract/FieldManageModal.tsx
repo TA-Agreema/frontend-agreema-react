@@ -21,6 +21,7 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [fields, setFields] = useState<FieldDefinition[]>([]);
   const [fieldToDelete, setFieldToDelete] = useState<FieldDefinition | null>(
     null,
@@ -78,6 +79,7 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setSuccess(null);
     try {
       if (editingField) {
         await updateFieldDefinition(editingField.id, formData);
@@ -98,13 +100,16 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
     if (!fieldToDelete) return;
 
     setDeleting(true);
+    setError(null);
+    setSuccess(null);
     try {
-      await deleteFieldDefinition(fieldToDelete.id);
+      const response = await deleteFieldDefinition(fieldToDelete.id);
       await loadFields();
       onRefreshFields();
+      setSuccess(response.message);
       setFieldToDelete(null);
-    } catch (err) {
-      setError("Gagal menghapus field.");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Gagal menghapus field.");
     } finally {
       setDeleting(false);
     }
@@ -162,6 +167,13 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
             </div>
           )}
 
+          {success && (
+            <div className="m-4 p-3 bg-emerald-50 border border-emerald-100 rounded-lg flex items-start gap-2.5 text-emerald-700 text-xs">
+              <Check className="h-4 w-4 shrink-0 mt-0.5" />
+              <p>{success}</p>
+            </div>
+          )}
+
           {view === "list" ? (
             <div className="p-4 space-y-2">
               {loading ? (
@@ -181,7 +193,14 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
                 fields.map((field) => (
                   <div key={field.id} className="bg-white border border-gray-100 rounded-lg p-3 flex items-center justify-between group hover:border-emerald-200 transition-colors">
                     <div className="overflow-hidden">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{field.field_label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{field.field_label}</p>
+                        {!field.is_active && (
+                          <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
+                            Nonaktif
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-gray-400 font-mono truncate">{`{{${field.field_key}}}`}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">

@@ -189,6 +189,7 @@ export default function ContractTemplatePage() {
   const canEdit = permissions.includes("update.template");
   const canDelete = permissions.includes("delete.template");
   const canCreate = permissions.includes("create.template");
+  const canManageTemplate = canCreate || canEdit || canDelete;
 
   const {
     templates,
@@ -205,7 +206,11 @@ export default function ContractTemplatePage() {
   );
   const [deleting, setDeleting] = useState(false);
 
-  const filtered = templates.filter(
+  const visibleTemplates = canManageTemplate
+    ? templates
+    : templates.filter((template) => template.is_active);
+
+  const filtered = visibleTemplates.filter(
     (t) =>
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.category.toLowerCase().includes(search.toLowerCase()),
