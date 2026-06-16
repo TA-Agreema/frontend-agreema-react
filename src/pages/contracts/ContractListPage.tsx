@@ -208,6 +208,7 @@ function RowMenu({
   canManageAddendum,
   canManageTermination,
   canDeleteRow,
+  canDownloadContract,
   onView,
   onEdit,
   onAddendum,
@@ -220,6 +221,7 @@ function RowMenu({
   canManageAddendum: boolean;
   canManageTermination: boolean;
   canDeleteRow: boolean;
+  canDownloadContract: boolean;
   onView: () => void;
   onEdit: () => void;
   onAddendum: () => void;
@@ -366,16 +368,18 @@ function RowMenu({
             </button>
           )}
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownloadPdf();
-              setOpen(false);
-            }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
-            <Download className="h-4 w-4 text-muted-foreground opacity-70" />
-            Download PDF
-          </button>
+          {canDownloadContract && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadPdf();
+                setOpen(false);
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+              <Download className="h-4 w-4 text-muted-foreground opacity-70" />
+              Download PDF
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -398,6 +402,7 @@ export default function ContractListPage() {
     "terminate.contract",
   ]);
   const canDeleteRow = hasPermission("delete.contract");
+  const canDownloadContract = hasPermission("download.contract");
 
   const { roles } = useAuth();
   const isManager = roles.includes("manager");
@@ -856,6 +861,7 @@ export default function ContractListPage() {
                           canManageAddendum={canManageAddendum}
                           canManageTermination={canManageTermination}
                           canDeleteRow={canDeleteRow}
+                          canDownloadContract={canDownloadContract}
                           onView={() => {
                             if (isManager) {
                               navigate(`/approvals/${contract.id}`);

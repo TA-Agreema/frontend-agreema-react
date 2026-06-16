@@ -36,7 +36,10 @@ import {
 import { FontSize } from "@/lib/tiptap-font-size";
 import { FontFamily } from "@/lib/tiptap-font-family";
 import { LineHeight } from "@/lib/tiptap-line-height";
-import { ContractField, insertContractField } from "@/lib/tiptap-contract-field";
+import {
+  ContractField,
+  insertContractField,
+} from "@/lib/tiptap-contract-field";
 import { prepareContractContentForEditor } from "@/lib/contract-field-values";
 import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
 import { convertDocxToEditorHtml } from "@/lib/mammoth-docx-converter";
@@ -57,6 +60,11 @@ import {
   extractWatermarkFromContent,
   type WatermarkSettings,
 } from "@/lib/editor-watermark";
+import {
+  appendMarginsToContent,
+  extractMarginsFromContent,
+  DEFAULT_MARGINS,
+} from "@/lib/editor-margins";
 import { createPdfPreviewFilename } from "@/lib/pdf-preview";
 import { useTemplates } from "@/hooks/use-template";
 import { usePdfPreview } from "@/hooks/use-pdf-preview";
@@ -196,7 +204,13 @@ export default function TemplateEditorPage() {
       const html = editor.getHTML();
       setEditorHtml(html);
       if (html && html !== "<p></p>") {
-        localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
+        localStorage.setItem(
+          draftKey,
+          appendMarginsToContent(
+            appendWatermarkToContent(html, watermark),
+            pageMargin,
+          ),
+        );
       }
     },
   });
@@ -204,9 +218,15 @@ export default function TemplateEditorPage() {
   useEffect(() => {
     const html = editorHtml || editor?.getHTML() || "";
     if (html && html !== "<p></p>") {
-      localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
+      localStorage.setItem(
+        draftKey,
+        appendMarginsToContent(
+          appendWatermarkToContent(html, watermark),
+          pageMargin,
+        ),
+      );
     }
-  }, [draftKey, editor, editorHtml, watermark]);
+  }, [draftKey, editor, editorHtml, watermark, pageMargin]);
 
   const refreshFields = useCallback(async () => {
     try {
@@ -243,10 +263,12 @@ export default function TemplateEditorPage() {
 
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
-      const extracted = extractWatermarkFromContent(savedDraft);
-      setWatermark(extracted.watermark);
+      const extracted = extractMarginsFromContent(savedDraft);
+      const watermarkExtracted = extractWatermarkFromContent(extracted.content);
+      setWatermark(watermarkExtracted.watermark);
+      setPageMargin(extracted.margins || DEFAULT_MARGINS);
       const preparedContent = prepareContractContentForEditor(
-        extracted.content,
+        watermarkExtracted.content,
         allFields,
       );
       setEditorContentWithoutHistory(editor, preparedContent);
@@ -289,12 +311,7 @@ export default function TemplateEditorPage() {
 
   // Load existing template in edit mode
   useEffect(() => {
-    if (
-      !isEditMode ||
-      !editor ||
-      !fieldsLoaded ||
-      templateLoadedRef.current
-    ) {
+    if (!isEditMode || !editor || !fieldsLoaded || templateLoadedRef.current) {
       return;
     }
 
@@ -311,8 +328,12 @@ export default function TemplateEditorPage() {
         // Load draft if exists, otherwise load from DB
         const savedDraft = localStorage.getItem(draftKey);
         if (savedDraft) {
-          const extracted = extractWatermarkFromContent(savedDraft);
+          const extractedMargins = extractMarginsFromContent(savedDraft);
+          const extracted = extractWatermarkFromContent(
+            extractedMargins.content,
+          );
           setWatermark(extracted.watermark);
+          setPageMargin(extractedMargins.margins || DEFAULT_MARGINS);
           const preparedContent = prepareContractContentForEditor(
             extracted.content,
             allFields,
@@ -320,8 +341,12 @@ export default function TemplateEditorPage() {
           setEditorContentWithoutHistory(editor, preparedContent);
           setEditorHtml(preparedContent);
         } else if (template.content) {
-          const extracted = extractWatermarkFromContent(template.content);
+          const extractedMargins = extractMarginsFromContent(template.content);
+          const extracted = extractWatermarkFromContent(
+            extractedMargins.content,
+          );
           setWatermark(extracted.watermark);
+          setPageMargin(extractedMargins.margins || DEFAULT_MARGINS);
           const preparedContent = prepareContractContentForEditor(
             extracted.content,
             allFields,
@@ -376,7 +401,11 @@ export default function TemplateEditorPage() {
     category_id: overrides?.category_id ?? Number(categoryId),
     is_active: status === "Active",
     paper_size: paperSize,
-    content: getEditorContentWithWatermark(),
+    // include margins metadata so backend can pick up page margins when rendering PDF
+    content: appendMarginsToContent(
+      getEditorContentWithWatermark(),
+      pageMargin,
+    ),
     uploadedFile:
       activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
   });
@@ -387,7 +416,10 @@ export default function TemplateEditorPage() {
       category_id: Number(categoryId),
       is_active: status === "Active",
       paper_size: paperSize,
-      content: getEditorContentWithWatermark(),
+      content: appendMarginsToContent(
+        getEditorContentWithWatermark(),
+        pageMargin,
+      ),
       uploaded_file:
         activeTab === "upload" && uploadedFile
           ? {
@@ -404,7 +436,7 @@ export default function TemplateEditorPage() {
     const previewCategoryId = getPreviewCategoryId();
     const payloadOverrides = isPreview
       ? {
-          name: name.trim() || "Preview Template Kontrak",
+          name: name.trim() || `Preview Template Kontrak `,
           category_id: previewCategoryId,
         }
       : undefined;
@@ -413,7 +445,7 @@ export default function TemplateEditorPage() {
       setSaveError("Nama template wajib diisi.");
       return undefined;
     }
-    if (!isPreview && !categoryId) {
+  if (!isPreview && !categoryId) {
       setSaveError("Kategori template wajib dipilih.");
       return undefined;
     }
@@ -434,13 +466,17 @@ export default function TemplateEditorPage() {
         localStorage.removeItem(draftKey);
         return updated;
       } else {
-        const created = await createTemplate(buildTemplatePayload(payloadOverrides));
+        const created = await createTemplate(
+          buildTemplatePayload(payloadOverrides),
+        );
         setPersistedTemplateId(created.id);
         localStorage.removeItem(draftKey);
         return created;
       }
     } catch (error) {
-      setSaveError(getApiErrorMessage(error, "Gagal menyimpan template. Coba lagi."));
+      setSaveError(
+        getApiErrorMessage(error, "Gagal menyimpan template. Coba lagi."),
+      );
       return undefined;
     }
   };
@@ -466,12 +502,10 @@ export default function TemplateEditorPage() {
       if (!savedTemplate) return;
 
       const response = await downloadTemplatePdf(savedTemplate.id);
+      const displayFilename = name.trim() ? name : "template-kontrak";
       return {
         blob: response.data,
-        filename: createPdfPreviewFilename(
-          savedTemplate.name || name,
-          "template-kontrak",
-        ),
+        filename: createPdfPreviewFilename(displayFilename, "template-kontrak"),
       };
     },
     getErrorMessage: (error) =>

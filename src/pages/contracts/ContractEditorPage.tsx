@@ -47,6 +47,11 @@ import {
   extractWatermarkFromContent,
   type WatermarkSettings,
 } from "@/lib/editor-watermark";
+import {
+  appendMarginsToContent,
+  extractMarginsFromContent,
+  DEFAULT_MARGINS,
+} from "@/lib/editor-margins";
 
 import { ResizeHandle } from "@/components/editor/ResizeHandle";
 import {
@@ -434,7 +439,13 @@ export default function ContractEditorPage() {
       const html = editor.getHTML();
       setHasUnsavedChanges(true);
       if (html && html !== "<p></p>") {
-        localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
+        localStorage.setItem(
+          draftKey,
+          appendMarginsToContent(
+            appendWatermarkToContent(html, watermark),
+            pageMargin,
+          ),
+        );
       }
     },
   });
@@ -442,9 +453,16 @@ export default function ContractEditorPage() {
   useEffect(() => {
     const html = editor?.getHTML() || "";
     if (html && html !== "<p></p>") {
-      localStorage.setItem(draftKey, appendWatermarkToContent(html, watermark));
+      localStorage.setItem(
+        draftKey,
+        appendMarginsToContent(
+          appendWatermarkToContent(html, watermark),
+          pageMargin,
+        ),
+      );
     }
-  }, [draftKey, editor, watermark]);
+  }, [draftKey, editor, watermark, pageMargin]);
+  // include pageMargin so localStorage draft reflects current margins
 
   // Load edit data
   useEffect(() => {
@@ -485,15 +503,23 @@ export default function ContractEditorPage() {
         const savedDraft = localStorage.getItem(draftKey);
 
         if (savedDraft) {
-          const extracted = extractWatermarkFromContent(savedDraft);
+          const extractedMargins = extractMarginsFromContent(savedDraft);
+          const extracted = extractWatermarkFromContent(
+            extractedMargins.content,
+          );
           setWatermark(extracted.watermark);
+          setPageMargin(extractedMargins.margins || DEFAULT_MARGINS);
           setEditorContentWithoutHistory(
             editor,
             prepareContractContentForEditor(extracted.content, allFields),
           );
         } else if (c.content) {
-          const extracted = extractWatermarkFromContent(c.content);
+          const extractedMargins = extractMarginsFromContent(c.content);
+          const extracted = extractWatermarkFromContent(
+            extractedMargins.content,
+          );
           setWatermark(extracted.watermark);
+          setPageMargin(extractedMargins.margins || DEFAULT_MARGINS);
           setEditorContentWithoutHistory(
             editor,
             prepareContractContentForEditor(extracted.content, allFields),
@@ -594,8 +620,11 @@ export default function ContractEditorPage() {
     if (appliedTemplateRef.current === templateKey) return;
 
     appliedTemplateRef.current = templateKey;
-    const extractedTemplateContent = extractWatermarkFromContent(
+    const extractedTemplateMargins = extractMarginsFromContent(
       selectedTemplate.content,
+    );
+    const extractedTemplateContent = extractWatermarkFromContent(
+      extractedTemplateMargins.content,
     );
     setEditorContentWithoutHistory(
       editor,
@@ -605,6 +634,7 @@ export default function ContractEditorPage() {
       ),
     );
     setWatermark(extractedTemplateContent.watermark);
+    setPageMargin(extractedTemplateMargins.margins || DEFAULT_MARGINS);
     setPaperSize(normalizePaperSize(selectedTemplate.paper_size));
     if (!isEdit) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -616,12 +646,14 @@ export default function ContractEditorPage() {
     (t: TemplateOption) => {
       setSelectedTemplate(t);
       setShowTemplateModal(false);
-      const extracted = extractWatermarkFromContent(t.content);
+      const extractedMargins = extractMarginsFromContent(t.content);
+      const extracted = extractWatermarkFromContent(extractedMargins.content);
       setEditorContentWithoutHistory(
         editor,
         prepareContractContentForEditor(extracted.content, allFields),
       );
       setWatermark(extracted.watermark);
+      setPageMargin(extractedMargins.margins || DEFAULT_MARGINS);
       setPaperSize(normalizePaperSize(t.paper_size));
       if (!title || title === "Kontrak Sewa Vendor") setTitle(t.name);
       setHasUnsavedChanges(true);
@@ -660,7 +692,12 @@ export default function ContractEditorPage() {
     overrides?: Partial<{ title: string }>,
   ) => {
     const rawContent = editor?.getHTML() ?? "";
-    const content = appendWatermarkToContent(rawContent, watermark);
+    // append watermark marker then margins marker so backend can extract both
+    const contentWithWatermark = appendWatermarkToContent(
+      rawContent,
+      watermark,
+    );
+    const content = appendMarginsToContent(contentWithWatermark, pageMargin);
     return {
       contract_number: contractNumber.trim() || undefined,
       external_contract_number: externalContractNumber.trim() || null,
@@ -680,7 +717,13 @@ export default function ContractEditorPage() {
   };
 
   const createPdfPreviewSignature = () =>
-    JSON.stringify(buildPayload(currentStatus));
+    JSON.stringify({
+      ...buildPayload(currentStatus),
+      content: appendMarginsToContent(
+        appendWatermarkToContent(editor?.getHTML() ?? "", watermark),
+        pageMargin,
+      ),
+    });
 
   const persistDraft = async (options?: {
     forPreview?: boolean;
@@ -869,7 +912,7 @@ export default function ContractEditorPage() {
         <div className="flex items-center justify-between px-5 h-10 bg-white border-b border-gray-200 shrink-0 z-10">
           <div className="flex items-center gap-2">
             {selectedTemplate && (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md truncate max-w-[260px]">
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md truncate max-w-65">
                 {selectedTemplate.name}
               </span>
             )}
@@ -896,7 +939,20 @@ export default function ContractEditorPage() {
                     Simpan Draft
                   </button>
                   <button
-                    onClick={() => setShowSubmitConfirm(true)}
+                    onClick={() => {
+                      if (!title.trim()) {
+                        setSaveError("Judul kontrak wajib diisi.");
+                        return;
+                      }
+                      if (!hasRequiredSubmitSigners()) {
+                        setSaveError(
+                          "Pengajuan membutuhkan minimal satu penandatangan internal dan satu penandatangan eksternal.",
+                        );
+                        return;
+                      }
+                      setSaveError(null);
+                      setShowSubmitConfirm(true);
+                    }}
                     disabled={isSaving || isStrictlyReadOnly}
                     className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
                     {isSaving ? (
@@ -1078,9 +1134,6 @@ export default function ContractEditorPage() {
             navigate("/contracts", {
               state: { submittedId: (submitted as ContractRow).id },
             });
-          } else {
-            // fallback: still navigate to list
-            navigate("/contracts");
           }
         }}
       />

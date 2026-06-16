@@ -42,6 +42,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   "create.template": "Membuat Template",
   "update.template": "Update Template",
   "delete.template": "Hapus Template",
+  "download.template": "Download Template",
 };
 
 /**
