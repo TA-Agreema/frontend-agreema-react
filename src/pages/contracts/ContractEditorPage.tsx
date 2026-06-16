@@ -81,6 +81,10 @@ import { fetchFieldDefinitions } from "@/services/field.service";
 import type { Category } from "@/types/category";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 
+// Notifikasi
+import { toast } from "sonner";
+import { useNotifications } from "@/hooks/use-notifications";
+
 //  Types
 
 type SignerType = "internal" | "external";
@@ -136,6 +140,7 @@ const STATUS_STYLE: Record<string, string> = {
   review: "bg-amber-50 text-amber-700 border border-amber-200",
   active: "bg-emerald-50 text-emerald-700 border border-emerald-200",
   revision: "bg-orange-50 text-orange-700 border border-orange-200",
+  terminated: "bg-red-50 text-red-600 border border-red-200",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -143,6 +148,7 @@ const STATUS_DOT: Record<string, string> = {
   review: "bg-amber-400",
   active: "bg-emerald-500",
   revision: "bg-orange-400",
+  terminated: "bg-red-500",
 };
 
 // common input class used by sidebar fields
@@ -387,6 +393,7 @@ const SIDEBAR_MAX_PX = 480;
 export default function ContractEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { fetch: refetchNotifications } = useNotifications();
   const isEdit = !!id;
   const location = useLocation();
   const isViewRoute = location.pathname.endsWith("/view");
@@ -833,9 +840,24 @@ export default function ContractEditorPage() {
       setIsReadOnlyAfterSubmit(true);
       const draftKey = id ? `contract_draft_${id}` : "contract_draft_new";
       localStorage.removeItem(draftKey);
+
+      // Toast sukses
+      toast.success("Kontrak berhasil diajukan!", {
+        description: "Permintaan peninjauan kontrak telah dikirim ke peninjau pihak pertama.",
+        duration: 5000,
+      });
+
+      // Refresh notifikasi bell
+      await refetchNotifications();
+
       return res as ContractRow;
     } catch {
       setSaveError("Gagal mengajukan kontrak. Coba lagi.");
+
+      // Toast error
+      toast.error("Gagal mengajukan kontrak.", {
+        description: "Silakan coba lagi.",
+      });
     } finally {
       setIsSaving(false);
     }

@@ -45,14 +45,7 @@ export interface ManagerContractDetail extends ContractRow {
     changed_by: string;
     created_at: string;
   }[];
-  signers?: {
-    id: number;
-    signer_type: "internal" | "external";
-    signer_name: string | null;
-    signer_role: string | null;
-    external_email: string | null;
-    user: { name: string; job_title: string | null } | null;
-  }[];
+  signers?: Signer[];
 }
 
 export const fetchManagerContracts = async (

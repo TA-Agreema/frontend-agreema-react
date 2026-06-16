@@ -15,6 +15,7 @@ import TableHeader from "@tiptap/extension-table-header";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
 import mammoth from "mammoth";
+import { toast } from "sonner";
 import {
   Upload,
   Eye,
@@ -574,6 +575,9 @@ export default function TemplateEditorPage() {
             activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
         };
         await updateTemplate(payload);
+        toast.success("Template diperbarui", {
+          description: `"${name}" berhasil diperbarui.`,
+        });
       } else {
         const payload: CreateTemplatePayload = {
           name,
@@ -584,12 +588,18 @@ export default function TemplateEditorPage() {
             activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
         };
         await createTemplate(payload);
+        toast.success("Template dibuat", {
+          description: `${name} berhasil dibuat.`,
+        });
       }
       // Clear draft on success
       localStorage.removeItem(isEditMode ? `template_draft_${id}` : "template_draft_new");
       navigate("/contracts-templates");
     } catch {
       setSaveError("Gagal menyimpan template. Coba lagi.");
+      toast.error("Gagal menyimpan template", {
+        description: "Silakan coba lagi.",
+      });
     }
   };
 

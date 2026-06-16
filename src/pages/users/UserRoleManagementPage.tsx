@@ -40,6 +40,8 @@ import RoleFormDialog from "./RolesFormDialog";
 import DeleteModal from "@/components/modal/DeleteModal";
 import Pagination from "@/components/Pagination";
 
+import { toast } from "sonner";
+
 //  Schemas 
 
 const userFormSchema = z.object({
@@ -277,9 +279,12 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
       await deleteUser(deleteModal.userId);
       await loadData();
       setDeleteModal({ open: false, userId: null, userName: "" });
+      toast.success("User dihapus", {
+        description: `${deleteModal.userName} berhasil dihapus.`,
+      });
     } catch (e) {
       console.error(e);
-      alert("Gagal menghapus user");
+      toast.error("Gagal menghapus user");
     } finally {
       setIsDeleting(false);
     }
@@ -295,9 +300,12 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
           department: data.department,
           is_active: data.is_active,
         });
+        toast.success("User diperbarui", {
+          description: `${data.name} berhasil diperbarui.`,
+        });
       } else {
         if (!data.password) {
-          alert("Password wajib diisi");
+          toast.error("Password wajib diisi");
           return;
         }
         await createUser({
@@ -309,13 +317,18 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
           is_active: data.is_active,
           roles: selectedRoles,
         });
+        toast.success("User dibuat", {
+          description: `${data.name} berhasil ditambahkan.`,
+        });
       }
       await loadData();
       setIsDialogOpen(false);
       form.reset();
     } catch (e) {
       console.error(e);
-      alert("Gagal menyimpan user");
+      toast.success("User dibuat", {
+        description: `${data.name} berhasil ditambahkan.`,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -550,7 +563,7 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
       setIsDialogOpen(true);
     } catch (e) {
       console.error(e);
-      alert("Gagal mengambil detail role");
+      toast.error("Gagal mengambil detail role");
     }
   };
 
@@ -565,9 +578,12 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
       await deleteRole(deleteModal.roleId);
       await loadData();
       setDeleteModal({ open: false, roleId: null, roleName: "" });
+      toast.success("Role dihapus", {
+        description: `Role "${deleteModal.roleName}" berhasil dihapus.`,
+      });
     } catch (e) {
       console.error(e);
-      alert("Gagal menghapus role");
+      toast.error("Gagal menghapus role");
     } finally {
       setIsDeleting(false);
     }
@@ -582,11 +598,17 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
           description: data.description,
           permissions: selectedPermissions,
         });
+        toast.success("Role diperbarui", {
+          description: `Role "${data.name}" berhasil diperbarui.`,
+        });
       } else {
         await createRole({
           name: data.name,
           description: data.description,
           permissions: selectedPermissions,
+        });
+        toast.success("Role dibuat", {
+          description: `Role "${data.name}" berhasil dibuat.`,
         });
       }
       await loadData();
@@ -594,7 +616,9 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
       form.reset();
     } catch (e) {
       console.error(e);
-      alert("Gagal menyimpan role");
+      toast.error("Gagal menyimpan role", {
+        description: "Silakan coba lagi.",
+      });
     } finally {
       setIsSubmitting(false);
     }

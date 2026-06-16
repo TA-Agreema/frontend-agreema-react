@@ -4,6 +4,7 @@ import { createTermination } from "@/services/termination.service";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 import type { Termination } from "@/types/termination";
 import { isAxiosError } from "axios";
+import { toast } from "sonner";
 
 interface Props {
     contract: ContractRow;
@@ -35,6 +36,11 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                 document: file || undefined,
             });
             onSuccess(contract.id, result);
+
+            toast.success("Terminasi Berhasil Diajukan!", {
+                description: `${contract.title} akan dihentikan pada ${formData.effective_date}.`,
+                duration: 5000,
+            });
             onClose();
         } catch (err: unknown) {
             if (isAxiosError(err) && err.response?.data?.message) {

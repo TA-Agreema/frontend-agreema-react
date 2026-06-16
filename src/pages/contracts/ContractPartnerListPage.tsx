@@ -14,7 +14,6 @@ import {
   CalendarDays,
   Eye,
   Archive,
-  RefreshCw,
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
@@ -24,7 +23,7 @@ import TemplateSelectModal, {
   type TemplateOption,
 } from "@/components/modal/TemplateSelectModal";
 import {
-  fetchContracts,
+  fetchPartnerContracts,
   createContract,
   deleteContract,
 } from "@/services/contract.service";
@@ -43,7 +42,6 @@ export type ContractStatus =
   | "signed"
   | "rejected"
   | "expired"
-  | "terminating"
   | "terminated";
 
 export interface Addendum {
@@ -132,17 +130,17 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.className}`}
-    >
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.className}`}>
       {cfg.label}
     </span>
   );
 }
 
-//  AddendumRow
+//  Addendum sub-row
+
 function AddendumRow({
   addendum,
-  onView,
+  onView
 }: {
   addendum: Addendum;
   onView: () => void;
@@ -193,51 +191,6 @@ function AddendumRow({
   );
 }
 
-// TerminationRow
-function TerminationRow({ termination }: { termination: any }) {
-  const reasonLabels: Record<string, string> = {
-    mutual_agreement: "Kesepakatan Bersama",
-    breach_of_contract: "Pelanggaran Kontrak",
-    force_majeure: "Force Majeure",
-    expiration: "Berakhirnya Masa Kontrak",
-    other: "Lainnya",
-  };
-
-  return (
-    <tr className="bg-red-50/60 border-l-4 border-l-orange-400">
-      <td className="pl-10 pr-3 py-3 w-8">
-        <div className="p-1.5 rounded-md bg-white border border-orange-200 inline-flex">
-          <XCircle className="h-3.5 w-3.5 text-orange-500" />
-        </div>
-      </td>
-      <td colSpan={6} className="px-3 py-3">
-        <div className="space-y-0.5">
-          <p className="text-xs font-semibold text-orange-500 uppercase tracking-wide">
-            {termination.termination_number}
-          </p>
-          <p className="text-sm font-semibold text-foreground">
-            {termination.title}
-          </p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {reasonLabels[termination.termination_reason] ??
-              termination.termination_reason}
-          </p>
-          <div className="flex items-center gap-4 pt-1">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <CalendarDays className="h-3 w-3" />
-              Dibuat: {termination.created_at}
-            </span>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <CalendarDays className="h-3 w-3" />
-              Efektif: {termination.effective_date}
-            </span>
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
 //  Row Action Dropdown
 function RowMenu({
   contract,
@@ -274,7 +227,7 @@ function RowMenu({
   const canDelete = contract.status === "draft";
 
   const { roles } = useAuth();
-  const isHrd = roles.includes("hrd");
+  const isHrd = roles.includes('hrd');
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -324,8 +277,7 @@ function RowMenu({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-      >
+        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
         <MoreVertical className="h-4 w-4" />
       </button>
 
@@ -336,16 +288,14 @@ function RowMenu({
             absolute right-0 w-48 rounded-lg border bg-card shadow-xl
             z-50 overflow-hidden py-1
             ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}
-          `}
-        >
+          `}>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onView();
               setOpen(false);
             }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-          >
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
             <Eye className="h-4 w-4 text-muted-foreground opacity-70" />
             Lihat Detail
           </button>
@@ -357,8 +307,7 @@ function RowMenu({
                 onEdit();
                 setOpen(false);
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
               <Pencil className="h-4 w-4 text-muted-foreground opacity-70" />
               Edit
             </button>
@@ -371,8 +320,7 @@ function RowMenu({
                 onAddendum();
                 setOpen(false);
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
               <FileText className="h-4 w-4 text-muted-foreground opacity-70" />
               Ajukan Addendum
             </button>
@@ -385,8 +333,7 @@ function RowMenu({
                 onTerminate();
                 setOpen(false);
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
               <XCircle className="h-4 w-4 opacity-70" />
               Ajukan Pembatalan
             </button>
@@ -399,12 +346,13 @@ function RowMenu({
                 onDelete();
                 setOpen(false);
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
               <Trash2 className="h-4 w-4 opacity-70" />
               Hapus
             </button>
           )}
+
+
         </div>
       )}
     </div>
@@ -416,14 +364,14 @@ export default function ContractListPage() {
   const navigate = useNavigate();
   const { hasPermission } = usePermissions();
 
-  const canCreateContract = hasPermission("create.contract");
-  const canEdit = hasPermission("update.contract");
-  const canManageAddendum = hasPermission("create.addendum");
-  const canManageTermination = hasPermission("create.terminate");
-  const canDeleteRow = hasPermission("delete.contract");
+  const canCreateContract = hasPermission('create.contract');
+  const canEdit = hasPermission('update.contract');
+  const canManageAddendum = hasPermission('create.addendum');
+  const canManageTermination = hasPermission('create.terminate');
+  const canDeleteRow = hasPermission('delete.contract');
 
   const { roles } = useAuth();
-  const isManager = roles.includes("manager");
+  const isManager = roles.includes('manager');
 
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -433,40 +381,30 @@ export default function ContractListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
-  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(
-    null,
-  );
-  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(
-    null,
-  );
-  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(
-    null,
-  );
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
+  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
 
   const handleTerminationSuccess = useCallback((contractId: number) => {
     setContracts((prev) =>
       prev.map((c) =>
-        c.id === contractId ? { ...c, status: "terminated" } : c,
-      ),
+        c.id === contractId ? { ...c, status: "terminated" } : c
+      )
     );
   }, []);
 
   // Insert new addendum into local state so UI updates instantly
-  const handleAddendumSuccess = useCallback(
-    (contractId: number, newAddendum: Addendum) => {
-      setContracts((prev) =>
-        prev.map((c) =>
-          c.id === contractId
-            ? { ...c, addendums: [newAddendum, ...c.addendums] }
-            : c,
-        ),
-      );
-      // Auto-expand that contract row to show the new addendum
-      setExpanded((prev) => new Set(prev).add(contractId));
-    },
-    [],
-  );
+  const handleAddendumSuccess = useCallback((contractId: number, newAddendum: Addendum) => {
+    setContracts((prev) =>
+      prev.map((c) =>
+        c.id === contractId
+          ? { ...c, addendums: [newAddendum, ...c.addendums] }
+          : c,
+      ),
+    );
+    // Auto-expand that contract row to show the new addendum
+    setExpanded((prev) => new Set(prev).add(contractId));
+  }, []);
 
   // Derived
   const activeContracts = contracts.filter((c) => c.status !== "terminated");
@@ -513,7 +451,7 @@ export default function ContractListPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchContracts(search || undefined);
+        const data = await fetchPartnerContracts(search || undefined);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -539,7 +477,7 @@ export default function ContractListPage() {
       mounted = false;
       clearTimeout(t);
     };
-  }, [search, refreshKey]);
+  }, [search]);
 
   // Render
 
@@ -547,9 +485,9 @@ export default function ContractListPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Kontrak Internal</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Kontrak Mitra</h2>
         <p className="text-muted-foreground">
-          Daftar kontrak yang telah dibuat oleh internal
+          Daftar kontrak yang sudah disepakati dan diajukan oleh pihak eksternal
         </p>
       </div>
 
@@ -571,25 +509,15 @@ export default function ContractListPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setRefreshKey((k) => k + 1)}
-              disabled={loading}
-              title="Refresh data"
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700 disabled:opacity-50">
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
-            <button
-              onClick={() => navigate("/contracts/archive")}
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700"
-            >
+              onClick={() => navigate('/contracts/archive')}
+              className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700">
               <Archive className="h-4 w-4" />
               Arsip
             </button>
             {canCreateContract && (
               <button
                 onClick={() => setShowTemplateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0"
-              >
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0">
                 <Plus className="h-4 w-4" />
                 Tambah Kontrak
               </button>
@@ -631,8 +559,7 @@ export default function ContractListPage() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="py-16 text-center text-muted-foreground text-sm"
-                  >
+                    className="py-16 text-center text-muted-foreground text-sm">
                     Memuat daftar kontrak...
                   </td>
                 </tr>
@@ -642,8 +569,7 @@ export default function ContractListPage() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="py-16 text-center text-red-600 text-sm"
-                  >
+                    className="py-16 text-center text-red-600 text-sm">
                     {error}
                   </td>
                 </tr>
@@ -653,8 +579,7 @@ export default function ContractListPage() {
                 <tr>
                   <td
                     colSpan={8}
-                    className="py-16 text-center text-muted-foreground text-sm"
-                  >
+                    className="py-16 text-center text-muted-foreground text-sm">
                     {search
                       ? "Tidak ada kontrak yang cocok dengan pencarian"
                       : "Belum ada kontrak"}
@@ -665,25 +590,20 @@ export default function ContractListPage() {
               {paginated.map((contract) => {
                 const isExpanded = expanded.has(contract.id);
                 const hasAddendums = contract.addendums.length > 0;
-                const hasTerminations =
-                  contract.terminations && contract.terminations.length > 0;
-                const isExpandable = hasAddendums || hasTerminations;
 
                 return (
                   <>
                     {/*  Main contract row  */}
                     <tr
                       key={`contract-${contract.id}`}
-                      onClick={() => isExpandable && toggleExpand(contract.id)}
-                      className={`transition-colors ${
-                        isExpandable
-                          ? "cursor-pointer hover:bg-muted/40"
-                          : "hover:bg-muted/20"
-                      } ${isExpanded ? "bg-muted/30" : ""}`}
-                    >
+                      onClick={() => hasAddendums && toggleExpand(contract.id)}
+                      className={`transition-colors ${hasAddendums
+                        ? "cursor-pointer hover:bg-muted/40"
+                        : "hover:bg-muted/20"
+                        } ${isExpanded ? "bg-muted/30" : ""}`}>
                       {/* Expand icon */}
                       <td className="w-10 px-3 py-4">
-                        {isExpandable ? (
+                        {hasAddendums ? (
                           <div className="flex items-center justify-center">
                             {isExpanded ? (
                               <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -709,11 +629,6 @@ export default function ContractListPage() {
                             {hasAddendums && (
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {contract.addendums.length} addendum
-                              </p>
-                            )}
-                            {hasTerminations && (
-                              <p className="text-xs text-orange-500 mt-0.5">
-                                Proses terminasi
                               </p>
                             )}
                           </div>
@@ -752,8 +667,7 @@ export default function ContractListPage() {
                       {/* Actions */}
                       <td
                         className="px-3 py-4"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                        onClick={(e) => e.stopPropagation()}>
                         <RowMenu
                           contract={contract}
                           canEdit={canEdit}
@@ -784,16 +698,6 @@ export default function ContractListPage() {
                           key={`addendum-${addendum.id}`}
                           addendum={addendum}
                           onView={() => setViewAddendumTarget(addendum)}
-                        />
-                      ))}
-
-                    {/* ── Termination rows (expanded)  */}
-                    {isExpanded &&
-                      hasTerminations &&
-                      contract.terminations!.map((termination: any) => (
-                        <TerminationRow
-                          key={`termination-${termination.id}`}
-                          termination={termination}
                         />
                       ))}
                   </>

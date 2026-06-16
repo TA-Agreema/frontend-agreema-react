@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<ContractStatus, { label: string; className: string }
   approved: { label: "Disetujui Internal", className: "bg-blue-50 text-blue-700 border-blue-200" },
   rejected: { label: "Ditolak", className: "bg-red-100 text-red-800 border-red-300" },
   expired: { label: "Berakhir", className: "bg-slate-100 text-slate-500 border-slate-200" },
-  terminated: { label: "Dibatalkan", className: "bg-red-50 text-red-600 border-red-200" },
+  terminated: { label: "Dihentikan", className: "bg-red-50 text-red-600 border-red-200" },
 };
 
 function StatusBadge({ status }: { status: ContractStatus }) {
@@ -164,7 +164,7 @@ export default function ContractArchivePage() {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Arsip Kontrak</h2>
         <p className="text-muted-foreground">
-          Daftar kontrak yang telah dibatalkan atau diterminasi
+          Daftar kontrak yang telah ditolak atau diterminasi
         </p>
       </div>
 
@@ -252,7 +252,7 @@ export default function ContractArchivePage() {
                           <div>
                             <p className="font-medium text-foreground leading-tight">{contract.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {isRejected ? "Ditolak" : "Dibatalkan"}
+                              {isRejected ? "Ditolak" : "Dihentikan"}
                             </p>
                           </div>
                         </div>

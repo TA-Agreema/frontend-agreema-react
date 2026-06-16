@@ -60,7 +60,7 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
         {/* Logs */}
         <div className="rounded-xl border bg-white p-6 shadow-sm col-span-1 lg:col-span-2">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Log Status Seluruh Kontrak</h3>
-          <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
             <RecentLogsList logs={recent_logs || []} />
           </div>
         </div>

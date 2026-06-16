@@ -10,12 +10,16 @@ import {
   Settings,
   ClipboardList,
   Archive,
+  Building2,  
+  Handshake,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface SidebarMenuSubItem {
   title: string;
   url: string;
+  icon?: LucideIcon;
+  exact?: boolean;
   permissions?: string[];
   roles?: string[];
 }
@@ -74,6 +78,21 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     icon: FileText,
     roles: ["hrd", "admin", "manager"],
     exact: true,
+    items: [
+      {
+        title: "Kontrak Internal",
+        url: "/contracts",
+        icon: Building2,  
+        roles: ["hrd", "admin", "manager"],
+        exact: true,
+      },
+      {
+        title: "Kontrak Mitra",
+        url: "/contracts/partners",
+        icon: Handshake,
+        roles: ["hrd", "admin", "manager"],
+      },
+    ],
   },
   {
     title: "Template Kontrak",

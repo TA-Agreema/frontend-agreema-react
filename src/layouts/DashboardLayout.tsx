@@ -1,12 +1,17 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { NotificationBell } from "@/components/NotificationBell";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
+    const { roles } = useAuth();
+    const isAdmin = roles.includes("admin");
+
     return (
         <SidebarProvider>
             <AppSidebar />
@@ -17,6 +22,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     <div className="flex-1">
                         <h1 className="text-lg font-semibold">Agreema</h1>
                     </div>
+                    {!isAdmin && <NotificationBell />}
                 </header>
                 <main className="flex-1 p-4 md:p-6">
                     {children}

@@ -61,42 +61,42 @@ export default function ContractReviewListPage() {
       case "review":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
             Perlu Ditinjau
           </span>
         );
-      case "revised":
+      case "revision":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
             Menunggu Revisi
           </span>
         );
+      case "signed":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+          Disahkan
+        </span>
+      );
       case "active":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-blue-200">
             Aktif
           </span>
         );
       case "approved":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
             Disetujui
           </span>
         );
       case "rejected":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
             Ditolak
           </span>
         );
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
             {status}
           </span>
         );
@@ -137,7 +137,8 @@ export default function ContractReviewListPage() {
             >
               <option value="">Semua Status</option>
               <option value="review">Perlu Ditinjau</option>
-              <option value="approved">Disetujui / Menunggu TTD Eksternal</option>
+              <option value="approved">Disetujui</option>
+              <option value="signed">Disahkan</option>
               <option value="active">Aktif (Selesai TTD)</option>
               <option value="rejected">Ditolak</option>
             </select>
@@ -276,7 +277,7 @@ export default function ContractReviewListPage() {
                                   </div>
                                   <button
                                     onClick={() => setViewAddendumTarget(addendum)}
-                                    className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
                                   >
                                     <Eye className="h-3.5 w-3.5" />
                                     Lihat Detail

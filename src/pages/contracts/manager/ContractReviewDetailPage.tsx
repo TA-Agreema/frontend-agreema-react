@@ -34,6 +34,8 @@ import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
 import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
 
+import { toast } from "sonner";
+
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -102,9 +104,9 @@ export default function ContractReviewDetailPage() {
     loadContract();
   }, [id, editor]);
 
-  const handleAction = async (status: "approved" | "revised" | "rejected") => {
-    if ((status === "revised" || status === "rejected") && !notes.trim()) {
-      setSubmitError("Catatan wajib diisi untuk revisi atau penolakan.");
+  const handleAction = async (status: "approved" | "revised") => {
+    if ((status === "revised") && !notes.trim()) {
+      setSubmitError("Catatan wajib diisi untuk revisi");
       return;
     }
 
@@ -112,6 +114,13 @@ export default function ContractReviewDetailPage() {
     setSubmitError(null);
     try {
       await submitContractReview(Number(id), { status, notes });
+
+      if (status === "revised") {
+        toast.info("Revisi diminta.", {
+          description: "Revisi kontrak telah dikirim ke pembuat kontrak.",
+          duration: 5000,
+        });
+      }
       navigate("/approvals");
     } catch (error: unknown) {
       let msg = "Gagal mengirim ulasan. Coba lagi.";
@@ -224,7 +233,7 @@ export default function ContractReviewDetailPage() {
 
                       const latestSignature =
                         signer.signatures && signer.signatures.length > 0
-                          ? signer.signatures[signer.signatures.length - 1]
+                          ? signer.signatures.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0] ?? null
                           : null;
 
                       const signatureImage =
@@ -368,7 +377,7 @@ export default function ContractReviewDetailPage() {
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${
                             rev.status === "approved"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-blue-100 text-blue-700"
                               : rev.status === "rejected"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-orange-100 text-orange-700"

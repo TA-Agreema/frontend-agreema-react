@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { XCircle, X, Loader2, Send } from "lucide-react";
+import { toast } from "sonner";
 
 interface ContractRejectPageProps {
   contractTitle: string;
@@ -28,6 +29,10 @@ export default function ContractRejectPage({
     setError(null);
     try {
       await onSubmit(reason);
+      toast.error("Kontrak ditolak.", {
+        description: "Penolakan kontrak telah dikirim ke pembuat kontrak.",
+        duration: 5000,
+      });
     } catch {
       setError("Gagal mengirim penolakan. Coba lagi.");
     } finally {
