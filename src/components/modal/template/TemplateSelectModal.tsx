@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { Search, FileText, Check, X, ChevronRight, Loader2, AlertCircle } from "lucide-react";
 import { fetchTemplates } from "@/services/template.service";
 import type { Template } from "@/types/template";
+import { normalizePaperSize, type PaperSize } from "@/lib/editor-paper";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,7 @@ export interface TemplateOption {
   description: string;
   lastUpdated: string;
   content: string; // HTML content untuk TipTap
+  paper_size: PaperSize;
 }
 
 interface TemplateSelectModalProps {
@@ -42,6 +44,7 @@ function mapTemplateToOption(t: Template): TemplateOption {
     description: `Template ${t.category ?? ""}`.trim(),
     lastUpdated: t.createdAt ?? t.created_at ?? "-",
     content: t.content ?? "",
+    paper_size: normalizePaperSize(t.paper_size),
   };
 }
 

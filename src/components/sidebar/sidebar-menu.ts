@@ -2,12 +2,8 @@ import {
   LayoutDashboard,
   FileText,
   CheckCircle,
-  // PenTool,
+  // CheckCircle2,
   Users,
-  // FolderKanban,
-  // ScrollText,
-  // Bell,
-  Settings,
   ClipboardList,
   Archive,
   Building2,  
@@ -85,8 +81,8 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
         icon: Building2,  
         roles: ["hrd", "admin", "manager"],
         exact: true,
-      },
-      {
+  },
+  {
         title: "Kontrak Mitra",
         url: "/contracts/partners",
         icon: Handshake,
@@ -101,19 +97,38 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     roles: ["hrd"],
   },
   {
-    title: "Arsip Kontrak",
-    url: "/contracts/archive",
-    icon: Archive,
-    roles: ["hrd", "admin", "manager"],
+    title: "Daftar Kontrak",
+    url: "",
+    icon: FileText,
+    roles: ["hrd"],
+    // exact: true,
+    items: [
+      { title: "Semua Kontrak", url: "/contracts/" },
+      { title: "Kontrak Aktif", url: "/contracts/active" },
+      { title: "Arsip Kontrak", url: "/contracts/archive" }
+    ],
   },
 
   // Role Manager - Approval
   {
     title: "Approval Kontrak",
-    url: "/approvals",
+    url: "",
     icon: CheckCircle,
     roles: ["manager"],
+    items: [
+      { title: "Perlu Ditinjau", url: "/approvals" },
+      { title: "Kontrak Aktif", url: "/contracts/active" },
+      { title: "Arsip Kontrak", url: "/contracts/archive" }
+    ],
   },
+
+  // Role HRD & Manager - Arsip Kontrak
+  // {
+  //   title: "Arsip Kontrak",
+  //   url: "/contracts/archive",
+  //   icon: Archive,
+  //   roles: ["hrd", "manager"],
+  // },
   // {
   //     title: "Tanda Tangan",
   //     url: "/signatures",

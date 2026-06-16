@@ -7,20 +7,31 @@ interface StatCardProps {
   value: string;
   icon: LucideIcon;
   color: string;
+  href?: string;
 }
 
-export function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
-  return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm flex items-center justify-between">
+export function StatCard({ title, value, icon: Icon, color, href }: StatCardProps) {
+  const cardContent = (
+    <div className="rounded-xl border bg-white p-6 shadow-sm flex items-center justify-between w-full h-full transition-all duration-200 hover:shadow-md">
       <div>
         <p className="text-sm font-medium text-gray-500">{title}</p>
         <p className="text-3xl font-bold mt-1 text-gray-800">{value}</p>
       </div>
-      <div className={`${color} p-4 rounded-xl text-white shadow-sm`}>
+      <div className={`${color} p-4 rounded-xl text-white shadow-sm shrink-0`}>
         <Icon className="h-6 w-6" />
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <a href={href} className="block w-full h-full no-underline">
+        {cardContent}
+      </a>
+    );
+  }
+
+  return cardContent;
 }
 
 const getLogIcon = (status: string) => {

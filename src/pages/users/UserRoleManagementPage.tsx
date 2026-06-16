@@ -37,7 +37,7 @@ import type { Role, Permission } from "@/types/roles";
 
 import UserFormDialog from "./UsersFormDialog";
 import RoleFormDialog from "./RolesFormDialog";
-import DeleteModal from "@/components/modal/DeleteModal";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 import Pagination from "@/components/Pagination";
 
 import { toast } from "sonner";

@@ -1,14 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle } from "lucide-react";
+import {
+  // Search, 
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  CalendarDays,
+  Eye,
+  ArrowLeft,
+  XCircle,
+  FileSignature,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
+} from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
+import { fetchManagerArchivedContracts } from "@/services/manager.service";
+import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import TerminationDetailModal from "@/components/modal/terminasi/TerminationDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ContractRow, ContractStatus } from "./ContractListPage";
+import ContractFilterManager from "@/components/ContractFilterManager";
+import { useContractFilter } from "@/hooks/useContractFilter";
+import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
+import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 const STATUS_CONFIG: Record<ContractStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600 border-gray-200" },
@@ -34,10 +52,12 @@ function StatusBadge({ status }: { status: ContractStatus }) {
 
 function TerminationRow({
   termination,
-  onView
+  onView,
+  colSpan,
 }: {
   termination: Termination;
   onView: () => void;
+  colSpan: number;
 }) {
   return (
     <tr className="bg-slate-50/80 border-l-4 border-l-red-400">
@@ -46,7 +66,7 @@ function TerminationRow({
           <FileText className="h-3.5 w-3.5 text-red-600" />
         </div>
       </td>
-      <td colSpan={6} className="px-3 py-3">
+      <td colSpan={colSpan} className="px-3 py-3">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -82,11 +102,63 @@ function TerminationRow({
   );
 }
 
-function RejectionRow({ notes }: { notes: string }) {
+function AddendumRow({
+  addendum,
+  onView,
+  colSpan,
+}: {
+  addendum: Addendum;
+  onView: () => void;
+  colSpan: number;
+}) {
+  return (
+    <tr className="bg-emerald-50/70 border-l-4 border-l-emerald-400">
+      <td className="pl-10 pr-3 py-3 w-8">
+        <div className="p-1.5 rounded-md bg-white border border-emerald-200 inline-flex">
+          <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+        </div>
+      </td>
+      <td colSpan={colSpan} className="px-3 py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+              {addendum.addendum_number}
+            </p>
+            <p className="text-sm font-semibold text-foreground">
+              {addendum.title}
+            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {addendum.description || "Tidak ada deskripsi."}
+            </p>
+            <div className="flex items-center gap-4 pt-1">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3" />
+                Dibuat: {addendum.created_at}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarDays className="h-3 w-3" />
+                Efektif: {addendum.effective_date}
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onView}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Lihat Detail
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function RejectionRow({ notes, colSpan }: { notes: string; colSpan: number }) {
   const raw = notes ?? "";
   const parts = raw.split("||");
   const reason = parts.length >= 2 ? parts[1].trim() : raw.trim();
- 
+
   return (
     <tr className="bg-red-50/60 border-l-4 border-l-red-500">
       <td className="pl-10 pr-3 py-3 w-8">
@@ -94,7 +166,7 @@ function RejectionRow({ notes }: { notes: string }) {
           <XCircle className="h-3.5 w-3.5 text-red-600" />
         </div>
       </td>
-      <td colSpan={6} className="px-3 py-3">
+      <td colSpan={colSpan} className="px-3 py-3">
         <div className="space-y-0.5">
           <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">
             Kontrak Ditolak
@@ -111,13 +183,32 @@ export default function ContractArchivePage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
 
-  // Filter ONLY terminated contracts
-  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected");
+  const { roles } = useAuth();
+  const isHrd = roles.includes('hrd');
+  const isManager = roles.includes('manager');
+
+  // Load field definitions
+  useEffect(() => {
+    fetchFieldDefinitions().then(setFieldDefinitions).catch(console.error);
+  }, []);
+
+  // Initialize filter hook
+  const filter = useContractFilter(contracts);
+
+  // Dynamic table colSpans
+  const tableColSpan = (isHrd ? 8 : 7) + filter.visibleFields.length;
+  const detailColSpan = tableColSpan - 1;
+
+  // Filter only archived contracts
+  const archivedContracts = filter.contracts.filter(
+    c => c.status === "terminated" || c.status === "rejected" || c.status === "expired"
+  );
 
   const totalPages = Math.max(1, Math.ceil(archivedContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -125,9 +216,6 @@ export default function ContractArchivePage() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
-
-  const { roles } = useAuth();
-  const isHrd = roles.includes('hrd');
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -144,7 +232,9 @@ export default function ContractArchivePage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchContracts(search || undefined, true);
+        const data = isManager
+          ? await fetchManagerArchivedContracts(undefined)
+          : await fetchContracts(undefined, true);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -155,16 +245,28 @@ export default function ContractArchivePage() {
         if (mounted) setLoading(false);
       }
     };
-    const t = setTimeout(load, 250);
-    return () => { mounted = false; clearTimeout(t); };
-  }, [search]);
+    load();
+    return () => { mounted = false; };
+  }, [isManager]);
+
+  const renderSortIcon = (key: string) => {
+    if (filter.sortConfig.key !== key) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/45" />;
+    }
+    return filter.sortConfig.direction === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5 text-[#268257]" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5 text-[#268257]" />
+    );
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Arsip Kontrak</h2>
-        <p className="text-muted-foreground">
-          Daftar kontrak yang telah ditolak atau diterminasi
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900">Arsip Kontrak</h2>
+        <p className="text-muted-foreground text-sm">
+          Daftar kontrak yang telah dibatalkan atau ditolak
         </p>
       </div>
 
@@ -190,46 +292,154 @@ export default function ContractArchivePage() {
           </button>
         </div>
 
-        <div className="">
+      <ContractFilterManager
+        search={filter.search}
+        setSearch={(val) => {
+          filter.setSearch(val);
+          setPage(1);
+        }}
+        placeholder="Cari berdasarkan judul, kategori, partner, atau pembuat..."
+        yearFilter={filter.yearFilter}
+        setYearFilter={(val) => {
+          filter.setYearFilter(val);
+          setPage(1);
+        }}
+        availableYears={filter.availableYears}
+        statusFilter={filter.statusFilter}
+        setStatusFilter={(val) => {
+          filter.setStatusFilter(val);
+          setPage(1);
+        }}
+        statusOptions={[
+          { label: "Dibatalkan", value: "terminated" },
+          { label: "Ditolak", value: "rejected" },
+          { label: "Berakhir", value: "expired" },
+        ]}
+        customFilters={filter.customFilters}
+        setCustomFilters={(val) => {
+          filter.setCustomFilters(val);
+          setPage(1);
+        }}
+        visibleFields={filter.visibleFields}
+        setVisibleFields={filter.setVisibleFields}
+        onReset={filter.resetFilters}
+      />
+
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="w-8 px-3 py-3" />
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Judul</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Partner</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Kategori</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Periode</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Dibuat Oleh</th>
+                <th
+                  onClick={() => filter.requestSort("title")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Judul {renderSortIcon("title")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("partner")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Partner {renderSortIcon("partner")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("category")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Kategori {renderSortIcon("category")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("status")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Status {renderSortIcon("status")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("start_date")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Periode {renderSortIcon("start_date")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("created_by")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Dibuat Oleh {renderSortIcon("created_by")}
+                  </div>
+                </th>
+
+                {/* Render dynamic columns headers */}
+                {filter.visibleFields.map((fieldId) => {
+                  const field = fieldDefinitions.find((f) => f.id === fieldId);
+                  if (!field) return null;
+                  return (
+                    <th
+                      key={field.id}
+                      onClick={() => filter.requestSort(String(field.id))}
+                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {field.field_label} {renderSortIcon(String(field.id))}
+                      </div>
+                    </th>
+                  );
+                })}
+
                 {isHrd && (
-                  <th className="text-right px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide w-32">Aksi</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">
+                    Aksi
+                  </th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading && <tr><td colSpan={7} className="py-16 text-center text-muted-foreground text-sm">Memuat daftar kontrak...</td></tr>}
-              {error && !loading && <tr><td colSpan={7} className="py-16 text-center text-red-600 text-sm">{error}</td></tr>}
-              {!loading && !error && paginated.length === 0 && (
+              {loading && (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center text-muted-foreground text-sm">
-                    {search ? "Tidak ada kontrak yang cocok dengan pencarian" : "Belum ada arsip kontrak"}
+                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
+                    Memuat daftar kontrak...
                   </td>
                 </tr>
               )}
-              {paginated.map((contract: any) => {
+              {error && !loading && (
+                <tr>
+                  <td colSpan={tableColSpan} className="py-16 text-center text-red-600 text-sm">
+                    {error}
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && paginated.length === 0 && (
+                <tr>
+                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
+                    {filter.search || filter.yearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                      ? "Tidak ada kontrak yang cocok dengan filter aktif"
+                      : "Belum ada arsip kontrak"}
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && paginated.map((contract: any) => {
                 const isExpanded = expanded.has(contract.id);
-                const hasTerminations = contract.terminations && contract.terminations.length > 0;
+                const addendums = contract.addendums ?? [];
+                const terminations = contract.terminations ?? [];
+                const hasAddendums = addendums.length > 0;
+                const hasTerminations = terminations.length > 0;
                 const isRejected = contract.status === "rejected";
-                console.log("contract.reviews:", contract.reviews);
                 const rejectionNotes = (() => {
                   const reviews = contract.signers?.flatMap((s: any) => s.reviews ?? []) ?? [];
-
-                  console.log("signers:", contract.signers);
-                  console.log("all reviews:", reviews);
-
                   return (reviews.find((r: any) => r.status === "rejected") ?? reviews[reviews.length - 1])?.notes ?? "";
                 })();
-                const isExpandable = hasTerminations || isRejected;
+                const isExpandable = hasAddendums || hasTerminations || isRejected;
 
                 return (
                   <React.Fragment key={`contract-${contract.id}`}>
@@ -246,24 +456,37 @@ export default function ContractArchivePage() {
                       </td>
                       <td className="px-3 py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-red-100 text-red-700"}`}>
+                          <div className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
                             <p className="font-medium text-foreground leading-tight">{contract.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {isRejected ? "Ditolak" : "Dihentikan"}
+                              {hasAddendums ? `${addendums.length} addendum` : isRejected ? "Ditolak" : "Dibatalkan"}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.partner}</td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.category}</td>
-                      <td className="px-3 py-4"><StatusBadge status={contract.status} /></td>
-                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed">
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.partner}</td>
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.category}</td>
+                      <td className="px-3 py-4 font-medium"><StatusBadge status={contract.status} /></td>
+                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
                         {contract.start_date}<br /><span className="text-muted-foreground/60">s/d</span><br />{contract.end_date ?? "—"}
                       </td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.created_by}</td>
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.created_by}</td>
+
+                      {/* Render dynamic columns cells */}
+                      {filter.visibleFields.map((fieldId) => {
+                        const valObj = contract.field_values?.find(
+                          (fv: any) => fv.field_definition_id === fieldId
+                        );
+                        return (
+                          <td key={fieldId} className="px-3 py-4 text-muted-foreground font-medium">
+                            {valObj?.value || "—"}
+                          </td>
+                        );
+                      })}
+
                       {isHrd && (
                         <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -278,10 +501,20 @@ export default function ContractArchivePage() {
                     </tr>
 
                     {/* Dropdown: Termination rows */}
-                    {isExpanded && hasTerminations && contract.terminations.map((termination: Termination) => (
+                    {isExpanded && hasAddendums && addendums.map((addendum: Addendum) => (
+                      <AddendumRow
+                        key={`addendum-${addendum.id}`}
+                        addendum={addendum}
+                        colSpan={detailColSpan}
+                        onView={() => setViewAddendumTarget(addendum)}
+                      />
+                    ))}
+
+                    {isExpanded && hasTerminations && terminations.map((termination: Termination) => (
                       <TerminationRow
                         key={`termination-${termination.id}`}
                         termination={termination}
+                        colSpan={detailColSpan}
                         onView={() => setViewTerminationTarget(termination)}
                       />
                     ))}
@@ -291,6 +524,7 @@ export default function ContractArchivePage() {
                       <RejectionRow
                         key={`rejection-${contract.id}`}
                         notes={rejectionNotes}
+                        colSpan={detailColSpan}
                       />
                     )}
                   </React.Fragment>
@@ -301,6 +535,13 @@ export default function ContractArchivePage() {
         </div>
         {archivedContracts.length > 0 && <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />}
       </div>
+
+      {viewAddendumTarget && (
+        <AddendumDetailModal
+          addendum={viewAddendumTarget}
+          onClose={() => setViewAddendumTarget(null)}
+        />
+      )}
 
       {viewTerminationTarget && (
         <TerminationDetailModal

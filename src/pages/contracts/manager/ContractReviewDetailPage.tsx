@@ -5,19 +5,19 @@ import StarterKit from "@tiptap/starter-kit";
 import {
   ArrowLeft,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   Loader2,
   Clock,
   FileText,
+  FileSignature,
+  CalendarDays,
 } from "lucide-react";
 import {
   fetchManagerContractDetail,
   submitContractReview,
   type ManagerContractDetail,
 } from "@/services/manager.service";
+import type { Addendum } from "@/pages/contracts/ContractListPage";
 
-// Define TipTap extensions similarly to Editor but without UI plugins
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import Color from "@tiptap/extension-color";
@@ -25,16 +25,19 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import { Table } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
 import Link from "@tiptap/extension-link";
+import { PageBreak } from "@/lib/tiptap-page-break";
+import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
+import {
+  BorderedTableCell,
+  BorderedTableHeader,
+} from "@/lib/tiptap-table-cell-borders";
 
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
 import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
-
-import { toast } from "sonner";
+import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
+import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
 
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
@@ -42,37 +45,30 @@ export default function ContractReviewDetailPage() {
   const [contract, setContract] = useState<ManagerContractDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Review form state
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  //Pop up Signature Modal
   const [showSignModal, setShowSignModal] = useState(false);
-
-  // Pop up Reject Modal
   const [showRejectModal, setShowRejectModal] = useState(false);
 
-  // Riwayat status
-  const [statusLogs, setStatusLogs] = useState<any[]>([]);
-  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [statusLogs, setStatusLogs] = useState<StatusEntry[]>([]);
+  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>([]);
 
-  // Read-only editor
   const editor = useEditor({
     extensions: [
       StarterKit,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Link.configure({ openOnClick: false }),
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true }),
+      PageBreak,
       HorizontalRule,
       Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell,
+      ResizableTableRow,
+      BorderedTableHeader,
+      BorderedTableCell,
       Underline,
     ],
     content: "",
@@ -84,32 +80,70 @@ export default function ContractReviewDetailPage() {
     },
   });
 
-  const loadContract = async () => {
-    if (!id || !editor) return;
-    try {
-      const data = await fetchManagerContractDetail(Number(id));
-      setContract(data);
-      if (data.status_logs) setStatusLogs(data.status_logs);
-      if (data.content) {
-        editor.commands.setContent(data.content);
-      }
-    } catch (error) {
-      console.error("Failed to load contract", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadContract();
-  }, [id, editor]);
+    const loadContract = async () => {
+      if (!id || !editor) return;
+      try {
+        const data = await fetchManagerContractDetail(Number(id));
+        setContract(data);
+        if (data.status_logs) setStatusLogs(data.status_logs);
+        if (data.content) editor.commands.setContent(data.content);
+
+        if (data.signers && data.signers.length > 0) {
+          const allReviews: FeedbackEntry[] = [];
+          data.signers.forEach((s) => {
+            if (s.reviews && s.reviews.length > 0) {
+              const author =
+                s.signer_type === "internal" && s.user
+                  ? s.user.name
+                  : s.signer_name || s.external_email || "Eksternal";
+              const role =
+                s.signer_type === "internal" && s.user
+                  ? s.user.job_title || "Internal"
+                  : s.signer_role || "Eksternal";
+
+              s.reviews.forEach((r) => {
+                if (r.notes) {
+                  allReviews.push({
+                    id: r.id,
+                    author: author ?? "Reviewer",
+                    role: role ?? "Reviewer",
+                    type: (r.status as FeedbackEntry["type"]) ?? "note",
+                    typeLabel:
+                      r.status === "revised" || r.status === "revision"
+                        ? "Revisi"
+                        : r.status === "rejected"
+                          ? "Ditolak"
+                          : "Catatan",
+                    message: r.notes,
+                    date: r.reviewed_at,
+                  });
+                }
+              });
+            }
+          });
+          setFeedbacks(allReviews.sort((a, b) => Number(b.id) - Number(a.id)));
+        }
+      } catch (error) {
+        console.error("Failed to load contract", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadContract()
+  }, [id, editor])
+
+  // useEffect(() => {
+  //   // eslint-disable-next-line react-hooks/set-state-in-effect
+  //   loadContract();
+  // }, [id, editor]);
 
   const handleAction = async (status: "approved" | "revised") => {
     if ((status === "revised") && !notes.trim()) {
       setSubmitError("Catatan wajib diisi untuk revisi");
       return;
     }
-
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -171,27 +205,76 @@ export default function ContractReviewDetailPage() {
             Review: {contract.title}
           </h1>
           <p className="text-xs text-gray-500">
-            {contract.contract_number || "Draft"} • Diajukan oleh{" "}
-            {contract.created_by}
+            {contract.contract_number || "Draft"} • Diajukan oleh {contract.created_by}
           </p>
         </div>
       </header>
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Document Viewer (Left Side) */}
+        {/* Document Viewer (Left) */}
         <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex flex-col items-center gap-6">
           <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
             <EditorContent editor={editor} />
 
-            {/* section tanda tangan di sini */}
+            {/* Addendum */}
+            {contract.addendums && contract.addendums.length > 0 && (
+              <div className="border-t border-gray-200 px-8 py-8 bg-emerald-50/40">
+                <div className="flex items-center justify-between gap-3 mb-5">
+                  <div>
+                    <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-widest">
+                      Daftar Addendum
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Addendum yang melekat pada kontrak ini.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <FileSignature className="h-3.5 w-3.5" />
+                    {contract.addendums.length} addendum
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  {contract.addendums.map((addendum: Addendum) => (
+                    <div
+                      key={addendum.id}
+                      className="rounded-xl border border-emerald-200 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="min-w-0 space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                            {addendum.addendum_number}
+                          </p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {addendum.title}
+                          </p>
+                          <p className="text-xs text-gray-500 leading-relaxed whitespace-pre-wrap">
+                            {addendum.description || "Tidak ada deskripsi."}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-gray-500">
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              Dibuat: {addendum.created_at}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5">
+                              <CalendarDays className="h-3.5 w-3.5" />
+                              Efektif: {addendum.effective_date}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tanda Tangan */}
             {contract.signers && contract.signers.length > 0 && (
               <div className="border-t border-gray-200 px-8 py-10">
                 <h2 className="text-center text-sm font-semibold tracking-widest text-gray-700 uppercase mb-8">
                   Tanda Tangan
                 </h2>
-
-                {/* ── Alur baru: dokumen fisik sudah diupload ── */}
                 {contract.signed_document_url ? (
                   <div className="flex flex-col items-center gap-4 py-4">
                     <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
@@ -201,12 +284,10 @@ export default function ContractReviewDetailPage() {
                           Dokumen Bertanda Tangan Telah Diupload
                         </p>
                         <p className="text-xs text-emerald-600 mt-0.5">
-                          Dokumen fisik yang sudah ditandatangani kedua pihak
-                          tersedia.
+                          Dokumen fisik yang sudah ditandatangani kedua pihak tersedia.
                         </p>
                       </div>
                     </div>
-
                     <a
                       href={contract.signed_document_url}
                       target="_blank"
@@ -218,7 +299,6 @@ export default function ContractReviewDetailPage() {
                     </a>
                   </div>
                 ) : (
-                  /* ── Alur lama: TTD digital per signer ── */
                   <div className="flex justify-around gap-6 flex-wrap">
                     {contract.signers.map((signer) => {
                       const name =
@@ -230,37 +310,29 @@ export default function ContractReviewDetailPage() {
                           ? signer.user?.job_title
                           : signer.signer_role;
                       const email = signer.external_email;
-
                       const latestSignature =
                         signer.signatures && signer.signatures.length > 0
                           ? signer.signatures.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0] ?? null
                           : null;
-
-                      const signatureImage =
-                        latestSignature?.signature_path ?? null;
+                      const signatureImage = latestSignature?.signature_path ?? null;
                       const signedAt = latestSignature?.signed_at ?? null;
                       const isSigned = !!signatureImage;
 
                       return (
-                        <div
-                          key={signer.id}
-                          className="flex flex-col items-start gap-2 min-w-50"
-                        >
+                        <div key={signer.id} className="flex flex-col items-start gap-2 min-w-50">
                           <p className="text-xs text-gray-400">
                             Tanggal:{" "}
                             {isSigned && signedAt
                               ? new Date(signedAt).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
                               : "[DD/MM/YYYY]"}
                           </p>
-
                           <div
-                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${
-                              isSigned ? "w-45 h-25" : "w-full h-25"
-                            }`}
+                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${isSigned ? "w-45 h-25" : "w-full h-25"
+                              }`}
                           >
                             {signer.signer_type === "internal" && isSigned ? (
                               <img
@@ -289,7 +361,6 @@ export default function ContractReviewDetailPage() {
                               </span>
                             )}
                           </div>
-
                           {signer.signer_type === "internal" && !isSigned && (
                             <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
                               <Clock className="h-3 w-3" />
@@ -302,13 +373,8 @@ export default function ContractReviewDetailPage() {
                               Menunggu via Token
                             </span>
                           )}
-
-                          <p className="text-sm font-bold text-gray-900 mt-1">
-                            {name}
-                          </p>
-                          {role && (
-                            <p className="text-xs text-gray-500">{role}</p>
-                          )}
+                          <p className="text-sm font-bold text-gray-900 mt-1">{name}</p>
+                          {role && <p className="text-xs text-gray-500">{role}</p>}
                           {email && (
                             <p className="text-xs text-gray-400 flex items-center gap-1">
                               ✉ {email}
@@ -324,132 +390,39 @@ export default function ContractReviewDetailPage() {
           </div>
         </div>
 
-        {/* Action Panel (Right Side) */}
-        <div className="w-96 h-full bg-white border-l border-gray-200 flex flex-col overflow-hidden">
-          {/* Riwayat Status*/}
-          <div className="flex-1 h-full overflow-hidden border-r border-gray-100 bg-slate-50">
-            <ContractStatusSidebar
-              statusLogs={statusLogs}
-              feedbacks={feedbacks}
-            />
-          </div>
-
-          {/* Panel Peninjauan */}
-          <div className="flex-1 h-fulloverflow-y-auto p-5 space-y-5">
-            {/* Input Catatan */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Catatan Evaluasi
-                <span className="text-gray-400 font-normal ml-1">
-                  (Wajib jika meminta revisi)
-                </span>
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Tuliskan catatan perbaikan di sini..."
-                className="w-full h-28 text-sm border border-gray-200 rounded-xl p-3 bg-gray-50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
-              />
-              {submitError && (
-                <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {submitError}
-                </p>
-              )}
-            </div>
-            {/* Riwayat Catatan */}
-            {contract.reviews && contract.reviews.length > 0 && (
-              <div>
-                <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  Riwayat Catatan Sebelumnya
-                </h3>
-                <div className="space-y-3">
-                  {contract.reviews.map((rev) => (
-                    <div
-                      key={rev.id}
-                      className="text-sm border border-gray-100 rounded-xl p-3 bg-gray-50 hover:bg-gray-100/70 transition-colors"
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <span className="font-semibold text-gray-900 text-xs">
-                          {rev.user?.name || "System"}
-                        </span>
-                        <span
-                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide ${
-                            rev.status === "approved"
-                              ? "bg-blue-100 text-blue-700"
-                              : rev.status === "rejected"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-orange-100 text-orange-700"
-                          }`}
-                        >
-                          {rev.status}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 text-xs leading-relaxed">
-                        {rev.notes || "Tidak ada catatan."}
-                      </p>
-                      <div className="text-[10px] text-gray-400 mt-2">
-                        {new Date(rev.created_at).toLocaleString("id-ID")}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          {/* Action Buttons — fixed di bawah */}
-          <div className="mt-auto not-last:shrink-0 p-4 border-t border-gray-200 bg-white grid grid-cols-2 gap-2.5">
-            {contract.status === "review" ? (
-              <>
-                <button
-                  onClick={() => setShowRejectModal(true)}
-                  disabled={isSubmitting}
-                  className="col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-xl hover:bg-red-100 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  <XCircle className="h-3.5 w-3.5" /> Tolak
-                </button>
-
-                <button
-                  onClick={() => handleAction("revised")}
-                  disabled={isSubmitting}
-                  className="col-span-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  <AlertCircle className="h-3.5 w-3.5" /> Minta Revisi
-                </button>
-
-                <button
-                  onClick={() => setShowSignModal(true)}
-                  disabled={isSubmitting}
-                  className="col-span-2 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 active:scale-95 transition-all shadow-sm shadow-emerald-200 disabled:opacity-50"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  Setujui Kontrak
-                </button>
-              </>
-            ) : (
-              <div className="col-span-2 text-center p-3 rounded-xl bg-gray-50 border border-gray-200 text-sm font-medium text-gray-500">
-                Kontrak sudah diproses ({contract.status})
-              </div>
-            )}
-          </div>
+        {/* ── CALL SIDEBAR BARU DI SINI ── */}
+        <div className="w-96 h-full overflow-hidden">
+          <ReviewRightSidebar
+            statusLogs={statusLogs}
+            feedbacks={feedbacks}
+            notes={notes}
+            onNotesChange={(v) => {
+              setNotes(v);
+              if (submitError) setSubmitError(null);
+            }}
+            submitError={submitError}
+            isSubmitting={isSubmitting}
+            contractStatus={contract.status}
+            onRevise={() => handleAction("revised")}
+            onReject={() => setShowRejectModal(true)}
+            onApprove={() => setShowSignModal(true)}
+          />
         </div>
       </div>
 
-      {/* Modal: onSuccess memanggil loadContract() */}
+      {/* Modals */}
       {showSignModal && (
         <ContractApprovalSignPage
           contractId={Number(id)}
           onClose={() => setShowSignModal(false)}
           onSuccess={async () => {
             setShowSignModal(false);
-            await loadContract(); // tunggu data fresh → status & TTD langsung muncul
-            navigate("/approvals"); // arahkan ke list setelah selesai
+            // await loadContract();
+            navigate("/approvals");
           }}
         />
       )}
 
-      {/* Modal Penolakan */}
       {showRejectModal && contract && (
         <ContractRejectPage
           contractTitle={contract.title}
@@ -461,7 +434,7 @@ export default function ContractReviewDetailPage() {
               notes: reason,
             });
             setShowRejectModal(false);
-            navigate("/contracts/archive"); // arahkan ke arsip kontrak
+            navigate("/contracts/archive");
           }}
         />
       )}

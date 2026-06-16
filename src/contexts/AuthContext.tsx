@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             const storedRoles = localStorage.getItem("roles");
             const storedPermissions = localStorage.getItem("permissions");
 
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setToken(storedToken);
             setUser(storedUser ? JSON.parse(storedUser) : null);
             setRoles(storedRoles ? JSON.parse(storedRoles) : []);

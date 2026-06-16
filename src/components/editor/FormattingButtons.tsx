@@ -1,5 +1,5 @@
 import React from "react";
-import { useEditor } from "@tiptap/react";
+import { useEditor, useEditorState } from "@tiptap/react";
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";
 
@@ -10,6 +10,16 @@ export function FormattingButtons({
   editor: ReturnType<typeof useEditor> | null;
   disabled?: boolean;
 }) {
+  const formattingState = useEditorState({
+    editor,
+    selector: ({ editor }) => ({
+      bold: editor.isActive("bold"),
+      italic: editor.isActive("italic"),
+      underline: editor.isActive("underline"),
+      strike: editor.isActive("strike"),
+    }),
+  });
+
   if (!editor) return null;
 
   return (
@@ -17,28 +27,28 @@ export function FormattingButtons({
       <ToolbarBtn
         onClick={() => !disabled && editor.chain().focus().toggleBold().run()}
         disabled={disabled}
-        active={editor.isActive("bold")}
+        active={formattingState.bold}
         title={disabled ? "Fitur dinonaktifkan" : "Bold"}>
         <Bold className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
         onClick={() => !disabled && editor.chain().focus().toggleItalic().run()}
         disabled={disabled}
-        active={editor.isActive("italic")}
+        active={formattingState.italic}
         title={disabled ? "Fitur dinonaktifkan" : "Italic"}>
         <Italic className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
         onClick={() => !disabled && editor.chain().focus().toggleUnderline().run()}
         disabled={disabled}
-        active={editor.isActive("underline")}
+        active={formattingState.underline}
         title={disabled ? "Fitur dinonaktifkan" : "Underline"}>
         <UnderlineIcon className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <ToolbarBtn
         onClick={() => !disabled && editor.chain().focus().toggleStrike().run()}
         disabled={disabled}
-        active={editor.isActive("strike")}
+        active={formattingState.strike}
         title={disabled ? "Fitur dinonaktifkan" : "Strikethrough"}>
         <Strikethrough className="h-3.5 w-3.5" />
       </ToolbarBtn>
