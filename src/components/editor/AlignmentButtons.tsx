@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import { useEditor } from "@tiptap/react";
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";

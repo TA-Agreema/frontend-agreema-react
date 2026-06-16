@@ -21,6 +21,7 @@ import {
   Loader2,
   AlertCircle,
   FileText,
+  X,
 } from "lucide-react";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { FontFamily } from "@/lib/tiptap-font-family";
@@ -119,24 +120,24 @@ type ContractSignerDetail = {
 };
 
 type ContractReviewDetail = {
-  id: number | string;
+  id: number;
   status?: string | null;
   notes?: string | null;
   reviewed_at?: string | null;
 };
 
 type ContractFeedback = {
-  id: number | string;
+  id: number;
   author: string;
   role: string;
   type: string;
   typeLabel: string;
   message: string;
-  date?: string | null;
+  date?: string;
 };
 
 type ContractStatusLog = {
-  id: number | string;
+  id: number;
   old_status: string;
   new_status: string;
   changed_by: string;
@@ -533,7 +534,7 @@ export default function ContractEditorPage() {
                             ? "Ditolak"
                             : "Catatan",
                       message: r.notes,
-                      date: r.reviewed_at,
+                      date: r.reviewed_at ?? undefined,
                     });
                   }
                 });
@@ -544,12 +545,12 @@ export default function ContractEditorPage() {
                 type: s.signer_type,
                 name:
                   s.signer_type === "internal" && s.user
-                    ? s.user.name
-                    : s.signer_name || "",
+                    ? (s.user.name ?? "")
+                    : (s.signer_name ?? ""),
                 title:
                   s.signer_type === "internal" && s.user
-                    ? s.user.job_title || ""
-                    : s.signer_role || "",
+                    ? (s.user.job_title ?? "")
+                    : (s.signer_role ?? ""),
                 email: s.external_email || "",
                 noUserAccount: false,
                 signaturePath:
@@ -606,6 +607,7 @@ export default function ContractEditorPage() {
     setWatermark(extractedTemplateContent.watermark);
     setPaperSize(normalizePaperSize(selectedTemplate.paper_size));
     if (!isEdit) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasUnsavedChanges(true);
     }
   }, [selectedTemplate, editor, allFields, fieldsLoaded, isEdit]);
@@ -948,7 +950,7 @@ export default function ContractEditorPage() {
                 onRegenerateContractNumber={() =>
                   generateContractNumber(selectedTemplate?.category_id)
                     .then(setContractNumber)
-                    .catch(() => {})
+                    .catch(() => { })
                 }
                 onUpdateSigner={updateSigner}
                 onRemoveSigner={removeSigner}

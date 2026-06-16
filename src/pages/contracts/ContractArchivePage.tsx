@@ -1,15 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ChevronDown, ChevronRight, FileText, CalendarDays, Eye, ArrowLeft, XCircle, FileSignature } from "lucide-react";
+import {
+  // Search, 
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  CalendarDays,
+  Eye,
+  ArrowLeft,
+  XCircle,
+  FileSignature,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
+} from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
+import { fetchManagerArchivedContracts } from "@/services/manager.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import TerminationDetailModal from "@/components/modal/terminasi/TerminationDetailModal";
 import { useAuth } from "@/contexts/AuthContext";
+import ContractFilterManager from "@/components/ContractFilterManager";
+import { useContractFilter } from "@/hooks/useContractFilter";
+import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 const STATUS_CONFIG: Record<ContractStatus, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-gray-100 text-gray-600 border-gray-200" },
@@ -137,7 +154,7 @@ function AddendumRow({
   );
 }
 
-function RejectionRow({ notes }: { notes: string }) {
+function RejectionRow({ notes, colSpan }: { notes: string; colSpan: number }) {
   const raw = notes ?? "";
   const parts = raw.split("||");
   const reason = parts.length >= 2 ? parts[1].trim() : raw.trim();
@@ -149,7 +166,7 @@ function RejectionRow({ notes }: { notes: string }) {
           <XCircle className="h-3.5 w-3.5 text-red-600" />
         </div>
       </td>
-      <td colSpan={6} className="px-3 py-3">
+      <td colSpan={colSpan} className="px-3 py-3">
         <div className="space-y-0.5">
           <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">
             Kontrak Ditolak
@@ -166,14 +183,32 @@ export default function ContractArchivePage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [viewTerminationTarget, setViewTerminationTarget] = useState<Termination | null>(null);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
 
-  // Filter ONLY terminated contracts
-  const archivedContracts = contracts.filter(c => c.status === "terminated" || c.status === "rejected");
+  const { roles } = useAuth();
+  const isHrd = roles.includes('hrd');
+  const isManager = roles.includes('manager');
+
+  // Load field definitions
+  useEffect(() => {
+    fetchFieldDefinitions().then(setFieldDefinitions).catch(console.error);
+  }, []);
+
+  // Initialize filter hook
+  const filter = useContractFilter(contracts);
+
+  // Dynamic table colSpans
+  const tableColSpan = (isHrd ? 8 : 7) + filter.visibleFields.length;
+  const detailColSpan = tableColSpan - 1;
+
+  // Filter only archived contracts
+  const archivedContracts = filter.contracts.filter(
+    c => c.status === "terminated" || c.status === "rejected" || c.status === "expired"
+  );
 
   const totalPages = Math.max(1, Math.ceil(archivedContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -181,11 +216,6 @@ export default function ContractArchivePage() {
     (safePage - 1) * PAGE_SIZE,
     safePage * PAGE_SIZE,
   );
-
-  const { roles } = useAuth();
-  const isHrd = roles.includes('hrd');
-  const tableColSpan = isHrd ? 8 : 7;
-  const detailColSpan = tableColSpan - 1;
 
   const toggleExpand = (id: number) => {
     setExpanded((prev) => {
@@ -202,7 +232,9 @@ export default function ContractArchivePage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchContracts(search || undefined, true);
+        const data = isManager
+          ? await fetchManagerArchivedContracts(undefined)
+          : await fetchContracts(undefined, true);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -213,68 +245,176 @@ export default function ContractArchivePage() {
         if (mounted) setLoading(false);
       }
     };
-    const t = setTimeout(load, 250);
-    return () => { mounted = false; clearTimeout(t); };
-  }, [search]);
+    load();
+    return () => { mounted = false; };
+  }, [isManager]);
+
+  const renderSortIcon = (key: string) => {
+    if (filter.sortConfig.key !== key) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground/45" />;
+    }
+    return filter.sortConfig.direction === "asc" ? (
+      <ArrowUp className="h-3.5 w-3.5 text-[#268257]" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5 text-[#268257]" />
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Arsip Kontrak</h2>
-        <p className="text-muted-foreground">
-          Daftar kontrak yang telah dibatalkan atau diterminasi
-        </p>
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Arsip Kontrak</h2>
+          <p className="text-muted-foreground text-sm">
+            Daftar kontrak yang telah dibatalkan, ditolak, atau berakhir.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/contracts')}
+          className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700 shadow-sm"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Kembali ke Daftar
+        </button>
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Cari berdasarkan judul, kategori, atau partner..."
-              className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-            />
-          </div>
-          <button
-            onClick={() => navigate('/contracts')}
-            className="flex items-center gap-2 px-4 py-2 text-sm rounded-md border bg-white hover:bg-gray-50 transition-colors font-medium shrink-0 text-gray-700">
-            <ArrowLeft className="h-4 w-4" />
-            Kembali ke Daftar
-          </button>
-        </div>
+      <ContractFilterManager
+        search={filter.search}
+        setSearch={(val) => {
+          filter.setSearch(val);
+          setPage(1);
+        }}
+        placeholder="Cari berdasarkan judul, kategori, partner, atau pembuat..."
+        yearFilter={filter.yearFilter}
+        setYearFilter={(val) => {
+          filter.setYearFilter(val);
+          setPage(1);
+        }}
+        availableYears={filter.availableYears}
+        statusFilter={filter.statusFilter}
+        setStatusFilter={(val) => {
+          filter.setStatusFilter(val);
+          setPage(1);
+        }}
+        statusOptions={[
+          { label: "Dibatalkan", value: "terminated" },
+          { label: "Ditolak", value: "rejected" },
+          { label: "Berakhir", value: "expired" },
+        ]}
+        customFilters={filter.customFilters}
+        setCustomFilters={(val) => {
+          filter.setCustomFilters(val);
+          setPage(1);
+        }}
+        visibleFields={filter.visibleFields}
+        setVisibleFields={filter.setVisibleFields}
+        onReset={filter.resetFilters}
+      />
 
-        <div className="">
+      <div className="rounded-xl border bg-card shadow-sm">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="w-8 px-3 py-3" />
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Judul</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Partner</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Kategori</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Periode</th>
-                <th className="text-left px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">Dibuat Oleh</th>
+                <th
+                  onClick={() => filter.requestSort("title")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Judul {renderSortIcon("title")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("partner")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Partner {renderSortIcon("partner")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("category")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Kategori {renderSortIcon("category")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("status")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Status {renderSortIcon("status")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("start_date")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Periode {renderSortIcon("start_date")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => filter.requestSort("created_by")}
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                >
+                  <div className="flex items-center gap-1.5">
+                    Dibuat Oleh {renderSortIcon("created_by")}
+                  </div>
+                </th>
+
+                {/* Render dynamic columns headers */}
+                {filter.visibleFields.map((fieldId) => {
+                  const field = fieldDefinitions.find((f) => f.id === fieldId);
+                  if (!field) return null;
+                  return (
+                    <th
+                      key={field.id}
+                      onClick={() => filter.requestSort(String(field.id))}
+                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {field.field_label} {renderSortIcon(String(field.id))}
+                      </div>
+                    </th>
+                  );
+                })}
+
                 {isHrd && (
-                  <th className="text-right px-3 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wide w-32">Aksi</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-32">
+                    Aksi
+                  </th>
                 )}
               </tr>
             </thead>
             <tbody className="divide-y">
-              {loading && <tr><td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">Memuat daftar kontrak...</td></tr>}
-              {error && !loading && <tr><td colSpan={tableColSpan} className="py-16 text-center text-red-600 text-sm">{error}</td></tr>}
-              {!loading && !error && paginated.length === 0 && (
+              {loading && (
                 <tr>
                   <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
-                    {search ? "Tidak ada kontrak yang cocok dengan pencarian" : "Belum ada arsip kontrak"}
+                    Memuat daftar kontrak...
                   </td>
                 </tr>
               )}
-              {paginated.map((contract: any) => {
+              {error && !loading && (
+                <tr>
+                  <td colSpan={tableColSpan} className="py-16 text-center text-red-600 text-sm">
+                    {error}
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && paginated.length === 0 && (
+                <tr>
+                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
+                    {filter.search || filter.yearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                      ? "Tidak ada kontrak yang cocok dengan filter aktif"
+                      : "Belum ada arsip kontrak"}
+                  </td>
+                </tr>
+              )}
+              {!loading && !error && paginated.map((contract: any) => {
                 const isExpanded = expanded.has(contract.id);
                 const addendums = contract.addendums ?? [];
                 const terminations = contract.terminations ?? [];
@@ -283,7 +423,6 @@ export default function ContractArchivePage() {
                 const isRejected = contract.status === "rejected";
                 const rejectionNotes = (() => {
                   const reviews = contract.signers?.flatMap((s: any) => s.reviews ?? []) ?? [];
-
                   return (reviews.find((r: any) => r.status === "rejected") ?? reviews[reviews.length - 1])?.notes ?? "";
                 })();
                 const isExpandable = hasAddendums || hasTerminations || isRejected;
@@ -314,13 +453,26 @@ export default function ContractArchivePage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.partner}</td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.category}</td>
-                      <td className="px-3 py-4"><StatusBadge status={contract.status} /></td>
-                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed">
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.partner}</td>
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.category}</td>
+                      <td className="px-3 py-4 font-medium"><StatusBadge status={contract.status} /></td>
+                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
                         {contract.start_date}<br /><span className="text-muted-foreground/60">s/d</span><br />{contract.end_date ?? "—"}
                       </td>
-                      <td className="px-3 py-4 text-muted-foreground">{contract.created_by}</td>
+                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.created_by}</td>
+
+                      {/* Render dynamic columns cells */}
+                      {filter.visibleFields.map((fieldId) => {
+                        const valObj = contract.field_values?.find(
+                          (fv: any) => fv.field_definition_id === fieldId
+                        );
+                        return (
+                          <td key={fieldId} className="px-3 py-4 text-muted-foreground font-medium">
+                            {valObj?.value || "—"}
+                          </td>
+                        );
+                      })}
+
                       {isHrd && (
                         <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -358,6 +510,7 @@ export default function ContractArchivePage() {
                       <RejectionRow
                         key={`rejection-${contract.id}`}
                         notes={rejectionNotes}
+                        colSpan={detailColSpan}
                       />
                     )}
                   </React.Fragment>

@@ -53,6 +53,14 @@ export interface ManagerContractDetail extends ContractRow {
     external_email: string | null;
     user: { name: string; job_title: string | null } | null;
     signatures?: SignatureItem[];
+    reviews?: {
+      reviewed_at: string;
+      id: number;
+      status: string;
+      notes: string | null;
+      created_at: string;
+      user?: { name: string; job_title?: string | null };
+    }[];
   }[];
 }
 
@@ -62,6 +70,15 @@ export const fetchManagerContracts = async (
 ): Promise<ContractRow[]> => {
   const res = await api.get<{ data: ContractRow[] }>(BASE_PATH, {
     params: { search, status },
+  });
+  return res.data.data;
+};
+
+export const fetchManagerArchivedContracts = async (
+  search?: string,
+): Promise<ContractRow[]> => {
+  const res = await api.get<{ data: ContractRow[] }>(`${BASE_PATH}/archive`, {
+    params: { search },
   });
   return res.data.data;
 };

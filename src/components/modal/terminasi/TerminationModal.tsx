@@ -5,6 +5,7 @@ import type { ContractRow } from "@/pages/contracts/ContractListPage";
 import type { Termination } from "@/types/termination";
 import { isAxiosError } from "axios";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface Props {
     contract: ContractRow;
@@ -48,6 +49,14 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
         }
     };
 
+    const getTodayString = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <div className="bg-white rounded-xl shadow-lg w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
@@ -89,33 +98,51 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                     <form id="terminationForm" onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Terminasi <span className="text-red-500">*</span></label>
-                            <input required type="text" value={formData.termination_number} onChange={(e) => setFormData(p => ({ ...p, termination_number: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                            <Input
+                                required
+                                type="text"
+                                placeholder="Contoh: TERM-001"
+                                value={formData.termination_number}
+                                onChange={(e) => setFormData(p => ({ ...p, termination_number: e.target.value }))}
+                            />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Judul Terminasi <span className="text-red-500">*</span></label>
-                            <input required type="text" value={formData.title} onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                            <Input
+                                required
+                                type="text"
+                                placeholder="Masukkan judul terminasi"
+                                value={formData.title}
+                                onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+                            />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Alasan Terminasi <span className="text-red-500">*</span></label>
-                            <select required value={formData.termination_reason} onChange={(e) => setFormData(p => ({ ...p, termination_reason: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                            <select required value={formData.termination_reason} onChange={(e) => setFormData(p => ({ ...p, termination_reason: e.target.value }))} className="w-full border rounded-lg px-3 h-9 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white border-gray-200">
                                 <option value="">Pilih Alasan</option>
-                                <option value="mutual_agreement">Kesepakatan Bersama</option>
-                                <option value="breach_of_contract">Pelanggaran Kontrak</option>
-                                <option value="force_majeure">Force Majeure</option>
-                                <option value="other">Lainnya</option>
+                                <option value="Kesepakatan Bersama">Kesepakatan Bersama</option>
+                                <option value="Pelanggaran Kontrak">Pelanggaran Kontrak</option>
+                                <option value="Force Majeure">Force Majeure</option>
+                                <option value="Lainnya">Lainnya</option>
                             </select>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
-                            <textarea value={formData.termination_note} onChange={(e) => setFormData(p => ({ ...p, termination_note: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none min-h-[80px]" />
+                            <textarea value={formData.termination_note} onChange={(e) => setFormData(p => ({ ...p, termination_note: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none min-h-[80px] border-gray-200" />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Efektif <span className="text-red-500">*</span></label>
-                            <input required type="date" value={formData.effective_date} onChange={(e) => setFormData(p => ({ ...p, effective_date: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" />
+                            <Input
+                                required
+                                type="date"
+                                min={getTodayString()}
+                                value={formData.effective_date}
+                                onChange={(e) => setFormData(p => ({ ...p, effective_date: e.target.value }))}
+                            />
                         </div>
 
                         <div>

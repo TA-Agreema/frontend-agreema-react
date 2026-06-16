@@ -2,14 +2,10 @@ import {
   LayoutDashboard,
   FileText,
   CheckCircle,
-  // PenTool,
+  // CheckCircle2,
   Users,
-  // FolderKanban,
-  // ScrollText,
-  // Bell,
-  // Settings,
   ClipboardList,
-  Archive,
+  // Archive,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -75,27 +71,37 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
   },
   {
     title: "Daftar Kontrak",
-    url: "/contracts",
+    url: "",
     icon: FileText,
     roles: ["hrd"],
-    exact: true,
+    // exact: true,
+    items: [
+      { title: "Semua Kontrak", url: "/contracts/" },
+      { title: "Kontrak Aktif", url: "/contracts/active" },
+      { title: "Arsip Kontrak", url: "/contracts/archive" }
+    ],
   },
 
   // Role Manager - Approval
   {
     title: "Approval Kontrak",
-    url: "/approvals",
+    url: "",
     icon: CheckCircle,
     roles: ["manager"],
+    items: [
+      { title: "Perlu Ditinjau", url: "/approvals" },
+      { title: "Kontrak Aktif", url: "/contracts/active" },
+      { title: "Arsip Kontrak", url: "/contracts/archive" }
+    ],
   },
 
   // Role HRD & Manager - Arsip Kontrak
-  {
-    title: "Arsip Kontrak",
-    url: "/contracts/archive",
-    icon: Archive,
-    roles: ["hrd", "manager"],
-  },
+  // {
+  //   title: "Arsip Kontrak",
+  //   url: "/contracts/archive",
+  //   icon: Archive,
+  //   roles: ["hrd", "manager"],
+  // },
   // {
   //     title: "Tanda Tangan",
   //     url: "/signatures",
