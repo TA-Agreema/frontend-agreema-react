@@ -20,8 +20,8 @@ import {
   updateCategory,
 } from "@/services/category.service";
 import type { Category } from "@/types/category";
-import CategoryFormModal from "@/components/modal/CategoryFormModal";
-import DeleteModal from "@/components/modal/DeleteModal";
+import CategoryFormModal from "@/components/modal/template/CategoryFormModal";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
 import { toast } from "sonner";
 

@@ -38,7 +38,7 @@ export interface ManagerContractDetail extends ContractRow {
   content?: string;
   reviews?: ReviewHistory[];
   signed_document_url?: string | null;
-  status_logs?: {         
+  status_logs?: {
     id: number;
     old_status: string;
     new_status: string;
@@ -54,6 +54,15 @@ export const fetchManagerContracts = async (
 ): Promise<ContractRow[]> => {
   const res = await api.get<{ data: ContractRow[] }>(BASE_PATH, {
     params: { search, status },
+  });
+  return res.data.data;
+};
+
+export const fetchManagerArchivedContracts = async (
+  search?: string,
+): Promise<ContractRow[]> => {
+  const res = await api.get<{ data: ContractRow[] }>(`${BASE_PATH}/archive`, {
+    params: { search },
   });
   return res.data.data;
 };

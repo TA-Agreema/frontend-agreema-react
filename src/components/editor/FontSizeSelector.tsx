@@ -1,6 +1,54 @@
-import { useEditor } from "@tiptap/react";
+import { useEditor, useEditorState } from "@tiptap/react";
 import { Plus, Minus } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";
+
+const DEFAULT_FONT_SIZE = "16px";
+const MIXED_FONT_SIZE = "__mixed__";
+const FONT_SIZE_OPTIONS = [
+  8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72,
+];
+const FONT_SIZE_OPTION_VALUES = FONT_SIZE_OPTIONS.map((size) => `${size}px`);
+
+function getSelectedFontSize(editor: NonNullable<ReturnType<typeof useEditor>>) {
+  const { state } = editor;
+  const { from, to, empty } = state.selection;
+
+  if (empty) {
+    return {
+      value: editor.getAttributes("textStyle").fontSize || DEFAULT_FONT_SIZE,
+      mixed: false,
+    };
+  }
+
+  const selectedSizes = new Set<string>();
+
+  state.doc.nodesBetween(from, to, (node) => {
+    if (!node.isText) return;
+
+    const fontSize = node.marks.find((mark) => mark.type.name === "textStyle")
+      ?.attrs.fontSize;
+    selectedSizes.add(fontSize || DEFAULT_FONT_SIZE);
+  });
+
+  if (selectedSizes.size === 0) {
+    return {
+      value: editor.getAttributes("textStyle").fontSize || DEFAULT_FONT_SIZE,
+      mixed: false,
+    };
+  }
+
+  if (selectedSizes.size > 1) {
+    return {
+      value: MIXED_FONT_SIZE,
+      mixed: true,
+    };
+  }
+
+  return {
+    value: [...selectedSizes][0],
+    mixed: false,
+  };
+}
 
 export function FontSizeSelector({
   editor,
@@ -9,11 +57,15 @@ export function FontSizeSelector({
   editor: ReturnType<typeof useEditor> | null;
   disabled?: boolean;
 }) {
+  const fontSizeState = useEditorState({
+    editor,
+    selector: ({ editor }) => getSelectedFontSize(editor),
+  });
+
   if (!editor) return null;
 
-  const currentFontSize = editor.getAttributes("textStyle").fontSize || "16px";
-
   const setFontSize = (size: string) => {
+    if (size === MIXED_FONT_SIZE) return;
     editor.chain().focus().setFontSize(size).run();
   };
 
@@ -21,7 +73,6 @@ export function FontSizeSelector({
     <div className="flex items-center gap-0.5">
       <ToolbarBtn
         onClick={() => {
-          // @ts-expect-error: Custom extension command
           editor.chain().focus().decreaseFontSize().run();
         }}
         disabled={disabled}
@@ -29,39 +80,26 @@ export function FontSizeSelector({
         <Minus className="h-3.5 w-3.5" />
       </ToolbarBtn>
       <select
-        value={currentFontSize}
-        onChange={(e) => setFontSize(e.target.value)}
+        value={fontSizeState.value}
+        onChange={(event) => setFontSize(event.target.value)}
         disabled={disabled}
         title="Font Size"
         className="px-2 py-1.5 text-sm rounded border border-gray-200 bg-white hover:bg-gray-50 cursor-pointer text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
-        {[8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 30, 36, 48, 60, 72].map((size) => (
+        {fontSizeState.mixed && (
+          <option value={MIXED_FONT_SIZE}>Campuran</option>
+        )}
+        {FONT_SIZE_OPTIONS.map((size) => (
           <option key={size} value={`${size}px`}>
             {size}px
           </option>
         ))}
-        {![
-          "8px",
-          "9px",
-          "10px",
-          "11px",
-          "12px",
-          "14px",
-          "16px",
-          "18px",
-          "20px",
-          "24px",
-          "30px",
-          "36px",
-          "48px",
-          "60px",
-          "72px",
-        ].includes(currentFontSize) && (
-          <option value={currentFontSize}>{currentFontSize}</option>
-        )}
+        {!fontSizeState.mixed &&
+          !FONT_SIZE_OPTION_VALUES.includes(fontSizeState.value) && (
+            <option value={fontSizeState.value}>{fontSizeState.value}</option>
+          )}
       </select>
       <ToolbarBtn
         onClick={() => {
-          // @ts-expect-error: Custom extension command
           editor.chain().focus().increaseFontSize().run();
         }}
         disabled={disabled}

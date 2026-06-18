@@ -5,6 +5,7 @@ import DashboardPage from "./pages/dashboard/DashboardPage.tsx";
 import UserRoleManagementPage from "./pages/users/UserRoleManagementPage.tsx";
 import ContractPage from "./pages/contracts/ContractListPage.tsx";
 import ContractArchivePage from "./pages/contracts/ContractArchivePage.tsx";
+import ContractActiveListPage from "./pages/contracts/ContractActiveListPage.tsx";
 import ContractCategoryPage from "./pages/contracts/category/ContractCategoryPage.tsx";
 import NotFoundPage from "./pages/error/NotFoundPage.tsx";
 import ServerErrorPage from "./pages/error/ServerErrorPage.tsx";
@@ -25,6 +26,7 @@ const Dashboard = withDashboard(DashboardPage);
 const UserRoleManagement = withDashboard(UserRoleManagementPage);
 const Contract = withDashboard(ContractPage);
 const ContractArchive = withDashboard(ContractArchivePage);
+const ContractActive = withDashboard(ContractActiveListPage);
 const ContractPartnerList = withDashboard(ContractPartnerListPage);
 const Category = withDashboard(ContractCategoryPage);
 const ContractTemplate = withDashboard(ContractTemplatePage);
@@ -101,6 +103,15 @@ export default function App() {
             element={
               <ProtectedRoute permissions={["read.contracts"]}>
                 <ContractArchive />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contracts/active"
+            element={
+              <ProtectedRoute permissions={["read.contracts"]}>
+                <ContractActive />
               </ProtectedRoute>
             }
           />

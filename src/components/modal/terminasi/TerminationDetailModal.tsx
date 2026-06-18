@@ -15,12 +15,21 @@ export default function TerminationDetailModal({ termination, onClose }: Props) 
         return () => document.removeEventListener("keydown", handler);
     }, [onClose]);
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL;
-    const documentUrl = termination.termination_document_path
-        ? `${baseUrl.replace(/\/api\/?$/, "")}/storage/${termination.termination_document_path}`
+    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+    const appBaseUrl = baseUrl.replace(/\/api\/?$/, "");
+    const rawDocumentPath = termination.termination_document_path?.trim();
+    const isAbsoluteDocumentUrl = !!rawDocumentPath && /^https?:\/\//i.test(rawDocumentPath);
+    const normalizedRelativePath = rawDocumentPath
+        ? rawDocumentPath.replace(/^\/+/, "").replace(/^storage\//, "")
         : null;
 
-    const isPdf = termination.termination_document_path?.toLowerCase().endsWith(".pdf");
+    const documentUrl = rawDocumentPath
+        ? (isAbsoluteDocumentUrl
+            ? rawDocumentPath
+            : `${appBaseUrl}/storage/${normalizedRelativePath}`)
+        : null;
+
+    const isPdf = rawDocumentPath?.toLowerCase().includes(".pdf");
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -68,7 +77,7 @@ export default function TerminationDetailModal({ termination, onClose }: Props) 
                             <div className="border rounded-lg overflow-hidden flex flex-col pt-2">
                                 <div className="px-4 py-2 bg-muted/30 border-b flex justify-between items-center">
                                     <span className="text-xs text-muted-foreground truncate mr-2">
-                                        {termination.termination_document_path?.split("/").pop()}
+                                        {rawDocumentPath?.split("/").pop()?.split("?")[0]}
                                     </span>
                                     <a
                                         href={documentUrl}

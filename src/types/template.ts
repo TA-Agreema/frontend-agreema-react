@@ -5,6 +5,7 @@ export interface Template {
   id: number;
   name: string;
   content: string | null;
+  paper_size?: "a4" | "f4" | null;
   is_active: boolean;
   status: TemplateStatus;
   category: string;
@@ -18,6 +19,7 @@ export interface Template {
 export interface TemplatePayload {
   name: string;
   content: string;
+  paper_size?: "a4" | "f4";
   category_id: number;
   is_active?: boolean;
 }

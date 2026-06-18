@@ -19,8 +19,17 @@ export default function AddendumDetailModal({
     }, [onClose]);
 
     const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
-    const documentUrl = addendum.document_path
-        ? `${baseUrl.replace(/\/api\/?$/, "")}/storage/${addendum.document_path}`
+    const appBaseUrl = baseUrl.replace(/\/api\/?$/, "");
+    const rawDocumentPath = addendum.document_path?.trim();
+    const isAbsoluteDocumentUrl = !!rawDocumentPath && /^https?:\/\//i.test(rawDocumentPath);
+    const normalizedRelativePath = rawDocumentPath
+        ? rawDocumentPath.replace(/^\/+/, "").replace(/^storage\//, "")
+        : null;
+
+    const documentUrl = rawDocumentPath
+        ? (isAbsoluteDocumentUrl
+            ? rawDocumentPath
+            : `${appBaseUrl}/storage/${normalizedRelativePath}`)
         : null;
 
     const isPdf = addendum.document_path?.toLowerCase().endsWith(".pdf");
@@ -109,7 +118,7 @@ export default function AddendumDetailModal({
                             <div className="border rounded-lg overflow-hidden flex flex-col pt-2">
                                 <div className="px-4 py-2 bg-muted/30 border-b flex justify-between items-center">
                                     <span className="text-xs text-muted-foreground truncate mr-2">
-                                        {addendum.document_path?.split("/").pop()}
+                                        {rawDocumentPath?.split("/").pop()?.split("?")[0]}
                                     </span>
                                     <a
                                         href={documentUrl}
