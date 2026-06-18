@@ -92,6 +92,10 @@ import {
 } from "@/services/field.service";
 import type { Category } from "@/types/category";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
+// Notifikasi
+import { toast } from "sonner";
+import { useNotifications } from "@/hooks/use-notifications";
+
 import type { ContractVersion } from "@/types/contractVersion";
 
 //  Types
@@ -210,6 +214,7 @@ function getActiveDocumentFontFamily(
 export default function ContractEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { fetch: refetchNotifications } = useNotifications();
   const isEdit = !!id;
   const location = useLocation();
   const isViewRoute = location.pathname.endsWith("/view");
@@ -895,11 +900,25 @@ export default function ContractEditorPage() {
       setIsReadOnlyAfterSubmit(true);
       localStorage.removeItem(draftKey);
       setHasUnsavedChanges(false);
+
+      // Toast sukses
+      toast.success("Kontrak berhasil diajukan!", {
+        description: "Permintaan peninjauan kontrak telah dikirim ke peninjau pihak pertama.",
+        duration: 5000,
+      });
+
+      // Refresh notifikasi bell
+      await refetchNotifications();
+
       return res as ContractRow;
     } catch (error) {
       setSaveError(
         getApiErrorMessage(error, "Gagal mengajukan kontrak. Coba lagi."),
       );
+
+      toast.error("Gagal mengajukan kontrak.", {
+        description: getApiErrorMessage(error, "Silakan coba lagi."),
+      });
     } finally {
       setIsSaving(false);
     }

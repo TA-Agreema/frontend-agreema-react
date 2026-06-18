@@ -23,6 +23,7 @@ import type { Category } from "@/types/category";
 import CategoryFormModal from "@/components/modal/template/CategoryFormModal";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
@@ -254,13 +255,21 @@ export default function ContractCategoryPage() {
       if (editTarget) {
         await updateCategory(editTarget.id, payload);
         setEditTarget(null);
+        toast.success("Kategori diperbarui", {
+          description: `"Kategori {data.name} berhasil diperbarui.`,
+        });
       } else {
         await createCategory(payload);
         setAddOpen(false);
+        toast.success("Kategori dibuat", {
+          description: `Kategori ${data.name} berhasil dibuat.`,
+        });
       }
       await loadCategories();
     } catch (error) {
-      alert(getApiErrorMessage(error, "Gagal menyimpan kategori kontrak"));
+      toast.error("Gagal menyimpan kategori", {
+        description: getApiErrorMessage(error, "Silakan coba lagi."),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -269,10 +278,20 @@ export default function ContractCategoryPage() {
   const handleToggleStatus = async (category: Category) => {
     try {
       setIsSubmitting(true);
-      await toggleCategoryStatus(category.id);
+      const updated = await toggleCategoryStatus(category.id);
       await loadCategories();
+      toast.success(
+        updated.is_active ? "Kategori diaktifkan" : "Kategori dinonaktifkan",
+        {
+          description: updated.is_active
+            ? `Kategori ${category.name} kini aktif.`
+            : `Kategori ${category.name} telah dinonaktifkan.`,
+        }
+      );
     } catch (error) {
-      alert(getApiErrorMessage(error, "Gagal mengubah status kategori"));
+      toast.error("Gagal mengubah status kategori", {
+        description: getApiErrorMessage(error, "Silakan coba lagi."),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -283,10 +302,16 @@ export default function ContractCategoryPage() {
     try {
       setIsSubmitting(true);
       await deleteCategory(deleteTarget.id);
+      const name = deleteTarget.name;
       setDeleteTarget(null);
       await loadCategories();
+      toast.success("Kategori dihapus", {
+        description: `Kategori ${name} berhasil dihapus.`,
+      });
     } catch (error) {
-      alert(getApiErrorMessage(error, "Gagal menghapus kategori kontrak"));
+    toast.error("Gagal menghapus kategori", {
+      description: getApiErrorMessage(error, "Silakan coba lagi."),
+    });
     } finally {
       setIsSubmitting(false);
     }

@@ -19,12 +19,15 @@ import ContractReviewListPage from "@/pages/contracts/manager/ContractReviewList
 import ContractReviewDetailPage from "@/pages/contracts/manager/ContractReviewDetailPage";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage.tsx";
 import ContractReviewDetailExternalPage from "@/pages/contracts/external/ContractReviewDetailExternalPage";
+import ContractPartnerListPage from "./pages/contracts/ContractPartnerListPage.tsx";
+import { Toaster } from "sonner"; 
 
 const Dashboard = withDashboard(DashboardPage);
 const UserRoleManagement = withDashboard(UserRoleManagementPage);
 const Contract = withDashboard(ContractPage);
 const ContractArchive = withDashboard(ContractArchivePage);
 const ContractActive = withDashboard(ContractActiveListPage);
+const ContractPartnerList = withDashboard(ContractPartnerListPage);
 const Category = withDashboard(ContractCategoryPage);
 const ContractTemplate = withDashboard(ContractTemplatePage);
 const TemplateEditor = TemplateEditorPage;
@@ -37,6 +40,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="">
+        <Toaster position="top-right" richColors />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<AuthPage />} />
@@ -81,6 +85,15 @@ export default function App() {
             element={
               <ProtectedRoute permissions={["read.contracts"]}>
                 <Contract />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/contracts/partners"
+            element={
+              <ProtectedRoute permissions={["read.contracts"]}>
+                <ContractPartnerList />
               </ProtectedRoute>
             }
           />

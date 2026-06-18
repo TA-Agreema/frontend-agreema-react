@@ -75,6 +75,17 @@ export const fetchContracts = async (
     return res.data.data;
   };
 
+// Mengambil daftar kontrak mitra eksternal
+export const fetchPartnerContracts = async (
+  search?: string,
+): Promise<ContractRow[]> => {
+  const params: Record<string, any> = {};
+  if (search) params.search = search;
+
+  const res = await api.get<{ data: ContractRow[] }>("/partner-contracts", { params });
+  return res.data.data;
+}; 
+
 // Mengambil detail kontrak berdasarkan ID
 export const fetchContract = async (id: number): Promise<ContractRow> => {
   const res = await api.get<{ data: ContractRow }>(`${BASE_PATH}/${id}`);

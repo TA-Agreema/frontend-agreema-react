@@ -67,14 +67,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild className="h-[60px]">
+            <SidebarMenuButton size="lg" asChild className="h-15">
               <Link
                 to="/dashboard"
                 className="flex items-center justify-center w-full">
                 <img
                   src="/Agreema.svg"
                   alt="Agreema Logo"
-                  className="h-[46px] w-auto shrink-0"
+                  className="h-11.5 w-auto shrink-0"
                 />
               </Link>
             </SidebarMenuButton>

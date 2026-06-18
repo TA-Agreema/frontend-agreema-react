@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { X, FileSignature, Upload, Loader2 } from "lucide-react";
 import { createAddendum } from "@/services/addendum.service";
+import { toast } from "sonner";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 
 interface AddendumFormData {
   title: string;
@@ -65,6 +67,12 @@ export default function AddendumModal({
           : "-",
         document_path: result.document_path,
       });
+
+      toast.success("Addendum berhasil dibuat!", {
+        description: `Addendum ${form.addendum_number} - ${form.title} telah ditambahkan ke ${contract.title}.`,
+        duration: 5000,
+      });
+
       onClose();
     } catch (err: unknown) {
       let msg = "Gagal menyimpan addendum.";
@@ -73,6 +81,8 @@ export default function AddendumModal({
         msg = err?.response?.data?.message ?? err?.message ?? msg;
       }
       setError(msg);
+
+      toast.error("Gagal membuat addendum.", { description: msg });
     } finally {
       setSubmitting(false);
     }

@@ -10,13 +10,16 @@ import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
+import { toast } from "sonner";
 import {
   Upload,
   Eye,
   LayoutTemplate,
   ChevronDown,
   Loader2,
+  // Info,
   AlertCircle,
+  // Plus,
 } from "lucide-react";
 
 import {
@@ -471,6 +474,9 @@ export default function TemplateEditorPage() {
   const handleSave = async () => {
     const savedTemplate = await persistTemplate();
     if (savedTemplate) {
+      toast.success(isEditMode ? "Template diperbarui" : "Template dibuat", {
+        description: `${savedTemplate.name ?? name} berhasil disimpan.`,
+      });
       navigate("/contracts-templates");
     }
   };
