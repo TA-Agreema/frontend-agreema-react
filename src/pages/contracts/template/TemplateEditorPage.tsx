@@ -11,19 +11,16 @@ import HorizontalRule from "@tiptap/extension-horizontal-rule";
 import { Table } from "@tiptap/extension-table";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
-import mammoth from "mammoth";
 import { toast } from "sonner";
 import {
   Upload,
   Eye,
   LayoutTemplate,
-  Copy,
-  X,
   ChevronDown,
   Loader2,
-  Info,
+  // Info,
   AlertCircle,
-  Plus,
+  // Plus,
 } from "lucide-react";
 
 import {

@@ -12,15 +12,13 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+// import Pagination from "@/components/Pagination";
 import React from "react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
-import {
-  fetchFieldDefinitions,
-  type FieldDefinition,
-} from "@/services/field.service";
 // import { fetchContracts } from "@/services/contract.service";
 import { fetchManagerContracts } from "@/services/manager.service";
+import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 
@@ -183,10 +181,7 @@ export default function ContractReviewListPage() {
             }}
             statusOptions={[
               { label: "Perlu Ditinjau", value: "review" },
-              {
-                label: "Disetujui / Menunggu TTD Eksternal",
-                value: "approved",
-              },
+              { label: "Disetujui / Menunggu TTD Eksternal", value: "approved" },
               { label: "Menunggu Revisi", value: "revision" },
             ]}
             customFilters={filter.customFilters}

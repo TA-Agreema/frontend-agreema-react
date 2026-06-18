@@ -11,6 +11,8 @@ import {
   FileText,
   FileSignature,
   CalendarDays,
+  FileSignature,
+  CalendarDays,
 } from "lucide-react";
 import {
   fetchManagerContractDetail,
@@ -80,12 +82,10 @@ export default function ContractReviewDetailPage() {
       },
     },
   });
-
-  useEffect(() => {
+useEffect(() => {
     if (!id) return;
 
     let isMounted = true;
-
     const loadContract = async () => {
       try {
         const data = await fetchManagerContractDetail(Number(id));

@@ -21,10 +21,7 @@ import TerminationDetailModal from "@/components/modal/terminasi/TerminationDeta
 import { useAuth } from "@/contexts/AuthContext";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
-import {
-  fetchFieldDefinitions,
-  type FieldDefinition,
-} from "@/services/field.service";
+import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
@@ -319,6 +316,8 @@ export default function ContractArchivePage() {
   };
 
   return (
+    <div className="space-y-6 min-w-0 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
     <div className="space-y-6 min-w-0 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
       <div>
