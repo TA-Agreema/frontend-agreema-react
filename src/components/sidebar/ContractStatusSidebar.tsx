@@ -4,9 +4,11 @@ const STATUS_DOT: Record<string, string> = {
   draft: "bg-gray-400",
   review: "bg-yellow-400",
   approved: "bg-blue-400",
+  signed: "bg-purple-500",
   active: "bg-emerald-500",
   revision: "bg-orange-400",
   rejected: "bg-red-500",
+  terminating: "bg-orange-500", 
   terminated: "bg-red-700",
 };
 
@@ -17,7 +19,19 @@ const STATUS_STYLE: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   revision: "bg-orange-100 text-orange-700",
   rejected: "bg-red-100 text-red-700",
+  terminating: "bg-orange-100 text-orange-700", 
   terminated: "bg-red-100 text-red-800",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  review: "Perlu Ditinjau",
+  revision: "Menunggu Revisi",
+  approved: "Disetujui",
+  rejected: "Ditolak",
+  signed: "Disahkan",
+  active: "Aktif",
+  terminated: "Dihentikan",
 };
 
 interface StatusLog {
@@ -64,7 +78,7 @@ export default function ContractStatusSidebar({
                   <div className="flex flex-col items-center shrink-0 pt-0.5">
                     <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[log.new_status] || "bg-gray-400"}`} />
                     {i < statusLogs.length - 1 && (
-                      <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
+                      <div className="w-px flex-1 bg-gray-200 mt-1 min-h-5" />
                     )}
                   </div>
                   <div className="pb-2 min-w-0 flex-1">
@@ -78,7 +92,7 @@ export default function ContractStatusSidebar({
                       Diperbarui oleh: {log.changed_by}
                     </p>
                     <p className="text-[11px] text-gray-400 truncate">
-                      Dari {log.old_status} ke {log.new_status}
+                      Dari {STATUS_LABEL[log.old_status] ?? log.old_status} ke {STATUS_LABEL[log.new_status] ?? log.new_status}
                     </p>
                   </div>
                 </div>
@@ -98,7 +112,7 @@ export default function ContractStatusSidebar({
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Umpan Balik & Revisi
                 </p>
-                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
                   {feedbacks.length}
                 </span>
               </div>

@@ -251,22 +251,19 @@ export default function TemplateSelectModal({
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50/60 shrink-0">
-          <div />
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors">
-              Batal
-            </button>
-            <button
-              onClick={() => selected && onSelect(selected)}
-              disabled={!selected}
-              className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-              Gunakan Template
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t bg-gray-50/60 shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors">
+            Batal
+          </button>
+          <button
+            onClick={() => selected && onSelect(selected)}
+            disabled={!selected}
+            className="flex items-center gap-2 px-5 py-2 text-sm rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+            Gunakan Template
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

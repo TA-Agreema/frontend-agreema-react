@@ -141,7 +141,7 @@ export default function CategoryFormModal({
           </div>
 
           {/* ── Footer ─────────────────────────────────────────────────────── */}
-          <div className="flex items-center justify-end gap-2 px-6 py-4 shrink-0">
+          <div className="flex items-center justify-between gap-3 px-6 py-4 shrink-0">
             <button
               type="button"
               onClick={onClose}

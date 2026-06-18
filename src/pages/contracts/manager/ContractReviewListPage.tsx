@@ -12,11 +12,12 @@ import {
   ArrowUpDown,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import Pagination from "@/components/Pagination";
+// import Pagination from "@/components/Pagination";
 import React from "react";
-import { fetchManagerContracts } from "@/services/manager.service";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
+// import { fetchContracts } from "@/services/contract.service";
+import { fetchManagerContracts } from "@/services/manager.service";
 import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
@@ -28,9 +29,13 @@ export default function ContractReviewListPage() {
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(
+    null,
+  );
   const [page, setPage] = useState(1);
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
+    [],
+  );
 
   // Load field definitions
   useEffect(() => {
@@ -67,13 +72,19 @@ export default function ContractReviewListPage() {
   }, []);
 
   const reviewContracts = filter.contracts.filter(
-    c => c.status !== "active" && c.status !== "rejected" && c.status !== "terminated" && c.status !== "expired"
+    (c) =>
+      c.status !== "active" &&
+      c.status !== "rejected" &&
+      c.status !== "terminated" &&
+      c.status !== "expired",
   );
 
   const indexOfLastContract = page * PAGEINATED;
   const indexOfFirstContract = indexOfLastContract - PAGEINATED;
-  const currentContracts = reviewContracts.slice(indexOfFirstContract, indexOfLastContract);
-  const totalPages = Math.ceil(reviewContracts.length / PAGEINATED);
+  const currentContracts = reviewContracts.slice(
+    indexOfFirstContract,
+    indexOfLastContract,
+  );
 
   const tableColSpan = 7 + filter.visibleFields.length;
   const detailColSpan = 6 + filter.visibleFields.length;
@@ -93,43 +104,43 @@ export default function ContractReviewListPage() {
     switch (status) {
       case "review":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
             Perlu Ditinjau
           </span>
         );
       case "revision":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-orange-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-orange-50 text-orange-700 border border-orange-200">
             Menunggu Revisi
+          </span>
+        );
+      case "signed":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+            Disahkan
           </span>
         );
       case "active":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-blue-200">
             Aktif
           </span>
         );
       case "approved":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
             Disetujui
           </span>
         );
       case "rejected":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-red-50 text-red-700 border border-red-200">
             Ditolak
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
             {status}
           </span>
         );
@@ -233,7 +244,9 @@ export default function ContractReviewListPage() {
 
                     {/* Render dynamic columns headers */}
                     {filter.visibleFields.map((fieldId) => {
-                      const field = fieldDefinitions.find((f) => f.id === fieldId);
+                      const field = fieldDefinitions.find(
+                        (f) => f.id === fieldId,
+                      );
                       if (!field) return null;
                       return (
                         <th
@@ -242,13 +255,16 @@ export default function ContractReviewListPage() {
                           className="cursor-pointer hover:bg-gray-100/80 text-left px-3 py-4 font-semibold text-gray-500 transition-colors"
                         >
                           <div className="flex items-center gap-1.5">
-                            {field.field_label} {renderSortIcon(String(field.id))}
+                            {field.field_label}{" "}
+                            {renderSortIcon(String(field.id))}
                           </div>
                         </th>
                       );
                     })}
 
-                    <th className="text-right px-3 py-4 font-semibold text-gray-500 pr-6 w-36">Aksi</th>
+                    <th className="text-right px-3 py-4 font-semibold text-gray-500 pr-6 w-36">
+                      Aksi
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -267,7 +283,10 @@ export default function ContractReviewListPage() {
                           Tidak ada kontrak
                         </p>
                         <p className="text-gray-500 text-sm">
-                          {filter.search || filter.yearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                          {filter.search ||
+                          filter.yearFilter !== "all" ||
+                          filter.statusFilter !== "all" ||
+                          filter.customFilters.length > 0
                             ? "Tidak ada kontrak yang sesuai dengan filter aktif."
                             : "Belum ada kontrak yang perlu ditinjau."}
                         </p>
@@ -276,7 +295,8 @@ export default function ContractReviewListPage() {
                   ) : (
                     currentContracts.map((contract) => {
                       const isExpanded = expanded.has(contract.id);
-                      const hasAddendums = contract.addendums && contract.addendums.length > 0;
+                      const hasAddendums =
+                        contract.addendums && contract.addendums.length > 0;
 
                       return (
                         <React.Fragment key={contract.id}>
@@ -328,10 +348,13 @@ export default function ContractReviewListPage() {
                             {/* Render dynamic columns cells */}
                             {filter.visibleFields.map((fieldId) => {
                               const valObj = contract.field_values?.find(
-                                (fv) => fv.field_definition_id === fieldId
+                                (fv) => fv.field_definition_id === fieldId,
                               );
                               return (
-                                <td key={fieldId} className="px-3 py-4 text-gray-600 font-medium">
+                                <td
+                                  key={fieldId}
+                                  className="px-3 py-4 text-gray-600 font-medium"
+                                >
                                   {valObj?.value || "—"}
                                 </td>
                               );
@@ -358,7 +381,10 @@ export default function ContractReviewListPage() {
                                     <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
                                   </div>
                                 </td>
-                                <td colSpan={detailColSpan} className="px-3 py-3 pr-6">
+                                <td
+                                  colSpan={detailColSpan}
+                                  className="px-3 py-3 pr-6"
+                                >
                                   <div className="flex items-start justify-between gap-4">
                                     <div className="space-y-0.5 min-w-0">
                                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
@@ -382,8 +408,10 @@ export default function ContractReviewListPage() {
                                       </div>
                                     </div>
                                     <button
-                                      onClick={() => setViewAddendumTarget(addendum)}
-                                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                                      onClick={() =>
+                                        setViewAddendumTarget(addendum)
+                                      }
+                                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
                                     >
                                       <Eye className="h-3.5 w-3.5" />
                                       Lihat Detail
@@ -399,14 +427,6 @@ export default function ContractReviewListPage() {
                 </tbody>
               </table>
             </div>
-
-            {!isLoading && reviewContracts.length > 0 && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onChange={(newPage: number) => setPage(newPage)}
-              />
-            )}
           </div>
         </div>
       </div>

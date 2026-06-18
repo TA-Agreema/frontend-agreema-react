@@ -1,9 +1,7 @@
 import { useRef, useState, type DragEvent } from "react";
-import { ChevronDown, Eye, Info, Plus, Upload, X } from "lucide-react";
+import { ChevronDown, Info, Plus, Upload, X } from "lucide-react";
+import { PdfPreviewTab } from "@/components/editor/PdfPreviewTab";
 import type { FieldDefinition } from "@/services/field.service";
-import type { MarginStyle } from "@/components/editor/MarginDropdown";
-import { DEFAULT_PAPER_SIZE, type PaperSize } from "@/lib/editor-paper";
-import { PaginatedPreview } from "@/components/editor/PaginatedPreview";
 
 export { EditorModeTabButton } from "@/components/editor/EditorModeTabs";
 
@@ -40,8 +38,7 @@ export function TemplateUploadTab({
           <button
             type="button"
             onClick={onRemove}
-            className="flex items-center gap-1.5 mx-auto text-xs text-red-600 hover:text-red-700 transition-colors"
-          >
+            className="flex items-center gap-1.5 mx-auto text-xs text-red-600 hover:text-red-700 transition-colors">
             <X className="h-3.5 w-3.5" /> Hapus file
           </button>
         </div>
@@ -50,17 +47,16 @@ export function TemplateUploadTab({
           onDrop={handleDrop}
           onDragOver={(event) => event.preventDefault()}
           onClick={() => inputRef.current?.click()}
-          className="w-full max-w-sm border-2 border-dashed border-border rounded-xl p-12 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition-all group"
-        >
+          className="w-full max-w-sm border-2 border-dashed border-border rounded-xl p-12 text-center cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/50 transition-all group">
           <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
           <p className="text-sm font-medium">Klik atau seret file ke sini</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Mendukung .docx, .pdf (maks. 10 MB)
+            Mendukung .docx (maks. 10 MB)
           </p>
           <input
             ref={inputRef}
             type="file"
-            accept=".docx,.pdf"
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             className="hidden"
             onChange={(event) => {
               const selected = event.target.files?.[0];
@@ -74,33 +70,24 @@ export function TemplateUploadTab({
 }
 
 export function TemplatePreviewTab({
-  content,
-  pageMargin,
-  paperSize = DEFAULT_PAPER_SIZE,
+  pdfPreviewUrl,
+  pdfPreviewFilename,
+  pdfPreviewError,
+  isPreparingPdfPreview,
 }: {
-  content: string;
-  pageMargin: MarginStyle;
-  paperSize?: PaperSize;
+  pdfPreviewUrl: string | null;
+  pdfPreviewFilename: string;
+  pdfPreviewError: string | null;
+  isPreparingPdfPreview: boolean;
 }) {
-  const isEmpty =
-    !content || content === "<p></p>" || content === "<p><br></p>";
-
-  if (isEmpty) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
-        <div className="text-center space-y-2">
-          <Eye className="h-8 w-8 mx-auto opacity-30" />
-          <p className="text-sm">Belum ada konten untuk di-preview</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <PaginatedPreview
-      content={content}
-      pageMargin={pageMargin}
-      paperSize={paperSize}
+    <PdfPreviewTab
+      title="Preview PDF Template"
+      previewUrl={pdfPreviewUrl}
+      filename={pdfPreviewFilename}
+      error={pdfPreviewError}
+      isPreparing={isPreparingPdfPreview}
+      loadingDescription="Sistem sedang menyimpan template dan membuat preview dari renderer PDF backend."
     />
   );
 }
@@ -113,8 +100,7 @@ function TemplateFieldHelp() {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-2 w-full rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-left hover:bg-emerald-100 transition-colors"
-      >
+        className="flex items-center gap-2 w-full rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2.5 text-left hover:bg-emerald-100 transition-colors">
         <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
           <Info className="h-3 w-3 text-white" />
         </div>
@@ -136,7 +122,9 @@ function TemplateFieldHelp() {
           <ol className="list-decimal list-inside space-y-1 text-emerald-700">
             <li>Klik field untuk menyisipkan placeholder ke editor</li>
             <li>Placeholder tampil sebagai label, misalnya [Nama Lengkap]</li>
-            <li>Klik placeholder lalu ketik nilai asli saat menyusun kontrak</li>
+            <li>
+              Klik placeholder lalu ketik nilai asli saat menyusun kontrak
+            </li>
           </ol>
         </div>
       )}
@@ -155,8 +143,7 @@ function TemplateFieldItem({
     <button
       type="button"
       className="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted transition-colors border border-transparent hover:border-border cursor-pointer group"
-      onClick={() => onInsert(field)}
-    >
+      onClick={() => onInsert(field)}>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-foreground truncate">
           {field.field_label}
@@ -217,8 +204,7 @@ export function TemplateFieldSidebar({
   return (
     <aside
       className="shrink-0 border-l bg-card flex flex-col overflow-y-auto"
-      style={{ width: `${width}px` }}
-    >
+      style={{ width: `${width}px` }}>
       <div className="px-3 pt-3 pb-2 border-b bg-card shrink-0 flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
@@ -233,8 +219,7 @@ export function TemplateFieldSidebar({
           <button
             type="button"
             onClick={onManageFields}
-            className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-md border bg-background hover:bg-muted transition-colors"
-          >
+            className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-md border bg-background hover:bg-muted transition-colors">
             <Plus className="h-3.5 w-3.5 text-foreground" />
             Kelola Field
           </button>

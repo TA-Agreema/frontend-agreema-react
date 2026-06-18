@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 // Row Action Menu
 
@@ -32,6 +32,7 @@ function RowMenu({
   onDownloadPdf,
   canEdit = false,
   canDelete = false,
+  canDownload = false,
 }: {
   template: ContractTemplate;
   onEdit: (t: ContractTemplate) => void;
@@ -40,6 +41,7 @@ function RowMenu({
   onDownloadPdf: (t: ContractTemplate) => void;
   canEdit?: boolean;
   canDelete?: boolean;
+  canDownload?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -168,15 +170,17 @@ function RowMenu({
             Hapus
           </button>
 
-          <button
-            onClick={() => {
-              onDownloadPdf(template);
-              setOpen(false);
-            }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors hover:bg-muted">
-            <Download className="h-4 w-4 text-muted-foreground" />
-            Download PDF
-          </button>
+          {canDownload && (
+            <button
+              onClick={() => {
+                onDownloadPdf(template);
+                setOpen(false);
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors hover:bg-muted">
+              <Download className="h-4 w-4 text-muted-foreground" />
+              Download PDF
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -189,6 +193,8 @@ export default function ContractTemplatePage() {
   const canEdit = permissions.includes("update.template");
   const canDelete = permissions.includes("delete.template");
   const canCreate = permissions.includes("create.template");
+  const canDownload = permissions.includes("download.template");
+  const canManageTemplate = canCreate || canEdit || canDelete;
 
   const {
     templates,
@@ -205,7 +211,11 @@ export default function ContractTemplatePage() {
   );
   const [deleting, setDeleting] = useState(false);
 
-  const filtered = templates.filter(
+  const visibleTemplates = canManageTemplate
+    ? templates
+    : templates.filter((template) => template.is_active);
+
+  const filtered = visibleTemplates.filter(
     (t) =>
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.category.toLowerCase().includes(search.toLowerCase()),
@@ -385,6 +395,7 @@ export default function ContractTemplatePage() {
                     onDownloadPdf={handleDownloadPdf}
                     canEdit={canEdit}
                     canDelete={canDelete}
+                    canDownload={canDownload}
                   />
                 </div>
               ))}

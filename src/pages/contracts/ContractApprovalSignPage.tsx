@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SignatureCanvas from "react-signature-canvas";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle,
@@ -15,7 +16,6 @@ import {
   fetchManagerContractDetail,
   submitManagerContractSignature,
   submitManagerSignedDocument,
-  submitContractReview,
   type ManagerContractDetail,
 } from "@/services/manager.service";
 import { 
@@ -138,7 +138,7 @@ export default function ContractApprovalSignPage({
 
     try {
     if (mode === "upload") {
-      // ── ALUR BARU: Upload dokumen PDF final yang sudah TTD kedua pihak ──
+      // ── ALUR Upload dokumen PDF final yang sudah TTD kedua pihak ──
       const formData = new FormData();
       formData.append("signed_document", uploadFile!);
       formData.append("signature_type", "physical");
@@ -150,16 +150,23 @@ export default function ContractApprovalSignPage({
         const msg =
           status === "active"
             ? "Dokumen berhasil diupload. Kontrak sekarang telah aktif dan berlaku."
-            : "Dokumen berhasil diupload. Pihak eksternal akan menerima email konfirmasi.";
+            : "Dokumen berhasil diupload. Pihak kedua akan menerima email konfirmasi.";
         setSuccessMessage(msg);
+        toast.success("Dokumen berhasil diupload!", {
+          description: msg,
+          duration: 5000,
+        });
         if (onSuccess) onSuccess(status);
       } else {
         const response = await submitManagerSignedDocument(Number(id), formData);
         const status = response?.contract_status;
         setResultContractStatus(status ?? null);
-        setSuccessMessage(
-          "Dokumen berhasil diupload. Pihak eksternal akan menerima email konfirmasi untuk menyetujui kontrak."
-        );
+        const successMsg = "Dokumen berhasil diupload. Pihak eksternal akan menerima email konfirmasi untuk menyetujui kontrak.";
+        setSuccessMessage(successMsg);
+        toast.success("Dokumen berhasil diupload!", {
+          description: successMsg,
+          duration: 5000,
+        });
         if (onSuccess) onSuccess(status);
       }
     } else {
@@ -182,6 +189,12 @@ export default function ContractApprovalSignPage({
       } else {
         await submitManagerContractSignature(Number(id), signPayload);
         setSuccessMessage("Kontrak berhasil ditandatangani.");
+
+        toast.success("Tanda tangan berhasil!", {
+          description: "Kontrak telah ditandatangani dan dikirim ke pihak kedua.",
+          duration: 5000,
+        });
+        
         if (onSuccess) onSuccess();
       }
     } 
@@ -341,7 +354,7 @@ export default function ContractApprovalSignPage({
               </h3>
               <p className="mt-1 text-xs text-slate-500">
                 {mode === "digital"
-                  ? "Gunakan mouse atau touchscreen untuk menggambar tanda tangan di area bawah"
+                  ? "Gunakan mouse atau touchscreen untuk menggambar tanda tangan dan jangan terlalu kecil agar hasilnya terlihat jelas."
                   : "Unggah file dokumen yang sudah ditandatangani untuk melanjutkan proses."}
               </p>
             </div>

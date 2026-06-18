@@ -62,9 +62,9 @@ export default function SignerTypeModal({
                 <Mail className="h-6 w-6 text-blue-500" />
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-gray-900">Partner Eksternal</p>
+                <p className="font-bold text-gray-900">Pihak Eksternal</p>
                 <p className="text-xs text-gray-500">
-                  Partner dari luar organisasi (akses via email token)
+                  Partner dari luar perusahaan (akses via email token)
                 </p>
               </div>
             </button>

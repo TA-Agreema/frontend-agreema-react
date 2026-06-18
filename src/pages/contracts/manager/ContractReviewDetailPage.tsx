@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle,
@@ -35,6 +36,7 @@ import {
 
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
+// import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
 import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
 
@@ -78,15 +80,17 @@ export default function ContractReviewDetailPage() {
       },
     },
   });
+useEffect(() => {
+    if (!id) return;
 
-  useEffect(() => {
+    let isMounted = true;
     const loadContract = async () => {
-      if (!id || !editor) return;
       try {
         const data = await fetchManagerContractDetail(Number(id));
+        if (!isMounted) return;
+
         setContract(data);
         if (data.status_logs) setStatusLogs(data.status_logs);
-        if (data.content) editor.commands.setContent(data.content);
 
         if (data.signers && data.signers.length > 0) {
           const allReviews: FeedbackEntry[] = [];
@@ -126,27 +130,45 @@ export default function ContractReviewDetailPage() {
       } catch (error) {
         console.error("Failed to load contract", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    loadContract()
-  }, [id, editor])
+    loadContract();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  // Set konten editor secara terpisah setelah contract & editor siap
+  useEffect(() => {
+    if (editor && contract?.content) {
+      editor.commands.setContent(contract.content);
+    }
+  }, [editor, contract?.content]);
 
   // useEffect(() => {
   //   // eslint-disable-next-line react-hooks/set-state-in-effect
   //   loadContract();
   // }, [id, editor]);
 
-  const handleAction = async (status: "approved" | "revised" | "rejected") => {
-    if ((status === "revised" || status === "rejected") && !notes.trim()) {
-      setSubmitError("Catatan wajib diisi untuk revisi atau penolakan.");
+  const handleAction = async (status: "approved" | "revised") => {
+    if ((status === "revised") && !notes.trim()) {
+      setSubmitError("Catatan wajib diisi untuk revisi");
       return;
     }
     setIsSubmitting(true);
     setSubmitError(null);
     try {
       await submitContractReview(Number(id), { status, notes });
+
+      if (status === "revised") {
+        toast.info("Revisi diminta.", {
+          description: "Revisi kontrak telah dikirim ke pembuat kontrak.",
+          duration: 5000,
+        });
+      }
       navigate("/approvals");
     } catch (error: unknown) {
       let msg = "Gagal mengirim ulasan. Coba lagi.";
@@ -304,7 +326,7 @@ export default function ContractReviewDetailPage() {
                       const email = signer.external_email;
                       const latestSignature =
                         signer.signatures && signer.signatures.length > 0
-                          ? signer.signatures[signer.signatures.length - 1]
+                          ? signer.signatures.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0] ?? null
                           : null;
                       const signatureImage = latestSignature?.signature_path ?? null;
                       const signedAt = latestSignature?.signed_at ?? null;

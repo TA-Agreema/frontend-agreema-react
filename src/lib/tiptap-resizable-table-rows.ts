@@ -2,29 +2,51 @@ import TableRow from "@tiptap/extension-table-row";
 import { Plugin } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 
-const MIN_ROW_HEIGHT = 28;
-const ROW_RESIZE_HANDLE_SIZE = 10;
+const MIN_ROW_HEIGHT = 4;
+const ROW_RESIZE_HANDLE_SIZE = 12;
 
 function getTableRowElement(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return null;
   return target.closest("tr");
 }
 
+function getTableRowElementAtPoint(event: MouseEvent) {
+  const directRow = getTableRowElement(event.target);
+
+  if (directRow instanceof HTMLTableRowElement) return directRow;
+
+  const pointedElement = document.elementFromPoint(event.clientX, event.clientY);
+  const pointedRow = getTableRowElement(pointedElement);
+
+  return pointedRow instanceof HTMLTableRowElement ? pointedRow : null;
+}
+
 function isNearRowBottom(event: MouseEvent, row: HTMLTableRowElement) {
   const rect = row.getBoundingClientRect();
-  return rect.bottom - event.clientY <= ROW_RESIZE_HANDLE_SIZE;
+  return (
+    event.clientY >= rect.bottom - ROW_RESIZE_HANDLE_SIZE &&
+    event.clientY <= rect.bottom + ROW_RESIZE_HANDLE_SIZE
+  );
 }
 
 function findTableRowPos(view: EditorView, row: HTMLTableRowElement) {
+  const candidateElements: HTMLElement[] = [row];
   const firstCell = row.cells.item(0);
-  if (!firstCell) return null;
 
-  const pos = view.posAtDOM(firstCell, 0);
-  const resolvedPos = view.state.doc.resolve(pos);
+  if (firstCell) candidateElements.push(firstCell);
 
-  for (let depth = resolvedPos.depth; depth > 0; depth -= 1) {
-    if (resolvedPos.node(depth).type.name === "tableRow") {
-      return resolvedPos.before(depth);
+  for (const element of candidateElements) {
+    try {
+      const pos = view.posAtDOM(element, 0);
+      const resolvedPos = view.state.doc.resolve(pos);
+
+      for (let depth = resolvedPos.depth; depth > 0; depth -= 1) {
+        if (resolvedPos.node(depth).type.name === "tableRow") {
+          return resolvedPos.before(depth);
+        }
+      }
+    } catch {
+      // Try the next candidate element.
     }
   }
 
@@ -77,11 +99,26 @@ export const ResizableTableRow = TableRow.extend({
               document.body.classList.remove("table-row-resize-cursor");
               return false;
             },
+            mousemove(view, event) {
+              if (!view.editable) return false;
+              if (!(event instanceof MouseEvent)) return false;
+
+              const row = getTableRowElementAtPoint(event);
+              const shouldShowCursor =
+                row instanceof HTMLTableRowElement && isNearRowBottom(event, row);
+
+              document.body.classList.toggle(
+                "table-row-resize-cursor",
+                shouldShowCursor,
+              );
+
+              return false;
+            },
             mousedown(view, event) {
               if (!view.editable) return false;
               if (!(event instanceof MouseEvent)) return false;
 
-              const row = getTableRowElement(event.target);
+              const row = getTableRowElementAtPoint(event);
 
               if (
                 !(row instanceof HTMLTableRowElement) ||

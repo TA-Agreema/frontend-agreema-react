@@ -38,7 +38,7 @@ export function ContractLeaveConfirmModal({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -46,26 +46,28 @@ export function ContractLeaveConfirmModal({
           >
             Tetap di Halaman
           </button>
-          <button
-            type="button"
-            onClick={onDiscard}
-            className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-          >
-            Keluar Tanpa Simpan
-          </button>
-          <button
-            type="button"
-            onClick={onSaveDraft}
-            disabled={isSaving || isSaveDisabled}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4" />
-            )}
-            Simpan Draft
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={onDiscard}
+              className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              Keluar Tanpa Simpan
+            </button>
+            <button
+              type="button"
+              onClick={onSaveDraft}
+              disabled={isSaving || isSaveDisabled}
+              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Simpan Draft
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -6,12 +6,16 @@ import {
   Users,
   ClipboardList,
   // Archive,
+  Building2,
+  Handshake,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export interface SidebarMenuSubItem {
   title: string;
   url: string;
+  icon?: LucideIcon;
+  exact?: boolean;
   permissions?: string[];
   roles?: string[];
 }
@@ -63,6 +67,29 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
   //   icon: Settings,
   //   roles: ["admin"],
   // },
+
+  // {
+  //   title: "Daftar Kontrak",
+  //   url: "/contracts",
+  //   icon: FileText,
+  //   roles: ["hrd", "manager"],
+  //   exact: true,
+  //   items: [
+  //     {
+  //       title: "Kontrak Internal",
+  //       url: "/contracts",
+  //       icon: Building2,
+  //       roles: ["hrd", "admin", "manager"],
+  //       exact: true,
+  //     },
+  //     {
+  //       title: "Kontrak Mitra",
+  //       url: "/contracts/partners",
+  //       icon: Handshake,
+  //       roles: ["hrd", "admin", "manager"],
+  //     },
+  //   ],
+  // },
   {
     title: "Template Kontrak",
     url: "/contracts-templates",
@@ -78,7 +105,8 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     items: [
       { title: "Semua Kontrak", url: "/contracts/" },
       { title: "Kontrak Aktif", url: "/contracts/active" },
-      { title: "Arsip Kontrak", url: "/contracts/archive" }
+      { title: "Arsip Kontrak", url: "/contracts/archive" },
+      { title: "Kontrak Mitra", url: "/contracts/partners" },
     ],
   },
 
@@ -91,7 +119,8 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     items: [
       { title: "Perlu Ditinjau", url: "/approvals" },
       { title: "Kontrak Aktif", url: "/contracts/active" },
-      { title: "Arsip Kontrak", url: "/contracts/archive" }
+      { title: "Arsip Kontrak", url: "/contracts/archive" },
+      { title: "Kontrak Mitra", url: "/contracts/partners" },
     ],
   },
 

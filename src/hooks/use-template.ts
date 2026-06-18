@@ -13,7 +13,7 @@ import {
 } from "@/services/template.service";
 import type { Template, TemplatePayload } from "@/types/template";
 import type { PaperSize } from "@/lib/editor-paper";
-
+import { toast } from "sonner";
 // Re-export types agar kompatibel dengan page yang sudah ada
 export type TemplateStatus = "Aktif" | "Nonaktif";
 export type { Template as ContractTemplate };
@@ -37,8 +37,8 @@ interface UseTemplatesReturn {
   templates: Template[];
   loading: boolean;
   error: string | null;
-  createTemplate: (payload: CreateTemplatePayload) => Promise<void>;
-  updateTemplate: (payload: UpdateTemplatePayload) => Promise<void>;
+  createTemplate: (payload: CreateTemplatePayload) => Promise<Template>;
+  updateTemplate: (payload: UpdateTemplatePayload) => Promise<Template>;
   deleteTemplate: (id: number) => Promise<void>;
   getTemplate: (id: number) => Promise<Template | undefined>;
   toggleTemplateStatus: (id: number) => Promise<void>;
@@ -99,8 +99,9 @@ export function useTemplates(): UseTemplatesReturn {
           category_id: payload.category_id,
           is_active: payload.is_active ?? true,
         };
-        await apiCreateTemplate(apiPayload);
+        const created = await apiCreateTemplate(apiPayload);
         await fetchAll();
+        return created;
       } finally {
         setLoading(false);
       }
@@ -121,8 +122,9 @@ export function useTemplates(): UseTemplatesReturn {
           category_id: payload.category_id,
           is_active: payload.is_active,
         };
-        await apiUpdateTemplate(payload.id, apiPayload);
+        const updated = await apiUpdateTemplate(payload.id, apiPayload);
         await fetchAll();
+        return updated;
       } finally {
         setLoading(false);
       }
@@ -135,16 +137,24 @@ export function useTemplates(): UseTemplatesReturn {
   const deleteTemplate = useCallback(async (id: number) => {
     setLoading(true);
     try {
+      // Ambil nama template sebelum dihapus untuk pesan toast
+      const target = templates.find((t) => t.id === id);
       await apiDeleteTemplate(id);
       // Hapus dari state lokal agar UI langsung update tanpa refetch
       setTemplates((prev) => prev.filter((t) => t.id !== id));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      toast.success("Template dihapus", {
+          description: target ? `"${target.name}" berhasil dihapus.` : "Template berhasil dihapus.",
+        });
+      } catch (e) {
+        toast.error("Gagal menghapus template", {
+          description: getErrorMessage(e, "Silakan coba lagi."),
+        });
+      } finally {
+        setLoading(false);
+      }
+  }, [templates]);
 
   //  Toggle Status
-
   const toggleTemplateStatus = useCallback(async (id: number) => {
     setLoading(true);
     try {
@@ -153,6 +163,19 @@ export function useTemplates(): UseTemplatesReturn {
       setTemplates((prev) =>
         prev.map((t) => (t.id === updated.id ? updated : t)),
       );
+      const isNowActive = updated.is_active;
+      toast.success(
+        isNowActive ? "Template diaktifkan" : "Template dinonaktifkan",
+        {
+          description: isNowActive
+            ? `"${updated.name}" kini aktif.`
+            : `"${updated.name}" telah dinonaktifkan.`,
+        }
+      );
+    } catch (e) {
+      toast.error("Gagal mengubah status template", {
+        description: getErrorMessage(e, "Silakan coba lagi."),
+      });
     } finally {
       setLoading(false);
     }

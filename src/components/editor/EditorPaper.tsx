@@ -3,6 +3,7 @@ import { EditorContent, type Editor } from "@tiptap/react";
 import type { MarginStyle } from "@/components/editor/MarginDropdown";
 import { getPaperSizeOption, type PaperSize } from "@/lib/editor-paper";
 import { useVisualPagination } from "@/hooks/use-visual-pagination";
+import type { WatermarkSettings } from "@/lib/editor-watermark";
 
 type EditorPaperProps = {
   editor: Editor | null;
@@ -10,6 +11,7 @@ type EditorPaperProps = {
   paperSize: PaperSize;
   childrenAfterEditor?: ReactNode;
   onDropText?: (text: string) => void;
+  watermark?: WatermarkSettings;
 };
 
 export function EditorPaper({
@@ -18,6 +20,7 @@ export function EditorPaper({
   paperSize,
   childrenAfterEditor,
   onDropText,
+  watermark,
 }: EditorPaperProps) {
   const paper = getPaperSizeOption(paperSize);
   const paperRef = useRef<HTMLDivElement | null>(null);
@@ -53,8 +56,25 @@ export function EditorPaper({
         } as CSSProperties}
         data-paper-size={paper.id}
       >
+        {watermark?.enabled && watermark.imageSrc && (
+          <div
+            className="editor-document-watermark pointer-events-none absolute inset-0 z-0 flex items-center justify-center overflow-hidden"
+            aria-hidden="true"
+          >
+            <img
+              src={watermark.imageSrc}
+              alt=""
+              className="select-none object-contain"
+              style={{
+                width: `${watermark.size}%`,
+                opacity: watermark.opacity,
+                transform: `rotate(${watermark.rotation}deg)`,
+              }}
+            />
+          </div>
+        )}
         <div
-          className="editor-paper-content flex-1"
+          className="editor-paper-content relative z-10 flex-1"
           style={{
             paddingTop: pageMargin.top,
             paddingBottom: pageMargin.bottom,
