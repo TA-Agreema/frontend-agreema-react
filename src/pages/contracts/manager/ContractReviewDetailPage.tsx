@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CheckCircle,
@@ -35,7 +36,7 @@ import {
 
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
-import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
+// import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
 import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
 
@@ -81,13 +82,17 @@ export default function ContractReviewDetailPage() {
   });
 
   useEffect(() => {
+    if (!id) return;
+
+    let isMounted = true;
+
     const loadContract = async () => {
-      if (!id || !editor) return;
       try {
         const data = await fetchManagerContractDetail(Number(id));
+        if (!isMounted) return;
+
         setContract(data);
         if (data.status_logs) setStatusLogs(data.status_logs);
-        if (data.content) editor.commands.setContent(data.content);
 
         if (data.signers && data.signers.length > 0) {
           const allReviews: FeedbackEntry[] = [];
@@ -127,12 +132,23 @@ export default function ContractReviewDetailPage() {
       } catch (error) {
         console.error("Failed to load contract", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
-    loadContract()
-  }, [id, editor])
+    loadContract();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  // Set konten editor secara terpisah setelah contract & editor siap
+  useEffect(() => {
+    if (editor && contract?.content) {
+      editor.commands.setContent(contract.content);
+    }
+  }, [editor, contract?.content]);
 
   // useEffect(() => {
   //   // eslint-disable-next-line react-hooks/set-state-in-effect

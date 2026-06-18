@@ -22,7 +22,6 @@ import {
   ChevronDown,
   Loader2,
   Info,
-  Loader2,
   AlertCircle,
   Plus,
 } from "lucide-react";

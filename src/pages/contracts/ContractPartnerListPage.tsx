@@ -21,7 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/DeleteModal";
 import TemplateSelectModal, {
   type TemplateOption,
-} from "@/components/modal/TemplateSelectModal";
+} from "@/components/modal/template/TemplateSelectModal";
 import {
   fetchPartnerContracts,
   createContract,

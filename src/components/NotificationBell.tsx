@@ -109,6 +109,12 @@ const TYPE_CONFIG: Record<string, {
     iconBg: "bg-red-100",
     iconColor: "text-red-500",
   },
+  all_internal_signed: {
+    label: "Semua Pihak Internal Telah Menandatangani",
+    icon: CheckCircle,
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-600",
+  },
 };
 
 const DEFAULT_CONFIG = {
