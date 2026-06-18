@@ -18,7 +18,7 @@ import {
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
-import DeleteModal from "@/components/modal/DeleteModal";
+import DeleteModal from "@/components/modal/common/DeleteModal";
 import TemplateSelectModal, {
   type TemplateOption,
 } from "@/components/modal/template/TemplateSelectModal";

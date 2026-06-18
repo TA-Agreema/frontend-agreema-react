@@ -318,8 +318,6 @@ export default function ContractArchivePage() {
   return (
     <div className="space-y-6 min-w-0 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
-    <div className="space-y-6 min-w-0 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-gray-900">
           Arsip Kontrak

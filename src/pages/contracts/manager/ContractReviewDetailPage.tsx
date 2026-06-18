@@ -11,8 +11,6 @@ import {
   FileText,
   FileSignature,
   CalendarDays,
-  FileSignature,
-  CalendarDays,
 } from "lucide-react";
 import {
   fetchManagerContractDetail,
