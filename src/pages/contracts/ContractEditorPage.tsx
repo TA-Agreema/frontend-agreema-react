@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { Group as PanelGroup, Panel } from "react-resizable-panels";
-import { useEditor } from "@tiptap/react";
+import { useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -9,7 +9,6 @@ import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import { Table } from "@tiptap/extension-table";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
 import OrderedList from "@tiptap/extension-ordered-list";
@@ -33,6 +32,7 @@ import {
 } from "@/lib/contract-field-values";
 import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
 import { PageBreak } from "@/lib/tiptap-page-break";
+import { ResizableTable } from "@/lib/tiptap-resizable-table";
 import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
 import {
   BorderedTableCell,
@@ -174,6 +174,38 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
 const SIDEBAR_DEFAULT_PX = 260;
 const SIDEBAR_MIN_PX = 200;
 const SIDEBAR_MAX_PX = 480;
+
+function getActiveDocumentFontFamily(
+  editor: NonNullable<ReturnType<typeof useEditor>>,
+) {
+  const selectionFont = editor.getAttributes("textStyle").fontFamily;
+
+  if (selectionFont) return selectionFont as string;
+
+  let documentFont = "";
+
+  editor.state.doc.descendants((node) => {
+    if (documentFont) return false;
+
+    if (typeof node.attrs.fontFamily === "string" && node.attrs.fontFamily) {
+      documentFont = node.attrs.fontFamily;
+      return false;
+    }
+
+    const textStyleMark = node.marks.find(
+      (mark) => mark.type.name === "textStyle" && mark.attrs.fontFamily,
+    );
+
+    if (textStyleMark?.attrs.fontFamily) {
+      documentFont = textStyleMark.attrs.fontFamily as string;
+      return false;
+    }
+
+    return true;
+  });
+
+  return documentFont;
+}
 
 export default function ContractEditorPage() {
   const navigate = useNavigate();
@@ -374,23 +406,10 @@ export default function ContractEditorPage() {
       ContractField,
       PageBreak,
       HorizontalRule,
-      Table.extend({
-        addAttributes() {
-          return {
-            ...this.parent?.(),
-            borderType: {
-              default: "all",
-              parseHTML: (element) => element.getAttribute("data-border-type"),
-              renderHTML: (attributes) => ({
-                "data-border-type": attributes.borderType,
-              }),
-            },
-          };
-        },
-      }).configure({
+      ResizableTable.configure({
         resizable: true,
         lastColumnResizable: true,
-        cellMinWidth: 24,
+        cellMinWidth: 1,
       }),
       ResizableTableRow,
       BorderedTableHeader,
@@ -449,6 +468,12 @@ export default function ContractEditorPage() {
       }
     },
   });
+  const signatureFontFamily =
+    useEditorState({
+      editor,
+      selector: ({ editor: currentEditor }) =>
+        currentEditor ? getActiveDocumentFontFamily(currentEditor) : "",
+    }) ?? "";
 
   useEffect(() => {
     const html = editor?.getHTML() || "";
@@ -679,12 +704,36 @@ export default function ContractEditorPage() {
         noUserAccount: signer.noUserAccount,
       }));
 
-  const hasRequiredSubmitSigners = () => {
+  const isValidEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const getSubmitSignerValidationMessage = () => {
     const filledSigners = buildSignersPayload();
-    return (
-      filledSigners.some((signer) => signer.type === "internal") &&
-      filledSigners.some((signer) => signer.type === "external")
+    const externalSigners = filledSigners.filter(
+      (signer) => signer.type === "external",
     );
+
+    if (
+      !filledSigners.some((signer) => signer.type === "internal") ||
+      externalSigners.length === 0
+    ) {
+      return "Pengajuan membutuhkan minimal satu penandatangan internal dan satu penandatangan eksternal.";
+    }
+
+    const incompleteExternalSigner = externalSigners.find(
+      (signer) =>
+        !signer.name.trim() || !signer.title.trim() || !signer.email.trim(),
+    );
+
+    if (incompleteExternalSigner) {
+      return "Penandatangan eksternal wajib memiliki nama, jabatan, dan email valid sebelum kontrak diajukan.";
+    }
+
+    if (externalSigners.some((signer) => !isValidEmail(signer.email))) {
+      return "Email penandatangan eksternal tidak valid. Periksa kembali email yang diisi.";
+    }
+
+    return null;
   };
 
   const buildPayload = (
@@ -825,10 +874,9 @@ export default function ContractEditorPage() {
       setSaveError("Judul kontrak wajib diisi.");
       return;
     }
-    if (!hasRequiredSubmitSigners()) {
-      setSaveError(
-        "Pengajuan membutuhkan minimal satu penandatangan internal dan satu penandatangan eksternal.",
-      );
+    const signerValidationMessage = getSubmitSignerValidationMessage();
+    if (signerValidationMessage) {
+      setSaveError(signerValidationMessage);
       return;
     }
     setIsSaving(true);
@@ -903,9 +951,6 @@ export default function ContractEditorPage() {
               className="h-10 w-auto shrink-0"
             />
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-md hover:bg-emerald-700 transition-colors shadow-sm">
-            <CheckCircle className="h-3.5 w-3.5" /> Mode Editor
-          </button>
         </header>
 
         {/*  Action Bar  */}
@@ -944,10 +989,10 @@ export default function ContractEditorPage() {
                         setSaveError("Judul kontrak wajib diisi.");
                         return;
                       }
-                      if (!hasRequiredSubmitSigners()) {
-                        setSaveError(
-                          "Pengajuan membutuhkan minimal satu penandatangan internal dan satu penandatangan eksternal.",
-                        );
+                      const signerValidationMessage =
+                        getSubmitSignerValidationMessage();
+                      if (signerValidationMessage) {
+                        setSaveError(signerValidationMessage);
                         return;
                       }
                       setSaveError(null);
@@ -1044,9 +1089,6 @@ export default function ContractEditorPage() {
                       paddingLeft: pageMargin.left,
                       paddingRight: pageMargin.right,
                     }}>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 text-center">
-                      Tanda Tangan
-                    </p>
                     {signedDocumentUrl ? (
                       <div className="flex flex-col items-center gap-4 py-4">
                         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
@@ -1082,6 +1124,7 @@ export default function ContractEditorPage() {
                             email={s.email || undefined}
                             date={s.signedAt || startDate}
                             signaturePath={s.signaturePath}
+                            fontFamily={signatureFontFamily}
                           />
                         ))}
                       </div>

@@ -144,9 +144,16 @@
 }
 
 body.table-row-resize-cursor,
-body.table-row-resize-cursor * {
+body.table-row-resize-cursor *,
+body.table-edge-resize-cursor,
+body.table-edge-resize-cursor * {
   cursor: ns-resize !important;
   user-select: none;
+}
+
+body.table-edge-resize-cursor,
+body.table-edge-resize-cursor * {
+  cursor: ew-resize !important;
 }
 
 .ProseMirror table td::before,
@@ -159,6 +166,11 @@ body.table-row-resize-cursor * {
   position: absolute;
   right: 0;
   z-index: 3;
+}
+
+.ProseMirror table td:hover::before,
+.ProseMirror table th:hover::before {
+  background: rgba(16, 185, 129, 0.08);
 }
 
 .ProseMirror {
@@ -364,10 +376,9 @@ body.table-row-resize-cursor * {
 .tiptap-preview table {
   border-collapse: collapse;
   table-layout: fixed;
-  max-width: 100%;
-  width: 100% !important;
+  max-width: none;
+  width: auto;
   margin: 1rem 0;
-  overflow: hidden;
   transition: all 0.2s;
 }
 
@@ -379,17 +390,17 @@ body.table-row-resize-cursor * {
 
 .ProseMirror table colgroup col,
 .tiptap-preview table colgroup col {
-  max-width: 100%;
+  min-width: 1px;
 }
 
 .ProseMirror .tableWrapper table,
 .tiptap-preview table {
-  min-width: 0 !important;
+  min-width: 1px !important;
 }
 
 .ProseMirror table[style],
 .tiptap-preview table[style] {
-  width: 100% !important;
+  width: auto;
 }
 
 /* Default / All Borders */
@@ -397,7 +408,7 @@ body.table-row-resize-cursor * {
 .ProseMirror table[data-border-type="all"],
 .tiptap-preview table:not([data-border-type]),
 .tiptap-preview table[data-border-type="all"] {
-  border: 1px solid #000000 !important;
+  border: none !important;
 }
 .ProseMirror table:not([data-border-type]) td,
 .ProseMirror table:not([data-border-type]) th,
@@ -422,12 +433,6 @@ body.table-row-resize-cursor * {
   border: none !important;
 }
 
-.ProseMirror table[data-border-type="none"] td,
-.ProseMirror table[data-border-type="none"] th {
-  outline: 1px dashed #e5e7eb;
-  outline-offset: -1px;
-}
-
 /* Outside Borders Only */
 .ProseMirror table[data-border-type="outside"],
 .tiptap-preview table[data-border-type="outside"] {
@@ -437,7 +442,7 @@ body.table-row-resize-cursor * {
 .ProseMirror table[data-border-type="outside"] th,
 .tiptap-preview table[data-border-type="outside"] td,
 .tiptap-preview table[data-border-type="outside"] th {
-  border: 1px dashed #f3f4f6 !important;
+  border: none !important;
 }
 
 /* Inside Borders Only */
@@ -450,6 +455,26 @@ body.table-row-resize-cursor * {
 .tiptap-preview table[data-border-type="inside"] td,
 .tiptap-preview table[data-border-type="inside"] th {
   border: 1px solid #000000 !important;
+}
+
+.ProseMirror table[data-border-type="inside"] tr:first-child > *,
+.tiptap-preview table[data-border-type="inside"] tr:first-child > * {
+  border-top: none !important;
+}
+
+.ProseMirror table[data-border-type="inside"] tr:last-child > *,
+.tiptap-preview table[data-border-type="inside"] tr:last-child > * {
+  border-bottom: none !important;
+}
+
+.ProseMirror table[data-border-type="inside"] tr > *:first-child,
+.tiptap-preview table[data-border-type="inside"] tr > *:first-child {
+  border-left: none !important;
+}
+
+.ProseMirror table[data-border-type="inside"] tr > *:last-child,
+.tiptap-preview table[data-border-type="inside"] tr > *:last-child {
+  border-right: none !important;
 }
 
 .ProseMirror table td[data-border-top="none"],
@@ -484,8 +509,8 @@ body.table-row-resize-cursor * {
 .ProseMirror table th,
 .tiptap-preview table td,
 .tiptap-preview table th {
-  min-width: 1em;
-  padding: 8px 10px;
+  min-width: 1px;
+  padding: 4px 6px;
   vertical-align: top;
   box-sizing: border-box;
   position: relative;
@@ -514,18 +539,20 @@ body.table-row-resize-cursor * {
 
 .ProseMirror table .column-resize-handle {
   position: absolute;
-  right: -2px;
+  right: -3px;
   top: 0;
   bottom: -2px;
-  width: 4px;
+  width: 6px;
   background-color: #10b981;
   pointer-events: none;
+  z-index: 4;
 }
 
 .ProseMirror .tableWrapper {
   margin: 1.5rem 0;
-  max-width: 100%;
-  overflow-x: hidden;
+  max-width: none;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .ProseMirror .resize-cursor {

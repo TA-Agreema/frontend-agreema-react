@@ -199,6 +199,7 @@ type ContractSignatureBoxProps = {
   isExternal?: boolean;
   signaturePath?: string | null;
   signedDocumentUrl?: string | null;
+  fontFamily?: string | null;
 };
 
 export function ContractSignatureBox({
@@ -209,6 +210,7 @@ export function ContractSignatureBox({
   isExternal = false,
   signaturePath,
   signedDocumentUrl,
+  fontFamily,
 }: ContractSignatureBoxProps) {
   const formattedDate = date
     ? new Date(date)
@@ -219,16 +221,28 @@ export function ContractSignatureBox({
         })
         .replace(/\//g, "/")
     : "[DD/MM/YYYY]";
+  const hasSignature = Boolean(signaturePath);
 
   return (
-    <div className="flex flex-col gap-2 w-62.5">
-      <p className="text-[11px] text-gray-400">Tanggal: {formattedDate}</p>
-      <div className="w-full border border-gray-200 rounded-xl h-31 flex items-center justify-center bg-gray-50/60 overflow-hidden">
-        {signaturePath ? (
+    <div
+      className="flex w-[250px] flex-col items-center gap-2 text-center text-gray-900"
+      style={fontFamily ? { fontFamily } : undefined}
+    >
+      <p className="text-xs leading-none text-gray-700">
+        Tanggal: {formattedDate}
+      </p>
+      <div
+        className={`flex h-28 w-full items-center justify-center overflow-hidden ${
+          hasSignature
+            ? "border-0 bg-transparent"
+            : "rounded-md border border-dashed border-gray-300 bg-gray-50/60"
+        }`}
+      >
+        {hasSignature ? (
           <img
             src={signaturePath}
             alt="Tanda Tangan"
-            className="h-full w-full object-contain p-2"
+            className="max-h-24 w-full object-contain"
           />
         ) : (
           <div className="flex flex-col items-center gap-1 text-gray-300">
@@ -238,20 +252,19 @@ export function ContractSignatureBox({
               <Pen className="h-6 w-6 stroke-[1.25]" />
             )}
             <span className="text-[10px] tracking-wide font-medium uppercase">
-              Area Tanda Tangan
+              Belum tersedia
             </span>
           </div>
         )}
       </div>
-      <div className="space-y-0.5">
-        <p className="text-sm font-semibold text-gray-800 truncate">
+      <div className="w-full space-y-1">
+        <p className="border-b border-gray-900 pb-0.5 text-sm font-bold leading-tight">
           {name ||
             (isExternal ? "[Nama Partner Eksternal]" : "[Nama Penandatangan]")}
         </p>
-        <p className="text-xs text-gray-500 truncate">{title || "Jabatan"}</p>
+        <p className="text-xs leading-tight text-gray-700">{title || "Jabatan"}</p>
         {isExternal && (
-          <p className="flex items-center gap-1 text-[11px] text-gray-400 truncate mt-0.5">
-            <Mail className="h-3 w-3 shrink-0" />
+          <p className="mt-0.5 text-[11px] leading-tight text-gray-500">
             {email || "partner@company.com"}
           </p>
         )}

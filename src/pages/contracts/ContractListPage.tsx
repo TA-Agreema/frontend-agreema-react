@@ -21,7 +21,10 @@ import {
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
-import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
+import {
+  fetchFieldDefinitions,
+  type FieldDefinition,
+} from "@/services/field.service";
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -89,7 +92,7 @@ export interface ContractRow {
   terminations?: Termination[];
 }
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 //  Status Config
 
@@ -129,6 +132,44 @@ const STATUS_CONFIG: Record<
     label: "Dibatalkan",
     className: "bg-red-50 text-red-600 border-red-200",
   },
+};
+
+const parseContractDate = (value?: string | null) => {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  const isoDate = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) {
+    return new Date(
+      Number(isoDate[1]),
+      Number(isoDate[2]) - 1,
+      Number(isoDate[3]),
+    );
+  }
+
+  const localDate = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (localDate) {
+    return new Date(
+      Number(localDate[3]),
+      Number(localDate[2]) - 1,
+      Number(localDate[1]),
+    );
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatContractDate = (value?: string | null, fallback = "-") => {
+  const date = parseContractDate(value);
+
+  if (!date) return fallback;
+
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 };
 
 //  Sub-components
@@ -235,11 +276,14 @@ function RowMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
+  const hasPendingTermination =
+    contract.terminations && contract.terminations.length > 0;
 
   // Aksi yang relevan berdasarkan status
-  const canTerminate = ["active"].includes(contract.status) && !hasPendingTermination;
-  const canAddAddendum = ["active"].includes(contract.status) && !hasPendingTermination;
+  const canTerminate =
+    ["active"].includes(contract.status) && !hasPendingTermination;
+  const canAddAddendum =
+    ["active"].includes(contract.status) && !hasPendingTermination;
   const canDelete = contract.status === "draft";
 
   const { roles } = useAuth();
@@ -423,7 +467,9 @@ export default function ContractListPage() {
   const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(
     null,
   );
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
+    [],
+  );
 
   // Load field definitions
   useEffect(() => {
@@ -433,32 +479,37 @@ export default function ContractListPage() {
   // Initialize filter and sorting hook
   const filter = useContractFilter(contracts);
 
-  const handleTerminationSuccess = useCallback((contractId: number, terminationData: Termination) => {
-    setContracts((prev) =>
-      prev.map((c) => {
-        if (c.id === contractId) {
-          const effectiveDateStr = terminationData?.effective_date;
-          let isTerminatedNow = true;
+  const handleTerminationSuccess = useCallback(
+    (contractId: number, terminationData: Termination) => {
+      setContracts((prev) =>
+        prev.map((c) => {
+          if (c.id === contractId) {
+            const effectiveDateStr = terminationData?.effective_date;
+            let isTerminatedNow = true;
 
-          if (effectiveDateStr) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const effectiveDate = new Date(effectiveDateStr);
-            effectiveDate.setHours(0, 0, 0, 0);
-            isTerminatedNow = effectiveDate.getTime() <= today.getTime();
+            if (effectiveDateStr) {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const effectiveDate = parseContractDate(effectiveDateStr);
+              effectiveDate?.setHours(0, 0, 0, 0);
+              isTerminatedNow = effectiveDate
+                ? effectiveDate.getTime() <= today.getTime()
+                : false;
+            }
+
+            return {
+              ...c,
+              status: isTerminatedNow ? "terminated" : c.status,
+              end_date: effectiveDateStr || c.end_date,
+              terminations: isTerminatedNow ? [] : [terminationData],
+            };
           }
-
-          return {
-            ...c,
-            status: isTerminatedNow ? "terminated" : c.status,
-            end_date: effectiveDateStr || c.end_date,
-            terminations: isTerminatedNow ? [] : [terminationData]
-          };
-        }
-        return c;
-      })
-    );
-  }, []);
+          return c;
+        }),
+      );
+    },
+    [],
+  );
 
   // Insert new addendum into local state so UI updates instantly
   const handleAddendumSuccess = useCallback(
@@ -477,9 +528,12 @@ export default function ContractListPage() {
   );
 
   const filteredContracts = filter.contracts.filter(
-    (c) => c.status !== "terminated" && c.status !== "expired" && c.status !== "active"
+    (c) => c.status !== "terminated" && c.status !== "expired",
   );
-  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / PAGE_SIZE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredContracts.length / PAGE_SIZE),
+  );
   const safePage = Math.min(page, totalPages);
   const paginated = filteredContracts.slice(
     (safePage - 1) * PAGE_SIZE,
@@ -575,14 +629,16 @@ export default function ContractListPage() {
       {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">Daftar Kontrak</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            Daftar Kontrak
+          </h2>
           <p className="text-muted-foreground text-sm">
             Daftar Kontrak yang telah dibuat
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => navigate('/contracts/archive')}
+            onClick={() => navigate("/contracts/archive")}
             className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border bg-background hover:bg-muted/50 transition-colors font-medium text-foreground">
             <Archive className="h-4 w-4 text-muted-foreground" />
             Arsip
@@ -645,48 +701,42 @@ export default function ContractListPage() {
                 <th className="w-8 px-3 py-3" />
                 <th
                   onClick={() => filter.requestSort("title")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Judul {renderSortIcon("title")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("partner")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Partner {renderSortIcon("partner")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("category")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Kategori {renderSortIcon("category")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("status")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Status {renderSortIcon("status")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("start_date")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Periode {renderSortIcon("start_date")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("created_by")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Dibuat Oleh {renderSortIcon("created_by")}
                   </div>
@@ -700,8 +750,7 @@ export default function ContractListPage() {
                     <th
                       key={field.id}
                       onClick={() => filter.requestSort(String(field.id))}
-                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                    >
+                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                       <div className="flex items-center gap-1.5">
                         {field.field_label} {renderSortIcon(String(field.id))}
                       </div>
@@ -738,161 +787,170 @@ export default function ContractListPage() {
                   <td
                     colSpan={8 + filter.visibleFields.length}
                     className="py-16 text-center text-muted-foreground text-sm">
-                    {filter.search || filter.yearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                    {filter.search ||
+                    filter.yearFilter !== "all" ||
+                    filter.statusFilter !== "all" ||
+                    filter.customFilters.length > 0
                       ? "Tidak ada kontrak yang cocok dengan filter aktif"
                       : "Belum ada kontrak"}
                   </td>
                 </tr>
               )}
 
-              {!loading && !error && paginated.map((contract) => {
-                const isExpanded = expanded.has(contract.id);
-                const hasAddendums = contract.addendums.length > 0;
+              {!loading &&
+                !error &&
+                paginated.map((contract) => {
+                  const isExpanded = expanded.has(contract.id);
+                  const hasAddendums = contract.addendums.length > 0;
 
-                return (
-                  <>
-                    {/*  Main contract row  */}
-                    <tr
-                      key={`contract-${contract.id}`}
-                      onClick={() => hasAddendums && toggleExpand(contract.id)}
-                      className={`transition-colors ${
-                        hasAddendums
-                          ? "cursor-pointer hover:bg-muted/40"
-                          : "hover:bg-muted/20"
-                      } ${isExpanded ? "bg-muted/30" : ""}`}>
-                      {/* Expand icon */}
-                      <td className="w-10 px-3 py-4">
-                        {hasAddendums ? (
-                          <div className="flex items-center justify-center">
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </div>
-                        ) : (
-                          <div className="w-4" />
-                        )}
-                      </td>
+                  return (
+                    <>
+                      {/*  Main contract row  */}
+                      <tr
+                        key={`contract-${contract.id}`}
+                        onClick={() =>
+                          hasAddendums && toggleExpand(contract.id)
+                        }
+                        className={`transition-colors ${
+                          hasAddendums
+                            ? "cursor-pointer hover:bg-muted/40"
+                            : "hover:bg-muted/20"
+                        } ${isExpanded ? "bg-muted/30" : ""}`}>
+                        {/* Expand icon */}
+                        <td className="w-10 px-3 py-4">
+                          {hasAddendums ? (
+                            <div className="flex items-center justify-center">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-4" />
+                          )}
+                        </td>
 
-                      {/* Title */}
-                      <td className="px-3 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2.5 rounded-md bg-green-100 text-[#268257] shrink-0">
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground leading-tight">
-                              {contract.title}
-                            </p>
-                            {contract.status === "active" && contract.terminations && contract.terminations.length > 0 && (
-                              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs animate-pulse">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                                </span>
-                                Akan diterminasi otomatis pada: {" "}
-                                <span className="font-bold">
-                                  {new Date(contract.terminations[0].effective_date).toLocaleDateString("id-ID", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric"
-                                  })}
-                                </span>
-                              </div>
-                            )}
-                            {hasAddendums && (
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {contract.addendums.length} addendum
+                        {/* Title */}
+                        <td className="px-3 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2.5 rounded-md bg-green-100 text-[#268257] shrink-0">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground leading-tight">
+                                {contract.title}
                               </p>
-                            )}
+                              {contract.status === "active" &&
+                                contract.terminations &&
+                                contract.terminations.length > 0 && (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs animate-pulse">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    Akan diterminasi otomatis pada:{" "}
+                                    <span className="font-bold">
+                                      {formatContractDate(
+                                        contract.terminations[0].effective_date,
+                                      )}
+                                    </span>
+                                  </div>
+                                )}
+                              {hasAddendums && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {contract.addendums.length} addendum
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Partner */}
-                      <td className="px-3 py-4 text-muted-foreground font-medium">
-                        {contract.partner}
-                      </td>
+                        {/* Partner */}
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.partner}
+                        </td>
 
-                      {/* Category */}
-                      <td className="px-3 py-4 text-muted-foreground font-medium">
-                        {contract.category}
-                      </td>
+                        {/* Category */}
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.category}
+                        </td>
 
-                      {/* Status */}
-                      <td className="px-3 py-4">
-                        <StatusBadge status={contract.status} />
-                      </td>
+                        {/* Status */}
+                        <td className="px-3 py-4">
+                          <StatusBadge status={contract.status} />
+                        </td>
 
-                      {/* Period */}
-                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
-                        {contract.start_date}
-                        <br />
-                        <span className="text-muted-foreground/60">s/d</span>
-                        <br />
-                        {contract.end_date ?? "—"}
-                      </td>
+                        {/* Period */}
+                        <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
+                          {contract.start_date}
+                          <br />
+                          <span className="text-muted-foreground/60">s/d</span>
+                          <br />
+                          {contract.end_date ?? "—"}
+                        </td>
 
-                      {/* Created by */}
-                      <td className="px-3 py-4 text-muted-foreground font-medium">
-                        {contract.created_by}
-                      </td>
+                        {/* Created by */}
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.created_by}
+                        </td>
 
-                      {/* Render dynamic columns cells */}
-                      {filter.visibleFields.map((fieldId) => {
-                        const valObj = contract.field_values?.find(
-                          (fv) => fv.field_definition_id === fieldId
-                        );
-                        return (
-                          <td key={fieldId} className="px-3 py-4 text-muted-foreground font-medium">
-                            {valObj?.value || "—"}
-                          </td>
-                        );
-                      })}
+                        {/* Render dynamic columns cells */}
+                        {filter.visibleFields.map((fieldId) => {
+                          const valObj = contract.field_values?.find(
+                            (fv) => fv.field_definition_id === fieldId,
+                          );
+                          return (
+                            <td
+                              key={fieldId}
+                              className="px-3 py-4 text-muted-foreground font-medium">
+                              {valObj?.value || "—"}
+                            </td>
+                          );
+                        })}
 
-                      {/* Actions */}
-                      <td
-                        className="px-3 py-4"
-                        onClick={(e) => e.stopPropagation()}>
-                        <RowMenu
-                          contract={contract}
-                          canEdit={canEdit}
-                          canManageAddendum={canManageAddendum}
-                          canManageTermination={canManageTermination}
-                          canDeleteRow={canDeleteRow}
-                          canDownloadContract={canDownloadContract}
-                          onView={() => {
-                            if (isManager) {
-                              navigate(`/approvals/${contract.id}`);
-                            } else {
-                              navigate(`/contracts/${contract.id}/view`);
+                        {/* Actions */}
+                        <td
+                          className="px-3 py-4"
+                          onClick={(e) => e.stopPropagation()}>
+                          <RowMenu
+                            contract={contract}
+                            canEdit={canEdit}
+                            canManageAddendum={canManageAddendum}
+                            canManageTermination={canManageTermination}
+                            canDeleteRow={canDeleteRow}
+                            canDownloadContract={canDownloadContract}
+                            onView={() => {
+                              if (isManager) {
+                                navigate(`/approvals/${contract.id}`);
+                              } else {
+                                navigate(`/contracts/${contract.id}/view`);
+                              }
+                            }}
+                            onEdit={() =>
+                              navigate(`/contracts/${contract.id}/edit`)
                             }
-                          }}
-                          onEdit={() =>
-                            navigate(`/contracts/${contract.id}/edit`)
-                          }
-                          onAddendum={() => setAddendumTarget(contract)}
-                          onTerminate={() => setTerminateTarget(contract)}
-                          onDelete={() => setDeleteTarget(contract)}
-                          onDownloadPdf={() => handleDownloadPdf(contract)}
-                        />
-                      </td>
-                    </tr>
+                            onAddendum={() => setAddendumTarget(contract)}
+                            onTerminate={() => setTerminateTarget(contract)}
+                            onDelete={() => setDeleteTarget(contract)}
+                            onDownloadPdf={() => handleDownloadPdf(contract)}
+                          />
+                        </td>
+                      </tr>
 
-                    {/* ── Addendum rows (expanded)  */}
-                    {isExpanded &&
-                      contract.addendums.map((addendum) => (
-                        <AddendumRow
-                          key={`addendum-${addendum.id}`}
-                          addendum={addendum}
-                          onView={() => setViewAddendumTarget(addendum)}
-                          colSpan={6 + filter.visibleFields.length}
-                        />
-                      ))}
-                  </>
-                );
-              })}
+                      {/* ── Addendum rows (expanded)  */}
+                      {isExpanded &&
+                        contract.addendums.map((addendum) => (
+                          <AddendumRow
+                            key={`addendum-${addendum.id}`}
+                            addendum={addendum}
+                            onView={() => setViewAddendumTarget(addendum)}
+                            colSpan={6 + filter.visibleFields.length}
+                          />
+                        ))}
+                    </>
+                  );
+                })}
             </tbody>
           </table>
         </div>

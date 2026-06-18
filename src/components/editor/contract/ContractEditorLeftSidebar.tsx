@@ -135,9 +135,6 @@ export function ContractEditorLeftSidebar({
               <p className="text-xs font-bold text-gray-800">
                 Detail Kontrak
               </p>
-              <p className="text-[11px] text-gray-400 truncate">
-                Diterima oleh: Satya (Software Engineer)
-              </p>
             </div>
           </div>
 

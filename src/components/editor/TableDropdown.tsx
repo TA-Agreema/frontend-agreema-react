@@ -1,8 +1,60 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
+import type { EditorState } from "@tiptap/pm/state";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { ToolbarBtn } from "./ToolbarBtn";
 
 type BorderSide = "default" | "none";
+type TableBorderType = "all" | "none" | "outside" | "inside";
+
+type SelectedTable = {
+  node: ProseMirrorNode;
+  pos: number;
+};
+
+const findSelectedTable = (state: EditorState): SelectedTable | null => {
+  const { $from } = state.selection;
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth);
+
+    if (node.type.name === "table") {
+      return {
+        node,
+        pos: $from.before(depth),
+      };
+    }
+  }
+
+  let selectedTable: SelectedTable | null = null;
+
+  state.doc.nodesBetween(state.selection.from, state.selection.to, (node, pos) => {
+    if (node.type.name !== "table") return true;
+
+    selectedTable = { node, pos };
+    return false;
+  });
+
+  return selectedTable;
+};
+
+const getCellBorderAttrs = (borderType: TableBorderType) => {
+  if (borderType === "none") {
+    return {
+      borderTop: "none",
+      borderRight: "none",
+      borderBottom: "none",
+      borderLeft: "none",
+    };
+  }
+
+  return {
+    borderTop: "default",
+    borderRight: "default",
+    borderBottom: "default",
+    borderLeft: "default",
+  };
+};
 
 export function TableDropdown({
   editor,
@@ -58,7 +110,7 @@ export function TableDropdown({
     setShowCustomModal(false);
   };
 
-  const applyCellBorders = (
+  const applySelectedCellBorders = (
     borderTop: BorderSide,
     borderRight: BorderSide,
     borderBottom: BorderSide,
@@ -73,30 +125,36 @@ export function TableDropdown({
       .run();
   };
 
-  const applyTableBorderType = (borderType: string) => {
+  const applyTableBorderType = (borderType: TableBorderType) => {
     const { state } = editor;
-    const { selection } = state;
-    let tablePos = -1;
-    let tableNode: any = null;
+    const selectedTable = findSelectedTable(state);
 
-    state.doc.nodesBetween(selection.from - 2, selection.to + 2, (node, pos) => {
-      if (node.type.name === "table") {
-        tablePos = pos;
-        tableNode = node;
-        return false;
-      }
-    });
-
-    if (tablePos < 0 || !tableNode) return;
+    if (!selectedTable) return;
 
     editor
       .chain()
       .focus()
       .command(({ tr }) => {
-        tr.setNodeMarkup(tablePos, undefined, {
-          ...tableNode.attrs,
+        const cellAttrs = getCellBorderAttrs(borderType);
+
+        tr.setNodeMarkup(selectedTable.pos, undefined, {
+          ...selectedTable.node.attrs,
           borderType,
         });
+
+        selectedTable.node.descendants((node, pos) => {
+          if (node.type.name !== "tableCell" && node.type.name !== "tableHeader") {
+            return true;
+          }
+
+          tr.setNodeMarkup(selectedTable.pos + pos + 1, undefined, {
+            ...node.attrs,
+            ...cellAttrs,
+          });
+
+          return false;
+        });
+
         return true;
       })
       .run();
@@ -113,38 +171,32 @@ export function TableDropdown({
     {
       id: "bottom",
       label: "Bottom Border",
-      action: () => applyCellBorders("none", "none", "default", "none"),
+      action: () => applySelectedCellBorders("none", "none", "default", "none"),
     },
     {
       id: "top",
       label: "Top Border",
-      action: () => applyCellBorders("default", "none", "none", "none"),
+      action: () => applySelectedCellBorders("default", "none", "none", "none"),
     },
     {
       id: "left",
       label: "Left Border",
-      action: () => applyCellBorders("none", "none", "none", "default"),
+      action: () => applySelectedCellBorders("none", "none", "none", "default"),
     },
     {
       id: "right",
       label: "Right Border",
-      action: () => applyCellBorders("none", "default", "none", "none"),
+      action: () => applySelectedCellBorders("none", "default", "none", "none"),
     },
     {
       id: "none",
       label: "No Border",
-      action: () => {
-        applyTableBorderType("none");
-        applyCellBorders("none", "none", "none", "none");
-      },
+      action: () => applyTableBorderType("none"),
     },
     {
       id: "all",
       label: "All Borders",
-      action: () => {
-        applyTableBorderType("all");
-        applyCellBorders("default", "default", "default", "default");
-      },
+      action: () => applyTableBorderType("all"),
     },
     {
       id: "outside",
