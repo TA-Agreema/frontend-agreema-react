@@ -40,16 +40,24 @@ import RoleFormDialog from "./RolesFormDialog";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import Pagination from "@/components/Pagination";
 
-//  Schemas 
+//  Schemas
+
+const STRONG_PASSWORD_MESSAGE =
+  "Password minimal 8 karakter dan harus berisi huruf besar, huruf kecil, angka, serta simbol";
+const STRONG_PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 const userFormSchema = z.object({
   name: z.string().min(1, "Nama wajib diisi"),
   email: z.string().email("Email tidak valid"),
   password: z
     .string()
-    .min(6, "Password minimal 6 karakter")
     .optional()
-    .or(z.literal("")),
+    .or(z.literal(""))
+    .refine(
+      (value) => !value || STRONG_PASSWORD_REGEX.test(value),
+      STRONG_PASSWORD_MESSAGE,
+    ),
   job_title: z.string().min(1, "Jabatan wajib diisi"),
   department: z.string().min(1, "Departemen wajib diisi"),
   is_active: z.number().min(0).max(1),

@@ -8,7 +8,6 @@ import Color from "@tiptap/extension-color";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Highlight from "@tiptap/extension-highlight";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import { Table } from "@tiptap/extension-table";
 import Link from "@tiptap/extension-link";
 import ImageResize from "tiptap-extension-resize-image";
 import {
@@ -44,6 +43,7 @@ import { prepareContractContentForEditor } from "@/lib/contract-field-values";
 import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
 import { convertDocxToEditorHtml } from "@/lib/mammoth-docx-converter";
 import { PageBreak } from "@/lib/tiptap-page-break";
+import { ResizableTable } from "@/lib/tiptap-resizable-table";
 import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
 import {
   BorderedTableCell,
@@ -171,23 +171,10 @@ export default function TemplateEditorPage() {
       ContractField,
       PageBreak,
       HorizontalRule,
-      Table.extend({
-        addAttributes() {
-          return {
-            ...this.parent?.(),
-            borderType: {
-              default: "all",
-              parseHTML: (element) => element.getAttribute("data-border-type"),
-              renderHTML: (attributes) => ({
-                "data-border-type": attributes.borderType,
-              }),
-            },
-          };
-        },
-      }).configure({
+      ResizableTable.configure({
         resizable: true,
         lastColumnResizable: true,
-        cellMinWidth: 24,
+        cellMinWidth: 1,
       }),
       ResizableTableRow,
       BorderedTableHeader,

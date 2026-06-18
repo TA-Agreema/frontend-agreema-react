@@ -24,7 +24,7 @@ import CategoryFormModal from "@/components/modal/template/CategoryFormModal";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   const message = (error as { response?: { data?: { message?: string } } })

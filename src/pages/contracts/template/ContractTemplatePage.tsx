@@ -20,7 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import StatusBadge from "@/components/ui/status-badge";
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 // Row Action Menu
 

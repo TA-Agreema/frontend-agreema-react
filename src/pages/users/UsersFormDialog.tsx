@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -16,7 +17,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import type { UseFormReturn } from "react-hook-form"
 import type { Role } from "@/types/roles"
 import type { User } from "@/types/users"
@@ -57,6 +58,8 @@ export default function UserFormDialog({
     isSubmitting,
     onSubmit,
 }: UserFormDialogProps) {
+    const [showPassword, setShowPassword] = useState(false)
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -113,8 +116,34 @@ export default function UserFormDialog({
                                     <FormItem>
                                         <FormLabel>Password</FormLabel>
                                         <FormControl>
-                                            <Input type="password" {...field} />
+                                            <div className="relative">
+                                                <Input
+                                                    type={showPassword ? "text" : "password"}
+                                                    className="pr-10"
+                                                    autoComplete="new-password"
+                                                    {...field}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword((value) => !value)}
+                                                    className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+                                                    aria-label={
+                                                        showPassword
+                                                            ? "Sembunyikan password"
+                                                            : "Tampilkan password"
+                                                    }
+                                                >
+                                                    {showPassword ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </FormControl>
+                                        <p className="text-xs text-muted-foreground">
+                                            Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan simbol.
+                                        </p>
                                         <FormMessage />
                                     </FormItem>
                                 )}
