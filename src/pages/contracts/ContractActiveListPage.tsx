@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   // Search,
   ChevronDown,
@@ -318,7 +319,7 @@ export default function ContractActiveListPage() {
           const all = await fetchManagerContracts(undefined, "active");
           data = all.filter(c => c.status === "active");
         } else {
-          const all = await fetchContracts();
+          const all = await fetchContracts(undefined, false, true);
           data = all.filter(c => c.status === "active");
         }
 
@@ -570,8 +571,17 @@ export default function ContractActiveListPage() {
                           canManageTermination={canManageTermination}
                           canDeleteRow={canDeleteRow}
                           onView={() => {
-                            if (isManager) navigate(`/approvals/${contract.id}`);
-                            else navigate(`/contracts/${contract.id}/view`);
+                            if (contract.contract_type === "external") {
+                              if (contract.signed_document_url) {
+                                window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                              } else {
+                                toast.error("Dokumen kontrak tidak ditemukan.");
+                              }
+                            } else if (isManager) {
+                              navigate(`/approvals/${contract.id}`);
+                            } else {
+                              navigate(`/contracts/${contract.id}/view`);
+                            }
                           }}
                           onAddendum={() => setAddendumTarget(contract)}
                           onTerminate={() => setTerminateTarget(contract)}

@@ -11,14 +11,12 @@ const TYPE_CONFIG: Record<string, {
   iconBg: string;
   iconColor: string;
 }> = {
-  // ke HRD
   contract_submitted: {
     label: "Kontrak Diajukan",
     icon: FileCheck,
-    iconBg: "bg-emerald-100",
+    iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
   },
-  // ke Manager
   review_requested: {
     label: "Perlu Ditinjau",
     icon: Clock,
@@ -52,8 +50,8 @@ const TYPE_CONFIG: Record<string, {
   all_reviewers_signed: {
     label: "Dokumen Disahkan",
     icon: FileUp,
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
+    iconBg: "bg-purple-100",
+    iconColor: "text-purple-600",
   },
   signed_document_uploaded: {
     label: "Dokumen Bertandatangan Diupload",
@@ -82,8 +80,8 @@ const TYPE_CONFIG: Record<string, {
   contract_activated: {
     label: "Kontrak telah Aktif",
     icon: CheckCircle,
-    iconBg: "bg-green-100",
-    iconColor: "text-green-600",
+    iconBg: "bg-emerald-100",
+    iconColor: "text-emerald-600",
   },
   contract_expiring: {
     label: "Kontrak Akan Kedaluwarsa",
@@ -101,13 +99,13 @@ const TYPE_CONFIG: Record<string, {
     label: "Terminasi Diajukan",
     icon: AlertTriangle,
     iconBg: "bg-orange-100",
-    iconColor: "text-orange-500",
+    iconColor: "text-orange-600",
   },
   contract_terminated: {
     label: "Kontrak Dihentikan",
     icon: XCircle,
     iconBg: "bg-red-100",
-    iconColor: "text-red-500",
+    iconColor: "text-red-600",
   },
   all_internal_signed: {
     label: "Semua Pihak Internal Telah Menandatangani",
@@ -115,6 +113,12 @@ const TYPE_CONFIG: Record<string, {
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
   },
+  partner_contract_added: {
+  label: "Kontrak Mitra Ditambahkan",
+  icon: FileUp,
+  iconBg: "bg-blue-100",
+  iconColor: "text-blue-600",
+},
 };
 
 const DEFAULT_CONFIG = {

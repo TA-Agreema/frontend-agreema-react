@@ -6,8 +6,8 @@ import {
   Users,
   ClipboardList,
   // Archive,
-  Building2,
-  Handshake,
+  //Building2,
+  //Handshake,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -103,7 +103,7 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     roles: ["hrd"],
     // exact: true,
     items: [
-      { title: "Semua Kontrak", url: "/contracts/" },
+      { title: "Kontrak Internal", url: "/contracts/" },
       { title: "Kontrak Aktif", url: "/contracts/active" },
       { title: "Arsip Kontrak", url: "/contracts/archive" },
       { title: "Kontrak Mitra", url: "/contracts/partners" },
@@ -120,7 +120,6 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
       { title: "Perlu Ditinjau", url: "/approvals" },
       { title: "Kontrak Aktif", url: "/contracts/active" },
       { title: "Arsip Kontrak", url: "/contracts/archive" },
-      { title: "Kontrak Mitra", url: "/contracts/partners" },
     ],
   },
 
