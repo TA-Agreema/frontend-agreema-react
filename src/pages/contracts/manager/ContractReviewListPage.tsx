@@ -21,6 +21,7 @@ import { fetchManagerContracts } from "@/services/manager.service";
 import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { ContractRow, Addendum } from "@/pages/contracts/ContractListPage";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
+import { Button } from "@/components/ui/button";
 
 // 1. Ubah jumlah minimal data per halaman menjadi 10
 const PAGEINATED = 10;
@@ -168,9 +169,14 @@ export default function ContractReviewListPage() {
               setPage(1);
             }}
             placeholder="Cari berdasarkan judul, nomor kontrak, partner, atau pembuat..."
-            yearFilter={filter.yearFilter}
-            setYearFilter={(val) => {
-              filter.setYearFilter(val);
+            startYearFilter={filter.startYearFilter}
+            setStartYearFilter={(val) => {
+              filter.setStartYearFilter(val);
+              setPage(1);
+            }}
+            endYearFilter={filter.endYearFilter}
+            setEndYearFilter={(val) => {
+              filter.setEndYearFilter(val);
               setPage(1);
             }}
             availableYears={filter.availableYears}
@@ -283,10 +289,7 @@ export default function ContractReviewListPage() {
                           Tidak ada kontrak
                         </p>
                         <p className="text-gray-500 text-sm">
-                          {filter.search ||
-                          filter.yearFilter !== "all" ||
-                          filter.statusFilter !== "all" ||
-                          filter.customFilters.length > 0
+                          {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
                             ? "Tidak ada kontrak yang sesuai dengan filter aktif."
                             : "Belum ada kontrak yang perlu ditinjau."}
                         </p>
@@ -361,12 +364,11 @@ export default function ContractReviewListPage() {
                             })}
 
                             <td className="px-3 py-4 text-right pr-6">
-                              <Link
-                                to={`/approvals/${contract.id}`}
-                                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
-                              >
-                                Buka & Tinjau
-                              </Link>
+                              <Button className="text-white bg-emerald-600 rounded-lg hover:bg-emerald-700">
+                                <Link to={`/approvals/${contract.id}`}>
+                                  Buka & Tinjau
+                                </Link>
+                              </Button>
                             </td>
                           </tr>
 

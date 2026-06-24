@@ -21,8 +21,10 @@ interface ContractFilterManagerProps {
   placeholder?: string;
 
   // Year state & set
-  yearFilter: string;
-  setYearFilter: (year: string) => void;
+  startYearFilter: string;
+  setStartYearFilter: (year: string) => void;
+  endYearFilter: string;
+  setEndYearFilter: (year: string) => void;
   availableYears: string[];
 
   // Optional Status filter (hidden if omitted)
@@ -46,8 +48,10 @@ export default function ContractFilterManager({
   search,
   setSearch,
   placeholder = "Cari kontrak...",
-  yearFilter,
-  setYearFilter,
+  startYearFilter,
+  setStartYearFilter,
+  endYearFilter,
+  setEndYearFilter,
   availableYears,
   statusFilter,
   setStatusFilter,
@@ -82,7 +86,8 @@ export default function ContractFilterManager({
   // Total active filters count (search + year + status + custom filters count)
   const activeFiltersCount =
     (search ? 1 : 0) +
-    (yearFilter !== "all" ? 1 : 0) +
+    (startYearFilter !== "all" ? 1 : 0) +
+    (endYearFilter !== "all" ? 1 : 0) +
     (statusFilter && statusFilter !== "all" ? 1 : 0) +
     customFilters.length;
 
@@ -228,10 +233,26 @@ export default function ContractFilterManager({
 
             {/* Year Dropdown Filter */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Periode Tahun</label>
+              <label className="text-xs font-semibold text-muted-foreground">Tahun Mulai</label>
               <select
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
+                value={startYearFilter}
+                onChange={(e) => setStartYearFilter(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              >
+                <option value="all">Semua Tahun</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    Tahun {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground">Tahun Selesai</label>
+              <select
+                value={endYearFilter}
+                onChange={(e) => setEndYearFilter(e.target.value)}
                 className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
               >
                 <option value="all">Semua Tahun</option>
