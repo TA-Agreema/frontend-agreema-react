@@ -20,7 +20,6 @@ import {
   Loader2,
   AlertCircle,
   FileText,
-  X,
 } from "lucide-react";
 import { FontSize } from "@/lib/tiptap-font-size";
 import { FontFamily } from "@/lib/tiptap-font-family";
@@ -63,6 +62,7 @@ import { ContractSignatureBox } from "@/components/editor/contract/ContractSigne
 import { ContractEditorWorkspace } from "@/components/editor/contract/ContractEditorWorkspace";
 import { ContractEditorRightSidebar } from "@/components/editor/contract/ContractEditorRightSidebar";
 import { ContractLeaveConfirmModal } from "@/components/modal/contract/ContractLeaveConfirmModal";
+import { ContractVersionPreviewModal } from "@/components/modal/contract/ContractVersionPreviewModal";
 import {
   ContractEditorLeftSidebar,
   type ContractEditorSigner as Signer,
@@ -134,6 +134,7 @@ type ContractReviewDetail = {
   status?: string | null;
   notes?: string | null;
   reviewed_at?: string | null;
+  review_document_url?: string | null;
 };
 
 type ContractFeedback = {
@@ -144,6 +145,7 @@ type ContractFeedback = {
   typeLabel: string;
   message: string;
   date?: string;
+  review_document_url?: string | null;
 };
 
 type ContractStatusLog = {
@@ -247,8 +249,8 @@ export default function ContractEditorPage() {
   );
   const [title, setTitle] = useState(
     initialTemplate?.name ||
-      navState?.createdContract?.title ||
-      "Kontrak Sewa Vendor",
+    navState?.createdContract?.title ||
+    "Kontrak Sewa Vendor",
   );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -578,7 +580,7 @@ export default function ContractEditorPage() {
                     : s.signer_role || "Eksternal";
 
                 s.reviews.forEach((r) => {
-                  if (r.notes) {
+                  if (r.notes || r.review_document_url) {
                     allReviews.push({
                       id: r.id,
                       author: author ?? "Reviewer",
@@ -590,8 +592,9 @@ export default function ContractEditorPage() {
                           : r.status === "rejected"
                             ? "Ditolak"
                             : "Catatan",
-                      message: r.notes,
+                      message: r.notes ?? "",
                       date: r.reviewed_at ?? undefined,
+                      review_document_url: r.review_document_url ?? undefined,
                     });
                   }
                 });
@@ -693,7 +696,7 @@ export default function ContractEditorPage() {
       if (!isEdit) {
         generateContractNumber(t.category_id)
           .then(setContractNumber)
-          .catch(() => {});
+          .catch(() => { });
       }
     },
     [editor, title, isEdit, allFields],
@@ -1243,43 +1246,14 @@ export default function ContractEditorPage() {
         />
       )}
 
-      {/* Modal Preview Versi Lama */}
+      {/* Modal Preview Versi — komponen terpisah dengan diff highlighting */}
       {viewingVersion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50/80">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">
-                  Pratinjau Versi {viewingVersion.version_number}
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Dibuat oleh{" "}
-                  <span className="font-semibold text-gray-700">
-                    {viewingVersion.created_by}
-                  </span>{" "}
-                  pada {viewingVersion.created_at}
-                </p>
-              </div>
-              <button
-                onClick={() => setViewingVersion(null)}
-                className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                title="Tutup Preview">
-                <div className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 bg-gray-100/50">
-              <div
-                className="bg-white mx-auto shadow-md border border-gray-200 p-12 min-h-[29.7cm] text-sm text-gray-800 leading-7"
-                style={{ width: "21cm" }}>
-                {/* Render Konten Lama */}
-                <div
-                  className="outline-none"
-                  dangerouslySetInnerHTML={{ __html: viewingVersion.content }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <ContractVersionPreviewModal
+          versions={versions}
+          viewingVersion={viewingVersion}
+          onClose={() => setViewingVersion(null)}
+          onNavigate={(v) => setViewingVersion(v)}
+        />
       )}
     </>
   );

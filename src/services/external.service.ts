@@ -10,10 +10,19 @@ export const fetchExternalContractPreview = async (
 
 export const submitExternalContractReview = async (payload: {
   token: string;
-  status: "approved" | "revised";
+  status: "approved" | "revised" | "confirmed";
   notes?: string;
+  reviewDocument?: File | null;
 }) => {
-  const response = await api.post("/external/contracts/review", payload);
+  const formData = new FormData();
+  formData.append("token", payload.token);
+  formData.append("status", payload.status);
+  if (payload.notes) formData.append("notes", payload.notes);
+  if (payload.reviewDocument) formData.append("review_document", payload.reviewDocument);
+
+  const response = await api.post("/external/contracts/review", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
@@ -57,6 +66,6 @@ export async function submitExternalContractSignature(
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );
- 
+
   return res.data;
 }

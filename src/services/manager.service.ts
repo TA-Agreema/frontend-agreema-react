@@ -59,6 +59,7 @@ export interface ManagerContractDetail extends ContractRow {
       status: string;
       notes: string | null;
       created_at: string;
+      review_document_url?: string | null;
       user?: { name: string; job_title?: string | null };
     }[];
   }[];
@@ -94,11 +95,17 @@ export const fetchManagerContractDetail = async (
 
 export const submitContractReview = async (
   id: number,
-  payload: { status: "approved" | "revised" | "rejected"; notes: string },
+  payload: { status: "approved" | "revised" | "rejected"; notes: string; reviewDocument?: File | null },
 ): Promise<ManagerContractDetail> => {
+  const formData = new FormData();
+  formData.append("status", payload.status);
+  if (payload.notes) formData.append("notes", payload.notes);
+  if (payload.reviewDocument) formData.append("review_document", payload.reviewDocument);
+
   const res = await api.post<{ data: ManagerContractDetail }>(
     `${BASE_PATH}/${id}/review`,
-    payload,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
   );
   return res.data.data;
 };

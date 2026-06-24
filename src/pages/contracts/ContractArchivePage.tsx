@@ -291,8 +291,8 @@ export default function ContractArchivePage() {
         if (!mounted) return;
         setError(
           err?.response?.data?.message ??
-            err?.message ??
-            "Failed to load contracts",
+          err?.message ??
+          "Failed to load contracts",
         );
       } finally {
         if (mounted) setLoading(false);
@@ -356,9 +356,14 @@ export default function ContractArchivePage() {
             setPage(1);
           }}
           placeholder="Cari berdasarkan judul, kategori, partner, atau pembuat..."
-          yearFilter={filter.yearFilter}
-          setYearFilter={(val) => {
-            filter.setYearFilter(val);
+          startYearFilter={filter.startYearFilter}
+          setStartYearFilter={(val) => {
+            filter.setStartYearFilter(val);
+            setPage(1);
+          }}
+          endYearFilter={filter.endYearFilter}
+          setEndYearFilter={(val) => {
+            filter.setEndYearFilter(val);
             setPage(1);
           }}
           availableYears={filter.availableYears}
@@ -382,7 +387,6 @@ export default function ContractArchivePage() {
           onReset={filter.resetFilters}
         />
       </div>
-
       <div className="rounded-xl border bg-card shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -485,14 +489,8 @@ export default function ContractArchivePage() {
               )}
               {!loading && !error && paginated.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={tableColSpan}
-                    className="py-16 text-center text-muted-foreground text-sm"
-                  >
-                    {filter.search ||
-                    filter.yearFilter !== "all" ||
-                    filter.statusFilter !== "all" ||
-                    filter.customFilters.length > 0
+                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
+                    {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
                       ? "Tidak ada kontrak yang cocok dengan filter aktif"
                       : "Belum ada arsip kontrak"}
                   </td>
