@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   // Search,
   ChevronDown,
@@ -283,7 +284,7 @@ export default function ContractArchivePage() {
       try {
         const data = isManager
           ? await fetchManagerArchivedContracts(undefined)
-          : await fetchContracts(undefined, true);
+          : await fetchContracts(undefined, true, true);
         if (!mounted) return;
         setContracts(data);
         setPage(1);
@@ -602,9 +603,17 @@ export default function ContractArchivePage() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <button
-                              onClick={() =>
-                                navigate(`/contracts/${contract.id}/view`)
-                              }
+                              onClick={() => {
+                                if (contract.contract_type === "external") {
+                                  if (contract.signed_document_url) {
+                                    window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                                  } else {
+                                    toast.error("Dokumen kontrak tidak ditemukan.");
+                                  }
+                                } else {
+                                  navigate(`/contracts/${contract.id}/view`);
+                                }
+                              }}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
                             >
                               <Eye className="h-3.5 w-3.5" />

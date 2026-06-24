@@ -18,7 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  // RefreshCw,
+  //RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -70,6 +70,7 @@ export interface ContractRow {
   id: number;
   contract_number: string;
   external_contract_number: string | null;
+  contract_type?: "internal" | "external";
   title: string;
   content?: string;
   paper_size?: "a4" | "f4" | null;
@@ -81,6 +82,8 @@ export interface ContractRow {
   start_date: string; // "DD-MM-YYYY"
   end_date: string | null;
   created_by: string;
+  uploaded_by?: string | null; // khusus kontrak mitra: nama HRD yang mengunggah
+  signed_document_url?: string | null;
   field_values?: Array<{
     id: number;
     field_definition_id: number;

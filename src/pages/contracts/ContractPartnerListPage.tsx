@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Search,
   Plus,
   ChevronDown,
   ChevronRight,
   MoreVertical,
-  Pencil,
   FileText,
   XCircle,
   Trash2,
@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
-import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
 import TemplateSelectModal, {
   type TemplateOption,
@@ -31,6 +30,7 @@ import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 import type { Termination } from "@/types/termination";
+import AddPartnerContractModal from "@/components/modal/partner/AddPartnerContractModal";
 
 //  Types
 
@@ -66,6 +66,8 @@ export interface ContractRow {
   category: string;
   category_id: number | null;
   template_id: number | null;
+  contract_type?: "internal" | "external";
+  signed_document_url?: string | null;
   status: ContractStatus;
   start_date: string; // "DD-MM-YYYY"
   end_date: string | null;
@@ -196,23 +198,19 @@ function AddendumRow({
 //  Row Action Dropdown
 function RowMenu({
   contract,
-  canEdit,
   canManageAddendum,
   canManageTermination,
   canDeleteRow,
   onView,
-  onEdit,
   onAddendum,
   onTerminate,
   onDelete,
 }: {
   contract: ContractRow;
-  canEdit: boolean;
   canManageAddendum: boolean;
   canManageTermination: boolean;
   canDeleteRow: boolean;
   onView: () => void;
-  onEdit: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
@@ -227,9 +225,6 @@ function RowMenu({
   const canAddAddendum = ["active"].includes(contract.status);
   const canTerminate = ["active", "review", "draft"].includes(contract.status);
   const canDelete = contract.status === "draft";
-
-  const { roles } = useAuth();
-  const isHrd = roles.includes('hrd');
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -302,19 +297,6 @@ function RowMenu({
             Lihat Detail
           </button>
 
-          {canEdit && isHrd && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-                setOpen(false);
-              }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
-              <Pencil className="h-4 w-4 text-muted-foreground opacity-70" />
-              Edit
-            </button>
-          )}
-
           {canManageAddendum && canAddAddendum && (
             <button
               onClick={(e) => {
@@ -367,15 +349,13 @@ export default function ContractListPage() {
   const { hasPermission } = usePermissions();
 
   const canCreateContract = hasPermission('create.contract');
-  const canEdit = hasPermission('update.contract');
   const canManageAddendum = hasPermission('create.addendum');
   const canManageTermination = hasPermission('create.terminate');
   const canDeleteRow = hasPermission('delete.contract');
 
-  const { roles } = useAuth();
-  const isManager = roles.includes('manager');
-
   const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -409,7 +389,9 @@ export default function ContractListPage() {
   }, []);
 
   // Derived
-  const activeContracts = contracts.filter((c) => c.status !== "terminated");
+  const activeContracts = contracts.filter(
+    (c) => c.status !== "terminated" && c.status !== "expired",
+  );
   const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const paginated = activeContracts.slice(
@@ -479,7 +461,7 @@ export default function ContractListPage() {
       mounted = false;
       clearTimeout(t);
     };
-  }, [search]);
+  }, [search, refreshKey]); // auto refresh
 
   // Render
 
@@ -518,7 +500,7 @@ export default function ContractListPage() {
             </button>
             {canCreateContract && (
               <button
-                onClick={() => setShowTemplateModal(true)}
+                onClick={() => setShowAddPartnerModal(true)}
                 className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0">
                 <Plus className="h-4 w-4" />
                 Tambah Kontrak
@@ -672,20 +654,20 @@ export default function ContractListPage() {
                         onClick={(e) => e.stopPropagation()}>
                         <RowMenu
                           contract={contract}
-                          canEdit={canEdit}
                           canManageAddendum={canManageAddendum}
                           canManageTermination={canManageTermination}
                           canDeleteRow={canDeleteRow}
                           onView={() => {
-                            if (isManager) {
-                              navigate(`/approvals/${contract.id}`);
+                            if (contract.contract_type === "external") {
+                              if (contract.signed_document_url) {
+                                window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                              } else {
+                                toast.error("Dokumen kontrak tidak ditemukan.");
+                              }
                             } else {
                               navigate(`/contracts/${contract.id}/view`);
                             }
                           }}
-                          onEdit={() =>
-                            navigate(`/contracts/${contract.id}/edit`)
-                          }
                           onAddendum={() => setAddendumTarget(contract)}
                           onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
@@ -777,6 +759,14 @@ export default function ContractListPage() {
               alert("Gagal membuat kontrak. Periksa koneksi dan permissions.");
             }
           }}
+        />
+      )}
+          
+      {showAddPartnerModal && (
+        <AddPartnerContractModal
+          isOpen={showAddPartnerModal}
+          onClose={() => setShowAddPartnerModal(false)}
+          onSuccess={() => setRefreshKey((k) => k + 1)}
         />
       )}
     </div>

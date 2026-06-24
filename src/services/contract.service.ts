@@ -38,6 +38,39 @@ export interface CreateContractPayload {
 
 export type UpdateContractPayload = Partial<CreateContractPayload>;
 
+export interface CreatePartnerContractPayload {
+  title: string;
+  contract_number: string;
+  external_contract_number?: string | null;
+  partner_name: string;
+  status: "signed" | "active";
+  start_date?: string | null;
+  end_date?: string | null;
+  document: File;
+  notes?: string | null;
+}
+ 
+export const createPartnerContract = async (
+  payload: CreatePartnerContractPayload,
+): Promise<ContractRow> => {
+  const formData = new FormData();
+  formData.append("title", payload.title);
+  formData.append("contract_number", payload.contract_number);
+  if (payload.external_contract_number) formData.append("external_contract_number", payload.external_contract_number);
+  formData.append("partner_name", payload.partner_name);
+  formData.append("status", payload.status);
+  if (payload.start_date) formData.append("start_date", payload.start_date);
+  if (payload.end_date) formData.append("end_date", payload.end_date);
+  formData.append("document", payload.document);
+  if (payload.notes) formData.append("notes", payload.notes);
+ 
+  const res = await api.post<{ data: ContractRow }>("/partner-contracts", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data;
+};
+
+
 export const generateContractNumber = async (
   categoryId?: number | null,
 ): Promise<string> => {
@@ -66,10 +99,12 @@ export const fetchPartners = async (): Promise<
 export const fetchContracts = async (
   search?: string,
   archive?: boolean,
+  includeExternal?: boolean,
 ): Promise<ContractRow[]> => {
   const params: Record<string, any> = {};
   if (search) params.search = search;
   if (archive !== undefined) params.archive = archive;
+  if (includeExternal) params.include_external = true;
 
   const res = await api.get<{ data: ContractRow[] }>(BASE_PATH, { params });
     return res.data.data;
