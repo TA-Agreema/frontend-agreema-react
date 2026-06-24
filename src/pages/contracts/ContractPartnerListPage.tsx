@@ -30,6 +30,7 @@ import {
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
+import type { Termination } from "@/types/termination";
 
 //  Types
 
@@ -42,6 +43,7 @@ export type ContractStatus =
   | "signed"
   | "rejected"
   | "expired"
+  | "terminating"
   | "terminated";
 
 export interface Addendum {
@@ -69,7 +71,7 @@ export interface ContractRow {
   end_date: string | null;
   created_by: string;
   addendums: Addendum[];
-  terminations?: any[];
+  terminations?: Termination[];
 }
 
 const PAGE_SIZE = 4;
