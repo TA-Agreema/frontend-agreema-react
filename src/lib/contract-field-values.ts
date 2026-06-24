@@ -5,6 +5,11 @@ export type ContractFieldValuePayload = {
   value: string | null;
 };
 
+export type MissingRequiredContractField = {
+  field_definition_id: number;
+  field_label: string;
+};
+
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -14,7 +19,7 @@ const isPlaceholderValue = (value: string, fieldKey?: string | null) => {
   return tagPattern.test(value.trim());
 };
 
-const isUnfilledFieldValue = (value: string, field: FieldDefinition) => {
+export const isUnfilledFieldValue = (value: string, field: FieldDefinition) => {
   const trimmed = value.trim();
   return (
     isPlaceholderValue(trimmed, field.field_key) ||
@@ -182,4 +187,37 @@ export function buildContractFieldValues(
     field_definition_id: fieldDefinitionId,
     value,
   }));
+}
+
+export function validateRequiredContractFields(
+  content: string,
+  fields: FieldDefinition[],
+): MissingRequiredContractField[] {
+  const requiredFieldsById = new Map(
+    fields
+      .filter((field) => field.is_required)
+      .map((field) => [field.id, field]),
+  );
+
+  if (requiredFieldsById.size === 0) return [];
+
+  const fieldValues = buildContractFieldValues(content, fields);
+
+  return fieldValues.reduce<MissingRequiredContractField[]>(
+    (missingFields, fieldValue) => {
+      const field = requiredFieldsById.get(fieldValue.field_definition_id);
+      if (!field) return missingFields;
+
+      const value = fieldValue.value?.trim() ?? "";
+      if (!value || isUnfilledFieldValue(value, field)) {
+        missingFields.push({
+          field_definition_id: field.id,
+          field_label: field.field_label,
+        });
+      }
+
+      return missingFields;
+    },
+    [],
+  );
 }

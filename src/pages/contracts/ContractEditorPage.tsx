@@ -29,6 +29,7 @@ import { ContractField } from "@/lib/tiptap-contract-field";
 import {
   buildContractFieldValues,
   prepareContractContentForEditor,
+  validateRequiredContractFields,
 } from "@/lib/contract-field-values";
 import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
 import { PageBreak } from "@/lib/tiptap-page-break";
@@ -741,6 +742,21 @@ export default function ContractEditorPage() {
     return null;
   };
 
+  const getSubmitFieldValidationMessage = () => {
+    const missingFields = validateRequiredContractFields(
+      editor?.getHTML() ?? "",
+      allFields,
+    );
+
+    if (missingFields.length === 0) return null;
+
+    const fieldNames = missingFields
+      .map((field) => field.field_label)
+      .join(", ");
+
+    return `Field wajib belum diisi: ${fieldNames}.`;
+  };
+
   const buildPayload = (
     statusOverride?: string,
     overrides?: Partial<{ title: string }>,
@@ -884,6 +900,11 @@ export default function ContractEditorPage() {
       setSaveError(signerValidationMessage);
       return;
     }
+    const fieldValidationMessage = getSubmitFieldValidationMessage();
+    if (fieldValidationMessage) {
+      setSaveError(fieldValidationMessage);
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -1012,6 +1033,12 @@ export default function ContractEditorPage() {
                         getSubmitSignerValidationMessage();
                       if (signerValidationMessage) {
                         setSaveError(signerValidationMessage);
+                        return;
+                      }
+                      const fieldValidationMessage =
+                        getSubmitFieldValidationMessage();
+                      if (fieldValidationMessage) {
+                        setSaveError(fieldValidationMessage);
                         return;
                       }
                       setSaveError(null);
