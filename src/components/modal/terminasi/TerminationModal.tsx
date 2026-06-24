@@ -55,13 +55,13 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
         }
     };
 
-    const getTodayString = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    // const getTodayString = () => {
+    //     const today = new Date();
+    //     const year = today.getFullYear();
+    //     const month = String(today.getMonth() + 1).padStart(2, '0');
+    //     const day = String(today.getDate()).padStart(2, '0');
+    //     return `${year}-${month}-${day}`;
+    // };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -145,7 +145,7 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                             <Input
                                 required
                                 type="date"
-                                min={getTodayString()}
+                                // min={getTodayString()}
                                 value={formData.effective_date}
                                 onChange={(e) => setFormData(p => ({ ...p, effective_date: e.target.value }))}
                             />
