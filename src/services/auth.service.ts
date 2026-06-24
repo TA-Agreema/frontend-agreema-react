@@ -14,3 +14,18 @@ export const login = async (
 export const logout = async (): Promise<void> => {
     await api.post("/logout");
 };
+
+export const requestPasswordReset = async (email: string): Promise<{ message: string }> => {
+    const response = await api.post("/forgot-password", { email });
+    return response.data;
+};
+
+export const resetPassword = async (payload: {
+    email: string;
+    token: string;
+    password: string;
+    password_confirmation: string;
+}): Promise<{ message: string }> => {
+    const response = await api.post("/reset-password", payload);
+    return response.data;
+};
