@@ -1,4 +1,5 @@
-import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useRef } from "react";
+import { CheckCircle, XCircle, AlertCircle, Paperclip, FileText, X } from "lucide-react";
 import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 
 // ── Styling helpers ─────────────────────────────────────────────────────────
@@ -28,9 +29,12 @@ interface ReviewRightSidebarProps {
     submitError: string | null;
     isSubmitting: boolean;
     contractStatus: string;
+    reviewFile: File | null;
+    onReviewFileChange: (f: File | null) => void;
     onRevise: () => void;
     onReject: () => void;
     onApprove: () => void;
+    contractTitle?: string;
 }
 
 export default function ReviewRightSidebar({
@@ -41,10 +45,14 @@ export default function ReviewRightSidebar({
     submitError,
     isSubmitting,
     contractStatus,
+    reviewFile,
+    onReviewFileChange,
     onRevise,
     onReject,
     onApprove,
 }: ReviewRightSidebarProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     return (
         <div className="h-full flex flex-col bg-white border-l border-gray-200 overflow-hidden">
             {/* ── Body Yang Bisa Di-scroll (Hanya Riwayat) ── */}
@@ -135,18 +143,32 @@ export default function ReviewRightSidebar({
                                         </div>
                                         <span
                                             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap ${feedback.type === "revised" ||
-                                                    feedback.type === "revision" ||
-                                                    feedback.type === "rejected"
-                                                    ? "bg-red-50 text-red-600 border border-red-200"
-                                                    : "bg-gray-100 text-gray-500 border border-gray-200"
+                                                feedback.type === "revision" ||
+                                                feedback.type === "rejected"
+                                                ? "bg-red-50 text-red-600 border border-red-200"
+                                                : "bg-gray-100 text-gray-500 border border-gray-200"
                                                 }`}
                                         >
                                             {feedback.typeLabel}
                                         </span>
                                     </div>
-                                    <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-                                        {feedback.message}
-                                    </p>
+                                    {feedback.message && (
+                                        <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+                                            {feedback.message}
+                                        </p>
+                                    )}
+                                    {/* Link dokumen revisi jika ada */}
+                                    {feedback.review_document_url && (
+                                        <a
+                                            href={feedback.review_document_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                        >
+                                            <FileText className="h-3 w-3 shrink-0" />
+                                            Lihat Dokumen Revisi
+                                        </a>
+                                    )}
                                     <p className="text-[10px] text-gray-300">
                                         {feedback.date ? new Date(feedback.date).toLocaleString("id-ID") : ""}
                                     </p>
@@ -160,7 +182,7 @@ export default function ReviewRightSidebar({
             </div>
 
             {/* ── Panel Bawah Pinned/Fixed (Input Revisi + Tombol Aksi) ── */}
-            <div className="shrink-0 p-4 border-t border-gray-200 bg-white space-y-4">
+            <div className="shrink-0 p-4 border-t border-gray-200 bg-white space-y-3">
                 {/* Input Catatan Evaluasi */}
                 <section>
                     <div className="flex items-center justify-between mb-2">
@@ -168,22 +190,65 @@ export default function ReviewRightSidebar({
                             Catatan Evaluasi
                         </p>
                         <span className="text-[10px] text-gray-400 font-normal">
-                            Wajib jika meminta revisi
+                            {reviewFile ? "Opsional (ada file)" : "Wajib jika revisi/tolak"}
                         </span>
                     </div>
                     <textarea
                         value={notes}
                         onChange={(e) => onNotesChange(e.target.value)}
                         placeholder="Tuliskan catatan perbaikan di sini..."
-                        className="w-full h-24 text-xs border border-gray-200 rounded-xl p-3 bg-gray-50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                        className="w-full h-20 text-xs border border-gray-200 rounded-xl p-3 bg-gray-50 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
                     />
-                    {submitError && (
-                        <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3 shrink-0" />
-                            {submitError}
-                        </p>
-                    )}
                 </section>
+
+                {/* Upload Dokumen Revisi */}
+                <section>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                        Lampiran Dokumen Revisi
+                        <span className="ml-1 font-normal normal-case text-gray-400">(Opsional)</span>
+                    </p>
+
+                    {reviewFile ? (
+                        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                            <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                            <span className="text-xs text-blue-700 truncate flex-1">{reviewFile.name}</span>
+                            <button
+                                type="button"
+                                onClick={() => onReviewFileChange(null)}
+                                className="text-blue-400 hover:text-red-500 transition-colors shrink-0"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs border border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all"
+                        >
+                            <Paperclip className="h-3.5 w-3.5" />
+                            Lampirkan PDF / Word
+                        </button>
+                    )}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        className="hidden"
+                        onChange={(e) => {
+                            const file = e.target.files?.[0] ?? null;
+                            onReviewFileChange(file);
+                            e.target.value = "";
+                        }}
+                    />
+                </section>
+
+                {submitError && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3 shrink-0" />
+                        {submitError}
+                    </p>
+                )}
 
                 {/* Grid Tombol Aksi */}
                 <div className="grid grid-cols-2 gap-2.5">

@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -9,44 +7,32 @@ import {
   Loader2,
   Clock,
   FileText,
-  FileSignature,
-  CalendarDays,
+  // FileSignature,
+  // CalendarDays,
 } from "lucide-react";
 import {
   fetchManagerContractDetail,
   submitContractReview,
   type ManagerContractDetail,
 } from "@/services/manager.service";
-import type { Addendum } from "@/pages/contracts/ContractListPage";
-
-import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import Color from "@tiptap/extension-color";
-import { TextStyle } from "@tiptap/extension-text-style";
-import Highlight from "@tiptap/extension-highlight";
-import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import { Table } from "@tiptap/extension-table";
-import Link from "@tiptap/extension-link";
-import { PageBreak } from "@/lib/tiptap-page-break";
-import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
-import {
-  BorderedTableCell,
-  BorderedTableHeader,
-} from "@/lib/tiptap-table-cell-borders";
-
+// import type { Addendum } from "@/pages/contracts/ContractListPage";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
 // import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
 import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
+import { AlertCircle } from "lucide-react";
 
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [contract, setContract] = useState<ManagerContractDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [contractHtml, setContractHtml] = useState("");
 
   const [notes, setNotes] = useState("");
+  const [reviewFile, setReviewFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -56,34 +42,12 @@ export default function ContractReviewDetailPage() {
   const [statusLogs, setStatusLogs] = useState<StatusEntry[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>([]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Link.configure({ openOnClick: false }),
-      TextStyle,
-      Color,
-      Highlight.configure({ multicolor: true }),
-      PageBreak,
-      HorizontalRule,
-      Table.configure({ resizable: false }),
-      ResizableTableRow,
-      BorderedTableHeader,
-      BorderedTableCell,
-      Underline,
-    ],
-    content: "",
-    editable: false,
-    editorProps: {
-      attributes: {
-        class: "outline-none text-sm leading-7 text-gray-800 p-8 min-h-[800px]",
-      },
-    },
-  });
-useEffect(() => {
+  const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
+
+  useEffect(() => {
     if (!id) return;
 
-    let isMounted = true;
+    const isMounted = true;
     const loadContract = async () => {
       try {
         const data = await fetchManagerContractDetail(Number(id));
@@ -91,6 +55,7 @@ useEffect(() => {
 
         setContract(data);
         if (data.status_logs) setStatusLogs(data.status_logs);
+        if (data.content) setContractHtml(data.content);
 
         if (data.signers && data.signers.length > 0) {
           const allReviews: FeedbackEntry[] = [];
@@ -106,7 +71,7 @@ useEffect(() => {
                   : s.signer_role || "Eksternal";
 
               s.reviews.forEach((r) => {
-                if (r.notes) {
+                if (r.notes || r.review_document_url) {
                   allReviews.push({
                     id: r.id,
                     author: author ?? "Reviewer",
@@ -118,8 +83,9 @@ useEffect(() => {
                         : r.status === "rejected"
                           ? "Ditolak"
                           : "Catatan",
-                    message: r.notes,
+                    message: r.notes ?? "",
                     date: r.reviewed_at,
+                    review_document_url: r.review_document_url ?? undefined,
                   });
                 }
               });
@@ -135,33 +101,17 @@ useEffect(() => {
     };
 
     loadContract();
-
-    return () => {
-      isMounted = false;
-    };
   }, [id]);
 
-  // Set konten editor secara terpisah setelah contract & editor siap
-  useEffect(() => {
-    if (editor && contract?.content) {
-      editor.commands.setContent(contract.content);
-    }
-  }, [editor, contract?.content]);
-
-  // useEffect(() => {
-  //   // eslint-disable-next-line react-hooks/set-state-in-effect
-  //   loadContract();
-  // }, [id, editor]);
-
   const handleAction = async (status: "approved" | "revised") => {
-    if ((status === "revised") && !notes.trim()) {
-      setSubmitError("Catatan wajib diisi untuk revisi");
+    if ((status === "revised") && !notes.trim() && !reviewFile) {
+      setSubmitError("Catatan atau dokumen revisi wajib diisi");
       return;
     }
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await submitContractReview(Number(id), { status, notes });
+      await submitContractReview(Number(id), { status, notes, reviewDocument: reviewFile });
 
       if (status === "revised") {
         toast.info("Revisi diminta.", {
@@ -180,6 +130,15 @@ useEffect(() => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRevisionRequest = () => {
+    if (!notes.trim() && !reviewFile) {
+      setSubmitError("Catatan atau dokumen revisi wajib diisi");
+      return;
+    }
+
+    setShowRevisionConfirm(true);
   };
 
   if (isLoading) {
@@ -214,12 +173,17 @@ useEffect(() => {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div>
+        <img
+          src="/Agreema.svg"
+          alt="Agreema Logo"
+          className="h-8 w-auto shrink-0"
+        />
+        <div className="border-l border-gray-300 pl-4">
           <h1 className="text-base font-semibold text-gray-900 leading-tight">
-            Review: {contract.title}
+            Peninjauan Dokumen: {contract.title}
           </h1>
           <p className="text-xs text-gray-500">
-            {contract.contract_number || "Draft"} • Diajukan oleh {contract.created_by}
+            {contract.contract_number || "Draft"} • Dibuat oleh {contract.created_by}
           </p>
         </div>
       </header>
@@ -229,10 +193,13 @@ useEffect(() => {
         {/* Document Viewer (Left) */}
         <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex flex-col items-center gap-6">
           <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
-            <EditorContent editor={editor} />
+            <div
+              className="tiptap-preview text-sm text-gray-800 leading-7 outline-none p-8 min-h-[800px]"
+              dangerouslySetInnerHTML={{ __html: contractHtml }}
+            />
 
             {/* Addendum */}
-            {contract.addendums && contract.addendums.length > 0 && (
+            {/* {contract.addendums && contract.addendums.length > 0 && (
               <div className="border-t border-gray-200 px-8 py-8 bg-emerald-50/40">
                 <div className="flex items-center justify-between gap-3 mb-5">
                   <div>
@@ -281,7 +248,7 @@ useEffect(() => {
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Tanda Tangan */}
             {contract.signers && contract.signers.length > 0 && (
@@ -414,10 +381,15 @@ useEffect(() => {
               setNotes(v);
               if (submitError) setSubmitError(null);
             }}
+            reviewFile={reviewFile}
+            onReviewFileChange={(f) => {
+              setReviewFile(f);
+              if (submitError) setSubmitError(null);
+            }}
             submitError={submitError}
             isSubmitting={isSubmitting}
             contractStatus={contract.status}
-            onRevise={() => handleAction("revised")}
+            onRevise={handleRevisionRequest}
             onReject={() => setShowRejectModal(true)}
             onApprove={() => setShowSignModal(true)}
           />
@@ -452,6 +424,27 @@ useEffect(() => {
           }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={showRevisionConfirm}
+        title="Kirim Permintaan Revisi?"
+        message={
+          <>
+            Permintaan revisi akan dikirim kepada pembuat kontrak.
+            Pastikan catatan dan dokumen revisi sudah benar.
+          </>
+        }
+        icon={AlertCircle}
+        tone="warning"
+        confirmLabel="Ya, Kirim Revisi"
+        loadingLabel="Mengirim..."
+        isLoading={isSubmitting}
+        onClose={() => setShowRevisionConfirm(false)}
+        onConfirm={async () => {
+          setShowRevisionConfirm(false);
+          await handleAction("revised");
+        }}
+      />
     </div>
   );
 }

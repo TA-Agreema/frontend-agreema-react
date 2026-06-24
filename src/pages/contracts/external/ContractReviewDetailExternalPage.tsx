@@ -1,40 +1,24 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
 import {
   CheckCircle,
   AlertCircle,
   Loader2,
   Clock,
   MailCheck,
-  PenLine,
   FileText,
+  Paperclip,
+  X,
 } from "lucide-react";
 import {
   fetchExternalContractPreview,
   submitExternalContractReview,
 } from "@/services/external.service";
 import type { ExternalContractDetail } from "@/types/external";
-
-// Define TipTap extensions similarly to Editor but without UI plugins
-import Underline from "@tiptap/extension-underline";
-import TextAlign from "@tiptap/extension-text-align";
-import Color from "@tiptap/extension-color";
-import { TextStyle } from "@tiptap/extension-text-style";
-import Highlight from "@tiptap/extension-highlight";
-import HorizontalRule from "@tiptap/extension-horizontal-rule";
-import { Table } from "@tiptap/extension-table";
-import Link from "@tiptap/extension-link";
 import { isAxiosError } from "axios";
-import { PageBreak } from "@/lib/tiptap-page-break";
-import { ResizableTableRow } from "@/lib/tiptap-resizable-table-rows";
-import {
-  BorderedTableCell,
-  BorderedTableHeader,
-} from "@/lib/tiptap-table-cell-borders";
-
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
+// import { AlertCircle } from "lucide-react";
 
 // Interface untuk data peninjauan
 interface ReviewItem {
@@ -43,6 +27,7 @@ interface ReviewItem {
   status: string;
   notes: string;
   date: string;
+  review_document_url?: string | null;
 }
 
 // Token
@@ -89,8 +74,13 @@ export default function ContractReviewDetailExternalPage() {
 
   // Review form state
   const [notes, setNotes] = useState("");
+  const [reviewFile, setReviewFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [contractHtml, setContractHtml] = useState("");
 
   //Pop up Signature Modal
   const [showSignModal, setShowSignModal] = useState(false);
@@ -100,108 +90,78 @@ export default function ContractReviewDetailExternalPage() {
 
   const [hasSignedByCanvas, setHasSignedByCanvas] = useState(false);
 
-  // Read-only editor
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      TextAlign.configure({
-        types: ["heading", "paragraph"],
-      }),
-      Link.configure({ openOnClick: false }),
-      TextStyle,
-      Color,
-      Highlight.configure({ multicolor: true }),
-      PageBreak,
-      HorizontalRule,
-      Table.configure({ resizable: false }),
-      ResizableTableRow,
-      BorderedTableHeader,
-      BorderedTableCell,
-      Underline,
-    ],
-    content: "",
-    editable: false,
-    editorProps: {
-      attributes: {
-        class: "outline-none text-sm leading-7 text-gray-800 p-8 min-h-[800px]",
-      },
-    },
-  });
+  const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
 
-const loadContract = async () => {
-  if (!token || !editor) return;
-  try {
-    const data = await fetchExternalContractPreview(token);
-    setContractDetail(data);
-    if (data.data?.content) {
-      editor.commands.setContent(data.data.content);
+  const loadContract = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await fetchExternalContractPreview(token);
+      setContractDetail(data);
+      if (data.data?.content) {
+        setContractHtml(data.data.content);
+      }
+    } catch (error: unknown) {
+      let errorMessage = "Gagal memuat kontrak. Token mungkin tidak valid atau sudah kadaluarsa.";
+      if (isAxiosError(error) && error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      setErrorMsg(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error: unknown) {
-    let errorMessage = "Gagal memuat kontrak. Token mungkin tidak valid atau sudah kadaluarsa.";
-    if (isAxiosError(error) && error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    }
-    setErrorMsg(errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  }, [token]);
 
-useEffect(() => {
-  if (!token) {
-    setErrorMsg("Token tidak ditemukan di URL.");
-    setIsLoading(false);
-    return;
-  }
-  if (!editor) return;
-
-  // Cek status token di localStorage 
-  const now = Date.now();
-  let meta = getTokenMeta(token);
-
-  if (meta) {
-    // 1. Token sudah pernah dipakai (TTD / revisi) → tolak akses
-    if (meta.usedAt) {
-      setErrorMsg(
-        "Token ini sudah digunakan dan tidak dapat diakses kembali. Silakan hubungi pihak yang mengirimkan kontrak jika ada pertanyaan."
-      );
+  useEffect(() => {
+    if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setErrorMsg("Token tidak ditemukan di URL.");
       setIsLoading(false);
       return;
     }
 
-    // 2. Token sudah melebihi 7 hari sejak pertama dibuka → kadaluarsa
-    if (now - meta.firstAccessAt > TOKEN_EXPIRY_MS) {
-      setErrorMsg(
-        `Token ini telah kadaluarsa (lebih dari ${TOKEN_EXPIRY_DAYS} hari sejak pertama diakses). Silakan minta tautan baru.`
-      );
-      setIsLoading(false);
-      return;
-    }
-  } else {
-    // Pertama kali dibuka → catat waktu akses pertama
-    meta = { firstAccessAt: now };
-    setTokenMeta(token, meta);
-  }
+    const now = Date.now();
+    let meta = getTokenMeta(token);
 
-  loadContract();
-}, [token, editor]); // editor masuk dependency → re-run saat editor siap
+    if (meta) {
+      if (meta.usedAt) {
+        setErrorMsg(
+          "Token ini sudah digunakan dan tidak dapat diakses kembali. Silakan hubungi pihak yang mengirimkan kontrak jika ada pertanyaan."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      if (now - meta.firstAccessAt > TOKEN_EXPIRY_MS) {
+        setErrorMsg(
+          `Token ini telah kadaluarsa (lebih dari ${TOKEN_EXPIRY_DAYS} hari sejak pertama diakses). Silakan minta tautan baru.`
+        );
+        setIsLoading(false);
+        return;
+      }
+    } else {
+      meta = { firstAccessAt: now };
+      setTokenMeta(token, meta);
+    }
+
+    loadContract();
+  }, [token, loadContract]);
 
   const handleAction = async (status: "approved" | "revised" | "confirmed") => {
     if (!token) return;
 
-    if (status === "revised" && !notes.trim()) {
-      setSubmitError("Catatan wajib diisi jika meminta revisi.");
+    if (status === "revised" && !notes.trim() && !reviewFile) {
+      setSubmitError("Catatan atau dokumen revisi wajib diisi jika meminta revisi.");
       return;
     }
 
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await submitExternalContractReview({ token, status, notes });
+      await submitExternalContractReview({ token, status, notes, reviewDocument: reviewFile });
       //Tandai token sudah dipakai setelah berhasil submit review (TTD atau revisi)
       const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
       setTokenMeta(token, { ...existing, usedAt: Date.now() });
-      
+
       setIsSubmitted(true);
     } catch (error: unknown) {
       let errorMessage = "Gagal mengirim tanggapan. Coba lagi.";
@@ -212,6 +172,15 @@ useEffect(() => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleRevisionRequest = () => {
+    if (!notes.trim() && !reviewFile) {
+      setSubmitError("Catatan atau dokumen revisi wajib diisi");
+      return;
+    }
+
+    setShowRevisionConfirm(true);
   };
 
   if (isLoading) {
@@ -247,22 +216,23 @@ useEffect(() => {
   if (!contractDetail) return null;
 
   const contract = contractDetail.data;
-  const signMethod = contract.signers
-    ?.filter((s) => s.signer_type === "internal")
-    .flatMap((s) => s.signatures ?? [])
-    .sort((a, b) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime())[0]
-    ?.signature_type ?? null; // 'canvas' | 'upload' | null
+  // const signMethod = contract.signers
+  //   ?.filter((s) => s.signer_type === "internal")
+  //   .flatMap((s) => s.signatures ?? [])
+  //   .sort((a, b) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime())[0]
+  //   ?.signature_type ?? null; // 'canvas' | 'upload' | null
   // Kumpulkan semua catatan dari signers
   const allReviews: ReviewItem[] = [];
   contract.signers?.forEach((s) => {
     s.reviews?.forEach((r) => {
-      if (r.notes) {
+      if (r.notes || r.review_document_url) {
         allReviews.push({
           id: r.id,
           author: s.name || (s.signer_type === "internal" ? "Pihak Internal" : "Pihak Eksternal"),
           status: r.status,
-          notes: r.notes,
-          date: r.created_at,
+          notes: r.notes || "",
+          date: r.reviewed_at,
+          review_document_url: r.review_document_url,
         });
       }
     });
@@ -292,7 +262,10 @@ useEffect(() => {
         {/* Document Viewer (Left Side) */}
         <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex flex-col items-center gap-6">
           <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
-            <EditorContent editor={editor} />
+            <div
+              className="tiptap-preview text-sm text-gray-800 leading-7 outline-none p-8 min-h-[800px]"
+              dangerouslySetInnerHTML={{ __html: contractHtml }}
+            />
 
             {/* section tanda tangan */}
             {contract.signers && contract.signers.length > 0 && (
@@ -315,7 +288,7 @@ useEffect(() => {
                         </p>
                       </div>
                     </div>
-                    
+
                     <a href={contract.signed_document_url}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -349,7 +322,6 @@ useEffect(() => {
                       const signedAt = latestSignature?.signed_at ?? null;
                       const isSigned = !!signatureImage;
                       console.log('signer:', signer.id, signer.signer_type, 'signatures:', signer.signatures, 'isSigned:', isSigned);
-                      const signedReview = latestSignature;
 
                       return (
                         <div
@@ -361,18 +333,17 @@ useEffect(() => {
                             Tanggal:{" "}
                             {isSigned && signedAt
                               ? new Date(signedAt).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                              })
                               : "[DD/MM/YYYY]"}
                           </p>
 
                           {/* Area Tanda Tangan */}
                           <div
-                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${
-                              isSigned ? "w-45 h-25" : "w-full h-25"
-                            }`}
+                            className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${isSigned ? "w-45 h-25" : "w-full h-25"
+                              }`}
                           >
                             {isSigned ? (
                               // Siapapun yang sudah TTD — tampilkan gambar
@@ -381,22 +352,22 @@ useEffect(() => {
                                 alt="Tanda Tangan"
                                 className="h-full w-full object-contain p-1"
                               />
-                              ) : signer.signer_type === "external" ? (
-                                signatureImage ? (
-                                  <img
-                                    src={signatureImage}
-                                    alt="Tanda Tangan Eksternal"
-                                    className="max-h-16 max-w-full object-contain"
-                                  />
-                                ) : (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Clock className="h-4 w-4 text-gray-300" />
-                                    <span className="text-[10px] text-gray-300 uppercase tracking-widest text-center px-2">
-                                      Menunggu Tanda Tangan
-                                    </span>
-                                  </div>
-                                )
+                            ) : signer.signer_type === "external" ? (
+                              signatureImage ? (
+                                <img
+                                  src={signatureImage}
+                                  alt="Tanda Tangan Eksternal"
+                                  className="max-h-16 max-w-full object-contain"
+                                />
                               ) : (
+                                <div className="flex flex-col items-center gap-1">
+                                  <Clock className="h-4 w-4 text-gray-300" />
+                                  <span className="text-[10px] text-gray-300 uppercase tracking-widest text-center px-2">
+                                    Menunggu Tanda Tangan
+                                  </span>
+                                </div>
+                              )
+                            ) : (
                               <span className="text-xs text-gray-300 uppercase tracking-widest">
                                 Area Tanda Tangan
                               </span>
@@ -406,11 +377,10 @@ useEffect(() => {
                           {/* Badge status */}
                           {!isSigned && (
                             <span
-                              className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                signer.signer_type === "external"
-                                  ? "bg-sky-100 text-sky-600"
-                                  : "bg-gray-100 text-gray-400"
-                              }`}
+                              className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${signer.signer_type === "external"
+                                ? "bg-sky-100 text-sky-600"
+                                : "bg-gray-100 text-gray-400"
+                                }`}
                             >
                               <Clock className="h-3 w-3" />
                               {signer.signer_type === "external"
@@ -418,7 +388,7 @@ useEffect(() => {
                                 : "Belum Ditandatangani"}
                             </span>
                           )}
-  
+
                           <p className="text-sm font-bold text-gray-900 mt-1">{name}</p>
                           {role && <p className="text-xs text-gray-500">{role}</p>}
                           {email && (
@@ -448,28 +418,6 @@ useEffect(() => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-5">
-            {/* Input Catatan */}
-            <div className="mb-6">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Catatan
-                <span className="text-gray-400 font-normal ml-1">
-                  (Wajib jika minta revisi)
-                </span>
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Tuliskan catatan perbaikan jika ada..."
-                className="w-full h-32 text-sm border border-gray-200 rounded-lg p-3 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
-              />
-              {submitError && (
-                <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {submitError}
-                </p>
-              )}
-            </div>
-
             {/* Riwayat Catatan */}
             {allReviews.length > 0 && (
               <div>
@@ -498,9 +446,22 @@ useEffect(() => {
                           {rev.status === "revised" || rev.status === "revision" ? "Revisi" : rev.status}
                         </span>
                       </div>
-                      <p className="text-gray-600 text-xs leading-relaxed">
-                        {rev.notes || "Tidak ada catatan."}
-                      </p>
+                      {rev.notes && (
+                        <p className="text-gray-600 text-xs leading-relaxed">
+                          {rev.notes}
+                        </p>
+                      )}
+                      {rev.review_document_url && (
+                        <a
+                          href={rev.review_document_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          Lihat Dokumen Revisi
+                        </a>
+                      )}
                       <div className="text-[10px] text-gray-400 mt-2">
                         {new Date(rev.date).toLocaleString("id-ID")}
                       </div>
@@ -513,9 +474,75 @@ useEffect(() => {
 
           {/* Action Buttons */}
           <div className="p-5 border-t border-gray-200 bg-white flex flex-col gap-3">
+            <div className="flex flex-col">
+              {/* Input Catatan */}
+              <div className="mb-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Catatan
+                  <span className="text-gray-400 font-normal ml-1">
+                    {reviewFile ? "(Opsional, ada file)" : "(Wajib jika minta revisi)"}
+                  </span>
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Tuliskan catatan perbaikan jika ada..."
+                  className="w-full h-28 text-sm border border-gray-200 rounded-lg p-3 bg-white text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all resize-none"
+                />
+              </div>
+
+              {/* Upload Dokumen Revisi */}
+              <div className="mb-2">
+                <p className="text-xs font-semibold text-gray-700 mb-2">
+                  Lampiran Dokumen Revisi
+                  <span className="text-gray-400 font-normal ml-1">(Opsional)</span>
+                </p>
+                {reviewFile ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                    <span className="text-sm text-blue-700 truncate flex-1">{reviewFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setReviewFile(null)}
+                      className="text-blue-400 hover:text-red-500 transition-colors shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    Lampirkan PDF / Word
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] ?? null;
+                    setReviewFile(file);
+                    e.target.value = "";
+                  }}
+                />
+              </div>
+            </div>
+
+            {submitError && (
+              <p className="text-xs text-red-500 mb-4 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {submitError}
+              </p>
+            )}
+
             <div className="flex gap-3">
               <button
-                onClick={() => handleAction("revised")}
+                onClick={() => handleRevisionRequest()}
                 disabled={isSubmitting}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors disabled:opacity-50"
               >
@@ -523,26 +550,26 @@ useEffect(() => {
               </button>
             </div>
 
-          {/* Kondisi: ada doc upload DAN belum TTD canvas → popup konfirmasi upload manual */}
-          {contract.signed_document_url && !hasSignedByCanvas ? (
-            <button
-              onClick={() => setShowConfirmModal(true)}
-              disabled={isSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
-            >
-              <CheckCircle className="h-4 w-4"/>
-              Setujui Kontrak
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowSignModal(true)}
-              disabled={isSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
-            >
-              <CheckCircle className="h-4 w-4"/>
-              Setujui &amp; Tanda Tangan Digital
-            </button>
-          )}
+            {/* Kondisi: ada doc upload DAN belum TTD canvas → popup konfirmasi upload manual */}
+            {contract.signed_document_url && !hasSignedByCanvas ? (
+              <button
+                onClick={() => setShowConfirmModal(true)}
+                disabled={isSubmitting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Setujui Kontrak
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowSignModal(true)}
+                disabled={isSubmitting}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Setujui &amp; Tanda Tangan Digital
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -560,19 +587,19 @@ useEffect(() => {
                 <p className="text-xs text-gray-500 mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
               </div>
             </div>
- 
+
             <p className="text-sm text-gray-600 leading-relaxed">
               Apakah Anda yakin ingin <strong>menyetujui</strong> kontrak ini?
               Dengan menyetujui, kontrak akan resmi aktif dan berlaku.
             </p>
- 
+
             {submitError && (
               <p className="text-xs text-red-500 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 {submitError}
               </p>
             )}
- 
+
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -597,7 +624,7 @@ useEffect(() => {
           </div>
         </div>
       )}
- 
+
       {/* Pakai ContractApprovalSignPage langsung dengan prop token */}
       {showSignModal && token && (
         <ContractApprovalSignPage
@@ -608,16 +635,37 @@ useEffect(() => {
           onSuccess={async () => {
             setShowSignModal(false);
             setHasSignedByCanvas(true); // tandai sudah TTD canvas
- 
+
             // Tandai token sudah dipakai
             const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
             setTokenMeta(token, { ...existing, usedAt: Date.now() });
- 
+
             // Langsung selesai tanpa konfirmasi tambahan
             setIsSubmitted(true);
           }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={showRevisionConfirm}
+        title="Kirim Permintaan Revisi?"
+        message={
+          <>
+            Permintaan revisi akan dikirim kepada pembuat kontrak.
+            Pastikan catatan dan dokumen revisi sudah benar.
+          </>
+        }
+        icon={AlertCircle}
+        tone="warning"
+        confirmLabel="Ya, Kirim Revisi"
+        loadingLabel="Mengirim..."
+        isLoading={isSubmitting}
+        onClose={() => setShowRevisionConfirm(false)}
+        onConfirm={async () => {
+          setShowRevisionConfirm(false);
+          await handleAction("revised");
+        }}
+      />
     </div>
   );
 }

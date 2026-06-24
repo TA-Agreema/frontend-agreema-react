@@ -378,9 +378,14 @@ export default function ContractActiveListPage() {
           setPage(1);
         }}
         placeholder="Cari berdasarkan judul, kategori, partner, atau pembuat..."
-        yearFilter={filter.yearFilter}
-        setYearFilter={(val) => {
-          filter.setYearFilter(val);
+        startYearFilter={filter.startYearFilter}
+        setStartYearFilter={(val) => {
+          filter.setStartYearFilter(val);
+          setPage(1);
+        }}
+        endYearFilter={filter.endYearFilter}
+        setEndYearFilter={(val) => {
+          filter.setEndYearFilter(val);
           setPage(1);
         }}
         availableYears={filter.availableYears}
@@ -487,7 +492,7 @@ export default function ContractActiveListPage() {
                   <td colSpan={8 + filter.visibleFields.length} className="py-16 text-center">
                     <CheckCircle2 className="h-10 w-10 text-emerald-200 mx-auto mb-3" />
                     <p className="text-muted-foreground text-sm">
-                      {filter.search || filter.yearFilter !== "all" || filter.customFilters.length > 0
+                      {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.customFilters.length > 0
                         ? "Tidak ada kontrak aktif yang cocok dengan filter aktif"
                         : "Belum ada kontrak yang aktif"}
                     </p>

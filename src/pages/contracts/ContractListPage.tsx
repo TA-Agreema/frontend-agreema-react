@@ -18,7 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  RefreshCw,
+  // RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -251,7 +251,7 @@ function AddendumRow({
 }
 
 // TerminationRow
-function TerminationRow({ termination }: { termination: any }) {
+function TerminationRow({ termination }: { termination: Termination }) {
   const reasonLabels: Record<string, string> = {
     mutual_agreement: "Kesepakatan Bersama",
     breach_of_contract: "Pelanggaran Kontrak",
@@ -334,6 +334,7 @@ function RowMenu({
   // Aksi yang relevan berdasarkan status
   const canTerminate = ["active"].includes(contract.status) && !hasPendingTermination;
   const canAddAddendum = ["active"].includes(contract.status) && !hasPendingTermination;
+  const canEditContract = ["draft", "revision"].includes(contract.status);
   const canDelete = contract.status === "draft";
 
   const { roles } = useAuth();
@@ -413,7 +414,7 @@ function RowMenu({
             Lihat Detail
           </button>
 
-          {canEdit && isHrd && (
+          {canEdit && isHrd && canEditContract && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -570,7 +571,7 @@ export default function ContractListPage() {
   );
 
   const filteredContracts = filter.contracts.filter(
-    (c) => c.status !== "terminated" && c.status !== "expired" && c.status !== "active"
+    (c) => c.status !== "terminated" && c.status !== "expired"
   );
   const totalPages = Math.max(1, Math.ceil(filteredContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -674,10 +675,10 @@ export default function ContractListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate("/contracts/archive")}
+          <button
+            onClick={() => navigate("/contracts/archive")}
             className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border bg-background hover:bg-muted/50 transition-colors font-medium text-foreground"
-            >
+          >
             <Archive className="h-4 w-4 text-muted-foreground" />
             Arsip
           </button>
@@ -685,7 +686,7 @@ export default function ContractListPage() {
             <button
               onClick={() => setShowTemplateModal(true)}
               className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors font-medium shadow-xs"
-              >
+            >
               <Plus className="h-4 w-4" />
               Tambah Kontrak
             </button>
@@ -701,9 +702,14 @@ export default function ContractListPage() {
           setPage(1);
         }}
         placeholder="Cari berdasarkan judul, kategori, partner, atau pembuat..."
-        yearFilter={filter.yearFilter}
-        setYearFilter={(val) => {
-          filter.setYearFilter(val);
+        startYearFilter={filter.startYearFilter}
+        setStartYearFilter={(val) => {
+          filter.setStartYearFilter(val);
+          setPage(1);
+        }}
+        endYearFilter={filter.endYearFilter}
+        setEndYearFilter={(val) => {
+          filter.setEndYearFilter(val);
           setPage(1);
         }}
         availableYears={filter.availableYears}
@@ -833,7 +839,7 @@ export default function ContractListPage() {
                   <td
                     colSpan={8 + filter.visibleFields.length}
                     className="py-16 text-center text-muted-foreground text-sm">
-                    {filter.search || filter.yearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                    {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
                       ? "Tidak ada kontrak yang cocok dengan filter aktif"
                       : "Belum ada kontrak"}
                   </td>
@@ -853,11 +859,10 @@ export default function ContractListPage() {
                     <tr
                       key={`contract-${contract.id}`}
                       onClick={() => isExpandable && toggleExpand(contract.id)}
-                      className={`transition-colors ${
-                        isExpandable
-                          ? "cursor-pointer hover:bg-muted/40"
-                          : "hover:bg-muted/20"
-                      } ${isExpanded ? "bg-muted/30" : ""}`}
+                      className={`transition-colors ${isExpandable
+                        ? "cursor-pointer hover:bg-muted/40"
+                        : "hover:bg-muted/20"
+                        } ${isExpanded ? "bg-muted/30" : ""}`}
                     >
                       {/* Expand icon */}
                       <td className="w-10 px-3 py-4">
@@ -995,7 +1000,7 @@ export default function ContractListPage() {
                     {/* ── Termination rows (expanded)  */}
                     {isExpanded &&
                       hasTerminations &&
-                      contract.terminations!.map((termination: any) => (
+                      contract.terminations!.map((termination: Termination) => (
                         <TerminationRow
                           key={`termination-${termination.id}`}
                           termination={termination}

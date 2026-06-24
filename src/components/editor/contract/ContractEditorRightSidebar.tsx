@@ -1,4 +1,5 @@
 import type { ContractVersion } from "@/types/contractVersion";
+import { FileText } from "lucide-react";
 
 type ContractStatusLog = {
   id: number;
@@ -16,6 +17,7 @@ type ContractFeedback = {
   typeLabel?: string;
   message?: string;
   date?: string;
+  review_document_url?: string | null;
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -177,9 +179,22 @@ export function ContractEditorRightSidebar({
                         {feedback.typeLabel}
                       </span>
                     </div>
-                    <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-                      {feedback.message}
-                    </p>
+                    {feedback.message && (
+                      <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-wrap">
+                        {feedback.message}
+                      </p>
+                    )}
+                    {feedback.review_document_url && (
+                      <a
+                        href={feedback.review_document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                      >
+                        <FileText className="h-3 w-3 shrink-0" />
+                        Lihat Dokumen Revisi
+                      </a>
+                    )}
                     <p className="text-[10px] text-gray-300">
                       {feedback.date}
                     </p>

@@ -28,21 +28,33 @@ export function useContractFilter(
   }
 ) {
   const [search, setSearch] = useState("");
-  const [yearFilter, setYearFilter] = useState("all");
+  const [startYearFilter, setStartYearFilter] = useState("all");
+  const [endYearFilter, setEndYearFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState(options?.initialStatusFilter ?? "all");
   const [customFilters, setCustomFilters] = useState<CustomFilter[]>([]);
-  const [visibleFields, setVisibleFields] = useState<number[]>([]); // field definition IDs
+  const [visibleFields, setVisibleFields] = useState<number[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "created_at",
     direction: null,
   });
 
-  // Extract all available years from contracts to populate year dropdown
+  // Extract all available years from BOTH start_date and end_date to populate year dropdowns
   const availableYears = useMemo(() => {
     const years = new Set<string>();
+
+    for (let i = -5; i <= 5; i++) {
+      years.add((2026 + i).toString());
+    }
+
     initialContracts.forEach((c) => {
       if (c.start_date) {
         const parts = c.start_date.split("-");
+        if (parts.length === 3 && parts[2]) {
+          years.add(parts[2]);
+        }
+      }
+      if (c.end_date) {
+        const parts = c.end_date.split("-");
         if (parts.length === 3 && parts[2]) {
           years.add(parts[2]);
         }
@@ -62,12 +74,21 @@ export function useContractFilter(
       result = result.filter((c) => c.status === statusFilter);
     }
 
-    // Filter by Year
-    if (yearFilter && yearFilter !== "all") {
+    // Filter by Start Year
+    if (startYearFilter && startYearFilter !== "all") {
       result = result.filter((c) => {
         if (!c.start_date) return false;
         const parts = c.start_date.split("-");
-        return parts.length === 3 && parts[2] === yearFilter;
+        return parts.length === 3 && parts[2] === startYearFilter;
+      });
+    }
+
+    // Filter by End Year
+    if (endYearFilter && endYearFilter !== "all") {
+      result = result.filter((c) => {
+        if (!c.end_date) return false;
+        const parts = c.end_date.split("-");
+        return parts.length === 3 && parts[2] === endYearFilter;
       });
     }
 
@@ -183,7 +204,7 @@ export function useContractFilter(
     }
 
     return result;
-  }, [initialContracts, search, yearFilter, statusFilter, sortConfig, options]);
+  }, [initialContracts, search, startYearFilter, endYearFilter, statusFilter, sortConfig, options]);
 
   const requestSort = (key: string) => {
     let direction: "asc" | "desc" | null = "asc";
@@ -191,7 +212,7 @@ export function useContractFilter(
       if (sortConfig.direction === "asc") {
         direction = "desc";
       } else if (sortConfig.direction === "desc") {
-        direction = null; // reset sort
+        direction = null;
       }
     }
     setSortConfig({ key, direction });
@@ -199,7 +220,8 @@ export function useContractFilter(
 
   const resetFilters = () => {
     setSearch("");
-    setYearFilter("all");
+    setStartYearFilter("all");
+    setEndYearFilter("all");
     setStatusFilter("all");
     setCustomFilters([]);
     setSortConfig({ key: "created_at", direction: null });
@@ -208,8 +230,10 @@ export function useContractFilter(
   return {
     search,
     setSearch,
-    yearFilter,
-    setYearFilter,
+    startYearFilter,
+    setStartYearFilter,
+    endYearFilter,
+    setEndYearFilter,
     statusFilter,
     setStatusFilter,
     customFilters,

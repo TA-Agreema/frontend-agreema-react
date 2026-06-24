@@ -79,7 +79,7 @@ export default function AddendumDetailModal({
                                 {addendum.title}
                             </p>
                         </div>
-                        <div className="space-y-1">
+                        {/* <div className="space-y-1">
                             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Tanggal Dibuat
                             </span>
@@ -87,7 +87,7 @@ export default function AddendumDetailModal({
                                 <Calendar className="h-4 w-4 text-muted-foreground" />
                                 {addendum.created_at}
                             </div>
-                        </div>
+                        </div> */}
                         <div className="space-y-1">
                             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                 Tanggal Efektif
