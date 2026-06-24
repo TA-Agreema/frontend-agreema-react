@@ -14,4 +14,5 @@ export interface FeedbackEntry {
     typeLabel: string;
     message: string;
     date: string;
+    review_document_url?: string | null;
 }

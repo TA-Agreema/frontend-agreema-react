@@ -1,4 +1,4 @@
-import { Clock } from "lucide-react";
+import { Clock, FileText } from "lucide-react";
 
 const STATUS_DOT: Record<string, string> = {
   draft: "bg-gray-400",
@@ -50,6 +50,7 @@ interface Feedback {
   typeLabel: string;
   message: string;
   date: string;
+  review_document_url?: string | null;
 }
 
 export default function ContractStatusSidebar({
@@ -137,7 +138,20 @@ export default function ContractStatusSidebar({
                         {fb.typeLabel}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">{fb.message}</p>
+                    {fb.message && (
+                      <p className="text-xs text-gray-600 leading-relaxed">{fb.message}</p>
+                    )}
+                    {fb.review_document_url && (
+                      <a
+                        href={fb.review_document_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                      >
+                        <FileText className="h-3 w-3 shrink-0" />
+                        Lihat Dokumen Revisi
+                      </a>
+                    )}
                     <div className="flex items-center gap-1 text-[10px] text-gray-400">
                       <Clock className="h-3 w-3" />
                       {new Date(fb.date).toLocaleString("id-ID")}
