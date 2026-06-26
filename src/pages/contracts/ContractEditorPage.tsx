@@ -101,9 +101,8 @@ import type { ContractVersion } from "@/types/contractVersion";
 
 //  Types
 
-// Contract detail from backend includes partner and partner_id
+// Contract detail from backend includes partner name for manual input.
 type ContractDetail = ContractRow & {
-  partner_id?: number | null;
   partner?: string | null;
   content?: string | null;
   signers?: ContractSignerDetail[];

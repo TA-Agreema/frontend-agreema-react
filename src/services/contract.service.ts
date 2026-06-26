@@ -20,6 +20,7 @@ export interface CreateContractPayload {
   status?: string | null;
   template_id?: number | null;
   category_id?: number | null;
+  partner_name?: string | null;
   parent_contract_id?: number | null;
   content?: string | null;
   paper_size?: PaperSize | null;
@@ -83,15 +84,6 @@ export const generateContractNumber = async (
 
 export const fetchSigners = async (): Promise<InternalSigner[]> => {
   const res = await api.get<{ data: InternalSigner[] }>("/signers/internal");
-  return res.data.data;
-};
-
-export const fetchPartners = async (): Promise<
-  { id: number; display_name: string }[]
-> => {
-  const res = await api.get<{ data: { id: number; display_name: string }[] }>(
-    "/partners",
-  );
   return res.data.data;
 };
 
