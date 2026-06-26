@@ -18,107 +18,39 @@ import {
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
-import TemplateSelectModal, {
-  type TemplateOption,
-} from "@/components/modal/template/TemplateSelectModal";
 import {
   fetchPartnerContracts,
-  createContract,
   deleteContract,
 } from "@/services/contract.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
-import type { Termination } from "@/types/termination";
 import AddPartnerContractModal from "@/components/modal/partner/AddPartnerContractModal";
-
-//  Types
-
-export type ContractStatus =
-  | "draft"
-  | "review"
-  | "active"
-  | "revision"
-  | "approved"
-  | "signed"
-  | "rejected"
-  | "expired"
-  | "terminating"
-  | "terminated";
-
-export interface Addendum {
-  id: number;
-  addendum_number: string;
-  title: string;
-  description: string;
-  created_at: string; // "DD-MM-YYYY"
-  effective_date: string;
-  document_path?: string;
-}
-
-export interface ContractRow {
-  id: number;
-  contract_number: string;
-  external_contract_number: string | null;
-  title: string;
-  content?: string;
-  partner: string; // nama pihak eksternal
-  category: string;
-  category_id: number | null;
-  template_id: number | null;
-  contract_type?: "internal" | "external";
-  signed_document_url?: string | null;
-  status: ContractStatus;
-  start_date: string; // "DD-MM-YYYY"
-  end_date: string | null;
-  created_by: string;
-  addendums: Addendum[];
-  terminations?: Termination[];
-}
+import type { ContractRow, ContractStatus, Addendum } from "./ContractListPage";
 
 const PAGE_SIZE = 4;
 
 //  Status Config
 
-const STATUS_CONFIG: Record<
-  ContractStatus,
-  { label: string; className: string }
+const DEFAULT_STATUS_CONFIG = {
+  label: "Tidak Diketahui",
+  className: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+const STATUS_CONFIG: Partial<
+  Record<ContractStatus, { label: string; className: string }>
 > = {
-  draft: {
-    label: "Draft",
-    className: "bg-gray-100 text-gray-600 border-gray-200",
-  },
-  review: {
-    label: "Ditinjau",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-  },
   active: {
     label: "Aktif",
     className: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  },
-  revision: {
-    label: "Revisi",
-    className: "bg-orange-50 text-orange-700 border-orange-200",
-  },
-  approved: {
-    label: "Disetujui Internal",
-    className: "bg-blue-50 text-blue-700 border-blue-200",
   },
   signed: {
     label: "Disahkan",
     className: "bg-purple-50 text-purple-700 border-purple-200",
   },
-  rejected: {
-    label: "Ditolak",
-    className: "bg-red-100 text-red-800 border-red-300",
-  },
   expired: {
     label: "Berakhir",
     className: "bg-slate-100 text-slate-500 border-slate-200",
-  },
-  terminating: {
-    label: "Akan Dihentikan",
-    className: "bg-orange-50 text-orange-700 border-orange-200",
   },
   terminated: {
     label: "Dihentikan",
@@ -130,7 +62,7 @@ const STATUS_CONFIG: Record<
 
 function StatusBadge({ status }: { status: ContractStatus }) {
   const normalizedStatus = (status || "").toLowerCase() as ContractStatus;
-  const cfg = STATUS_CONFIG[normalizedStatus] || STATUS_CONFIG.draft;
+  const cfg = STATUS_CONFIG[normalizedStatus] ?? DEFAULT_STATUS_CONFIG;
 
   return (
     <span
@@ -223,8 +155,8 @@ function RowMenu({
 
   // Aksi yang relevan berdasarkan status
   const canAddAddendum = ["active"].includes(contract.status);
-  const canTerminate = ["active", "review", "draft"].includes(contract.status);
-  const canDelete = contract.status === "draft";
+  const canTerminate = ["active"].includes(contract.status);
+  const canDelete = contract.status !== "active";
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -353,7 +285,6 @@ export default function ContractListPage() {
   const canManageTermination = hasPermission('create.terminate');
   const canDeleteRow = hasPermission('delete.contract');
 
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
@@ -734,31 +665,6 @@ export default function ContractListPage() {
           contract={terminateTarget}
           onClose={() => setTerminateTarget(null)}
           onSuccess={handleTerminationSuccess}
-        />
-      )}
-
-      {showTemplateModal && (
-        <TemplateSelectModal
-          onClose={() => setShowTemplateModal(false)}
-          onSelect={async (template: TemplateOption) => {
-            try {
-              const created = await createContract({
-                contract_number: "", // Biarkan backend generate otomatis sesuai prefix kategori
-                title: template.name,
-                template_id: template.id,
-                category_id: template.category_id,
-                status: "draft",
-              });
-
-              // navigate to editor and pass the created contract + template
-              navigate(`/contracts/${created.id}/edit`, {
-                state: { createdContract: created, template },
-              });
-            } catch (err) {
-              console.error("Failed to create contract", err);
-              alert("Gagal membuat kontrak. Periksa koneksi dan permissions.");
-            }
-          }}
         />
       )}
           

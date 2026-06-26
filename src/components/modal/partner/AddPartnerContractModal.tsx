@@ -20,7 +20,6 @@ export default function AddPartnerContractModal({
   const [title, setTitle] = useState("");
   const [contractNumber, setContractNumber] = useState("");
   const [partnerName, setPartnerName] = useState("");
-  const [status, setStatus] = useState<"signed" | "active">("signed");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [document, setDocument] = useState<File | null>(null);
@@ -34,7 +33,6 @@ export default function AddPartnerContractModal({
     setTitle("");
     setContractNumber("");
     setPartnerName("");
-    setStatus("signed");
     setStartDate("");
     setEndDate("");
     setDocument(null);
@@ -43,6 +41,7 @@ export default function AddPartnerContractModal({
   };
 
   const handleClose = () => {
+    if (isSubmitting) return;
     resetForm();
     onClose();
   };
@@ -78,7 +77,18 @@ export default function AddPartnerContractModal({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     if (!validate() || !document) return;
+
+    // Tentukan status otomatis berdasarkan tanggal mulai
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set waktu ke awal hari
+
+    let autoStatus: "signed" | "active" = "signed";
+    if (startDate) {
+      const start = new Date(startDate);
+      autoStatus = start <= today ? "active" : "signed";
+    }
 
     setIsSubmitting(true);
     try {
@@ -86,7 +96,7 @@ export default function AddPartnerContractModal({
         title: title.trim(),
         contract_number: contractNumber.trim(),
         partner_name: partnerName.trim(),
-        status,
+        status: autoStatus, // Gunakan status otomatis berdasarkan tanggal mulai
         start_date: startDate || null,
         end_date: endDate || null,
         document,
@@ -100,10 +110,10 @@ export default function AddPartnerContractModal({
         duration: 5000,
       });
 
-      resetForm();
-      onSuccess();
-      onClose();
+      onSuccess(); // ← refresh data dulu
+      onClose();   // ← lalu tutup modal (otomatis unmount, tidak perlu resetForm)
     } catch (error: unknown) {
+      console.error("Error detail:", error); 
       let message = "Gagal menambahkan kontrak mitra. Coba lagi.";
       if (typeof error === "object" && error !== null) {
         // @ts-expect-error allow reading axios-like error shape
@@ -119,7 +129,7 @@ export default function AddPartnerContractModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-6 pb-2 shrink-0">
@@ -194,21 +204,6 @@ export default function AddPartnerContractModal({
             {errors.partnerName && (
               <p className="text-xs text-red-500 mt-1">{errors.partnerName}</p>
             )}
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1 block">
-              Status <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as "signed" | "active")}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all bg-white"
-            >
-              <option value="signed">Disahkan</option>
-              <option value="active">Aktif</option>
-            </select>
           </div>
 
           {/* Periode */}
