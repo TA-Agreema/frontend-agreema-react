@@ -8,11 +8,33 @@ export interface AuthContextType {
     permissions: string[];
     token: string | null;
     isLoading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
     logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const AUTH_STORAGE_KEYS = ["token", "user", "roles", "permissions"] as const;
+
+const getStoredAuthValue = (key: (typeof AUTH_STORAGE_KEYS)[number]) =>
+    localStorage.getItem(key) ?? sessionStorage.getItem(key);
+
+const clearStoredAuth = () => {
+    AUTH_STORAGE_KEYS.forEach((key) => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+    });
+};
+
+const saveStoredAuth = (response: LoginResponse, rememberMe: boolean) => {
+    clearStoredAuth();
+
+    const storage = rememberMe ? localStorage : sessionStorage;
+    storage.setItem("token", response.token);
+    storage.setItem("user", JSON.stringify(response));
+    storage.setItem("roles", JSON.stringify(response.roles));
+    storage.setItem("permissions", JSON.stringify(response.permissions));
+};
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<LoginResponse | null>(null);
@@ -23,10 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         try {
-            const storedToken = localStorage.getItem("token");
-            const storedUser = localStorage.getItem("user");
-            const storedRoles = localStorage.getItem("roles");
-            const storedPermissions = localStorage.getItem("permissions");
+            const storedToken = getStoredAuthValue("token");
+            const storedUser = getStoredAuthValue("user");
+            const storedRoles = getStoredAuthValue("roles");
+            const storedPermissions = getStoredAuthValue("permissions");
 
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setToken(storedToken);
@@ -40,16 +62,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }, []);
 
-    const handleLogin = async (email: string, password: string) => {
+    const handleLogin = async (
+        email: string,
+        password: string,
+        rememberMe = false,
+    ) => {
         const response = await login(email, password);
 
         console.log("Login response:", response);
         console.log("Permissions:", response.permissions);
 
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response));
-        localStorage.setItem("roles", JSON.stringify(response.roles));
-        localStorage.setItem("permissions", JSON.stringify(response.permissions));
+        saveStoredAuth(response, rememberMe);
 
         setToken(response.token);
         setUser(response);
@@ -63,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch (error) {
             console.error("Logout error:", error);
         } finally {
-            localStorage.clear();
+            clearStoredAuth();
 
             setToken(null);
             setUser(null);

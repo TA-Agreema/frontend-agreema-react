@@ -16,6 +16,19 @@ interface FieldManageModalProps {
 
 type ViewMode = "list" | "form";
 
+const normalizeFieldIdentity = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLowerCase();
+
+const getFieldApiErrorMessage = (error: any) => {
+  const errors = error.response?.data?.errors;
+  if (errors && typeof errors === "object") {
+    const firstError = Object.values(errors).flat()[0];
+    if (typeof firstError === "string") return firstError;
+  }
+
+  return error.response?.data?.message || "Gagal menyimpan field.";
+};
+
 export default function FieldManageModal({ onClose, onRefreshFields }: FieldManageModalProps) {
   const [view, setView] = useState<ViewMode>("list");
   const [loading, setLoading] = useState(true);
@@ -77,20 +90,49 @@ export default function FieldManageModal({ onClose, onRefreshFields }: FieldMana
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const normalizedLabel = normalizeFieldIdentity(formData.field_label);
+    const normalizedKey = normalizeFieldIdentity(formData.field_key);
+    const duplicateLabel = fields.find(
+      (field) =>
+        field.id !== editingField?.id &&
+        normalizeFieldIdentity(field.field_label) === normalizedLabel,
+    );
+    const duplicateKey = fields.find(
+      (field) =>
+        field.id !== editingField?.id &&
+        normalizeFieldIdentity(field.field_key) === normalizedKey,
+    );
+
+    if (duplicateLabel) {
+      setError(`Nama field "${formData.field_label.trim()}" sudah digunakan.`);
+      return;
+    }
+
+    if (duplicateKey) {
+      setError(`Kunci field "{{${formData.field_key.trim()}}}" sudah digunakan.`);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     setSuccess(null);
     try {
+      const payload = {
+        ...formData,
+        field_label: formData.field_label.trim().replace(/\s+/g, " "),
+        field_key: formData.field_key.trim().toLowerCase(),
+      };
+
       if (editingField) {
-        await updateFieldDefinition(editingField.id, formData);
+        await updateFieldDefinition(editingField.id, payload);
       } else {
-        await createFieldDefinition(formData);
+        await createFieldDefinition(payload);
       }
       await loadFields();
       onRefreshFields();
       setView("list");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Gagal menyimpan field.");
+      setError(getFieldApiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

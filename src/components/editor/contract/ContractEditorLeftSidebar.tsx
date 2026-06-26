@@ -164,7 +164,7 @@ export function ContractEditorLeftSidebar({
                   {chip.label}
                 </span>
                 <span className="text-gray-500 truncate flex-1 text-right text-[10px] font-mono bg-gray-50 px-1 rounded">
-                  {chip.value || "-"}
+                  {chip.value}
                 </span>
                 <GripVertical className="h-3.5 w-3.5 text-gray-300 group-hover:text-emerald-400 shrink-0" />
               </div>

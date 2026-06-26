@@ -1,6 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./middlewares/ProtectedRoute.tsx";
 import AuthPage from "./pages/auth/AuthPage.tsx";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage.tsx";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage.tsx";
 import DashboardPage from "./pages/dashboard/DashboardPage.tsx";
 import UserRoleManagementPage from "./pages/users/UserRoleManagementPage.tsx";
 import ContractPage from "./pages/contracts/ContractListPage.tsx";
@@ -45,6 +47,8 @@ export default function App() {
           {/* Public Routes */}
           <Route path="/" element={<AuthPage />} />
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route
             path="/external/sign"

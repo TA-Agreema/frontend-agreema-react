@@ -1,11 +1,14 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import UserAuthForm from "@/components/auth/UserAuthForm";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function SignIn() {
   const { token, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const successMessage =
+    (location.state as { message?: string } | null)?.message ?? "";
 
   useEffect(() => {
     if (!isLoading && token) {
@@ -36,7 +39,7 @@ export default function SignIn() {
           <h1 className="mb-7 text-[22px] font-extrabold leading-none text-[#202638]">
             Sign in
           </h1>
-          <UserAuthForm />
+          <UserAuthForm successMessage={successMessage} />
         </div>
       </section>
 

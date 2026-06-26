@@ -103,7 +103,7 @@ export const sidebarMenuItems: SidebarMenuItemType[] = [
     roles: ["hrd"],
     // exact: true,
     items: [
-      { title: "Kontrak Internal", url: "/contracts/" },
+      { title: "Kontrak Internal", url: "/contracts", exact: true },
       { title: "Kontrak Aktif", url: "/contracts/active" },
       { title: "Arsip Kontrak", url: "/contracts/archive" },
       { title: "Kontrak Mitra", url: "/contracts/partners" },

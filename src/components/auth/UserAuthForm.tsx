@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -26,9 +26,14 @@ const formSchema = z.object({
     .string()
     .min(1, "Password wajib diisi")
     .min(6, "Password minimal 6 karakter"),
+  rememberMe: z.boolean(),
 });
 
-export default function UserAuthForm() {
+export default function UserAuthForm({
+  successMessage,
+}: {
+  successMessage?: string;
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
@@ -40,6 +45,7 @@ export default function UserAuthForm() {
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -48,7 +54,7 @@ export default function UserAuthForm() {
     setError("");
 
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, data.rememberMe);
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -64,6 +70,11 @@ export default function UserAuthForm() {
         {error && (
           <div className="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
             {error}
+          </div>
+        )}
+        {successMessage && !error && (
+          <div className="rounded-md bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+            {successMessage}
           </div>
         )}
 
@@ -124,6 +135,34 @@ export default function UserAuthForm() {
             </FormItem>
           )}
         />
+        <div className="flex items-center justify-between gap-3">
+          <FormField
+            control={form.control}
+            name="rememberMe"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                <FormControl>
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={field.onChange}
+                    className="h-3.5 w-3.5 rounded border-[#dce3ec] accent-[#2f8f5c]"
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer text-[11px] font-medium text-[#64708b]">
+                  Ingat saya
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+          <Link
+            to="/forgot-password"
+            className="text-[11px] font-medium text-[#64708b] hover:text-emerald-700"
+          >
+            Lupa kata sandi?
+          </Link>
+        </div>
+
         <Button
           type="submit"
           className="mt-5 h-[29px] w-full rounded-[5px] bg-[#2f8f5c] text-[10px] font-bold uppercase tracking-wide text-white shadow-none transition-colors hover:bg-[#27794d]"

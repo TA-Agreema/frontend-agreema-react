@@ -28,6 +28,7 @@ import { ContractField } from "@/lib/tiptap-contract-field";
 import {
   buildContractFieldValues,
   prepareContractContentForEditor,
+  validateRequiredContractFields,
 } from "@/lib/contract-field-values";
 import { setEditorContentWithoutHistory } from "@/lib/tiptap-history";
 import { PageBreak } from "@/lib/tiptap-page-break";
@@ -100,9 +101,8 @@ import type { ContractVersion } from "@/types/contractVersion";
 
 //  Types
 
-// Contract detail from backend includes partner and partner_id
+// Contract detail from backend includes partner name for manual input.
 type ContractDetail = ContractRow & {
-  partner_id?: number | null;
   partner?: string | null;
   content?: string | null;
   signers?: ContractSignerDetail[];
@@ -559,9 +559,9 @@ export default function ContractEditorPage() {
         }
 
         // load partner name (manual input only)
-        if (c && c.partner) {
-          setSelectedPartnerName(c.partner ?? "");
-        }
+        setSelectedPartnerName(
+          c.partner && c.partner !== "-" ? c.partner : "",
+        );
 
         // load signers
         if (c.signers && c.signers.length > 0) {
@@ -744,6 +744,50 @@ export default function ContractEditorPage() {
     return null;
   };
 
+  const getSubmitFieldValidationMessage = () => {
+    const missingFields = validateRequiredContractFields(
+      editor?.getHTML() ?? "",
+      allFields,
+    );
+
+    if (missingFields.length === 0) return null;
+
+    const fieldNames = missingFields
+      .map((field) => field.field_label)
+      .join(", ");
+
+    return `Field kontrak belum diisi: ${fieldNames}.`;
+  };
+
+  const getSubmitDateValidationMessage = () => {
+    if (!startDate || !endDate) {
+      return "Tanggal mulai dan tanggal selesai wajib diisi sebelum kontrak diajukan.";
+    }
+
+    return null;
+  };
+
+  const getSubmitPartnerValidationMessage = () => {
+    if (!selectedPartnerName.trim()) {
+      return "Nama mitra wajib diisi sebelum kontrak diajukan.";
+    }
+
+    return null;
+  };
+
+  const getSubmitValidationMessage = () => {
+    if (!title.trim()) {
+      return "Judul kontrak wajib diisi.";
+    }
+
+    return (
+      getSubmitDateValidationMessage() ??
+      getSubmitPartnerValidationMessage() ??
+      getSubmitSignerValidationMessage() ??
+      getSubmitFieldValidationMessage()
+    );
+  };
+
   const buildPayload = (
     statusOverride?: string,
     overrides?: Partial<{ title: string }>,
@@ -878,15 +922,12 @@ export default function ContractEditorPage() {
   };
 
   const handleSubmit = async (): Promise<ContractRow | undefined> => {
-    if (!title.trim()) {
-      setSaveError("Judul kontrak wajib diisi.");
+    const submitValidationMessage = getSubmitValidationMessage();
+    if (submitValidationMessage) {
+      setSaveError(submitValidationMessage);
       return;
     }
-    const signerValidationMessage = getSubmitSignerValidationMessage();
-    if (signerValidationMessage) {
-      setSaveError(signerValidationMessage);
-      return;
-    }
+
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -1007,16 +1048,13 @@ export default function ContractEditorPage() {
                   </button>
                   <button
                     onClick={() => {
-                      if (!title.trim()) {
-                        setSaveError("Judul kontrak wajib diisi.");
+                      const submitValidationMessage =
+                        getSubmitValidationMessage();
+                      if (submitValidationMessage) {
+                        setSaveError(submitValidationMessage);
                         return;
                       }
-                      const signerValidationMessage =
-                        getSubmitSignerValidationMessage();
-                      if (signerValidationMessage) {
-                        setSaveError(signerValidationMessage);
-                        return;
-                      }
+
                       setSaveError(null);
                       setShowSubmitConfirm(true);
                     }}
