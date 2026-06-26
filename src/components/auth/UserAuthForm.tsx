@@ -26,6 +26,7 @@ const formSchema = z.object({
     .string()
     .min(1, "Password wajib diisi")
     .min(6, "Password minimal 6 karakter"),
+  rememberMe: z.boolean(),
 });
 
 export default function UserAuthForm({
@@ -44,6 +45,7 @@ export default function UserAuthForm({
     defaultValues: {
       email: "",
       password: "",
+      rememberMe: false,
     },
   });
 
@@ -52,7 +54,7 @@ export default function UserAuthForm({
     setError("");
 
     try {
-      await login(data.email, data.password);
+      await login(data.email, data.password, data.rememberMe);
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
@@ -133,7 +135,26 @@ export default function UserAuthForm({
             </FormItem>
           )}
         />
-        <div className="flex justify-start">
+        <div className="flex items-center justify-between gap-3">
+          <FormField
+            control={form.control}
+            name="rememberMe"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                <FormControl>
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={field.onChange}
+                    className="h-3.5 w-3.5 rounded border-[#dce3ec] accent-[#2f8f5c]"
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer text-[11px] font-medium text-[#64708b]">
+                  Ingat saya
+                </FormLabel>
+              </FormItem>
+            )}
+          />
           <Link
             to="/forgot-password"
             className="text-[11px] font-medium text-[#64708b] hover:text-emerald-700"

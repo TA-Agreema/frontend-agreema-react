@@ -1,5 +1,17 @@
 import axios from "axios";
 
+const AUTH_STORAGE_KEYS = ["token", "user", "roles", "permissions"] as const;
+
+const getAuthToken = () =>
+  localStorage.getItem("token") ?? sessionStorage.getItem("token");
+
+const clearAuthStorage = () => {
+  AUTH_STORAGE_KEYS.forEach((key) => {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  });
+};
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
@@ -9,7 +21,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,7 +42,7 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          localStorage.clear();
+          clearAuthStorage();
           window.location.href = "/login";
           break;
 
