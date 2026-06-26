@@ -232,17 +232,44 @@ export default function TemplateEditorPage() {
 
   // Load categories + field definitions
   useEffect(() => {
+    let isMounted = true;
+
     (async () => {
-      try {
-        const catData = await fetchCategories();
-        setCategories(catData.filter((c: Category) => c.is_active));
-      } catch (err) {
-        console.error("Gagal memuat data awal:", err);
+      const [categoryResult, fieldResult] = await Promise.allSettled([
+        fetchCategories(),
+        fetchFieldDefinitions(),
+      ]);
+
+      if (!isMounted) {
+        return;
       }
+
+      if (categoryResult.status === "fulfilled") {
+        setCategories(
+          categoryResult.value.filter((c: Category) => c.is_active),
+        );
+      } else {
+        console.error("Gagal memuat data kategori:", categoryResult.reason);
+      }
+
+      if (fieldResult.status === "fulfilled") {
+        setAllFields(fieldResult.value);
+        setFields(
+          fieldResult.value.filter(
+            (field: FieldDefinition) => field.is_active,
+          ),
+        );
+      } else {
+        console.error("Gagal me-refresh field:", fieldResult.reason);
+      }
+
+      setFieldsLoaded(true);
     })();
 
-    refreshFields();
-  }, [refreshFields]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Restore new template draft after fields are ready, so old {{field_key}}
   // placeholders can be converted to the latest field mark format.
@@ -251,22 +278,36 @@ export default function TemplateEditorPage() {
       return;
     }
 
-    const savedDraft = localStorage.getItem(draftKey);
-    if (savedDraft) {
-      const extracted = extractMarginsFromContent(savedDraft);
-      const watermarkExtracted = extractWatermarkFromContent(extracted.content);
-      setWatermark(watermarkExtracted.watermark);
-      setPageMargin(extracted.margins || DEFAULT_MARGINS);
-      const preparedContent = prepareContractContentForEditor(
-        watermarkExtracted.content,
-        allFields,
-      );
-      setEditorContentWithoutHistory(editor, preparedContent);
-      setEditorHtml(preparedContent);
-    }
+    let cancelled = false;
 
-    newDraftLoadedRef.current = true;
-    setInit(false);
+    queueMicrotask(() => {
+      if (cancelled) {
+        return;
+      }
+
+      const savedDraft = localStorage.getItem(draftKey);
+      if (savedDraft) {
+        const extracted = extractMarginsFromContent(savedDraft);
+        const watermarkExtracted = extractWatermarkFromContent(
+          extracted.content,
+        );
+        setWatermark(watermarkExtracted.watermark);
+        setPageMargin(extracted.margins || DEFAULT_MARGINS);
+        const preparedContent = prepareContractContentForEditor(
+          watermarkExtracted.content,
+          allFields,
+        );
+        setEditorContentWithoutHistory(editor, preparedContent);
+        setEditorHtml(preparedContent);
+      }
+
+      newDraftLoadedRef.current = true;
+      setInit(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isEditMode, editor, fieldsLoaded, allFields, draftKey]);
 
   // Mouse move/up handlers for resizing

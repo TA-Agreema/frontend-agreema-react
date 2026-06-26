@@ -108,6 +108,102 @@ const replacePlainFieldTags = (doc: Document, fields: FieldDefinition[]) => {
   });
 };
 
+type ContractFieldOccurrence = {
+  field: FieldDefinition;
+  value: string | null;
+};
+
+const findFieldFromElement = (
+  element: HTMLElement,
+  fieldById: Map<number, FieldDefinition>,
+  fieldByKey: Map<string, FieldDefinition>,
+  fieldByLabel: Map<string, FieldDefinition>,
+) => {
+  const fieldId = Number(
+    element.dataset.contractFieldId ??
+      element.getAttribute("data-contract-field-id"),
+  );
+  const fieldKey = (
+    element.dataset.contractFieldKey ??
+    element.getAttribute("data-contract-field-key") ??
+    ""
+  ).toLowerCase();
+  const fieldLabel = (
+    element.dataset.contractFieldLabel ??
+    element.getAttribute("data-contract-field-label") ??
+    element.textContent?.replace(/^\[|\]$/g, "") ??
+    ""
+  ).toLowerCase();
+
+  return (
+    fieldById.get(fieldId) ??
+    fieldByKey.get(fieldKey) ??
+    fieldByLabel.get(fieldLabel) ??
+    null
+  );
+};
+
+const extractContractFieldOccurrences = (
+  content: string,
+  fields: FieldDefinition[],
+) => {
+  const occurrences: ContractFieldOccurrence[] = [];
+  const fieldById = new Map(fields.map((field) => [field.id, field]));
+  const fieldByKey = new Map(
+    fields.map((field) => [field.field_key.toLowerCase(), field]),
+  );
+  const fieldByLabel = new Map(
+    fields.map((field) => [field.field_label.toLowerCase(), field]),
+  );
+
+  const doc = new DOMParser().parseFromString(content, "text/html");
+  doc
+    .querySelectorAll<HTMLElement>("[data-contract-field-id]")
+    .forEach((element) => {
+      const field = findFieldFromElement(
+        element,
+        fieldById,
+        fieldByKey,
+        fieldByLabel,
+      );
+
+      if (field) {
+        occurrences.push({
+          field,
+          value: (element.textContent ?? "").trim() || null,
+        });
+      }
+    });
+
+  fields.forEach((field) => {
+    const tagPattern = new RegExp(
+      `{{\\s*${escapeRegExp(field.field_key)}\\s*}}`,
+      "gi",
+    );
+
+    for (const match of content.matchAll(tagPattern)) {
+      occurrences.push({
+        field,
+        value: match[0],
+      });
+    }
+
+    const labelPattern = new RegExp(
+      `\\[\\s*${escapeRegExp(field.field_label)}\\s*\\]`,
+      "gi",
+    );
+
+    for (const match of content.matchAll(labelPattern)) {
+      occurrences.push({
+        field,
+        value: match[0],
+      });
+    }
+  });
+
+  return occurrences;
+};
+
 export function prepareContractContentForEditor(
   content: string,
   fields: FieldDefinition[],
@@ -149,37 +245,18 @@ export function buildContractFieldValues(
   content: string,
   fields: FieldDefinition[],
 ): ContractFieldValuePayload[] {
-  const fieldById = new Map(fields.map((field) => [field.id, field]));
   const valuesByFieldId = new Map<number, string | null>();
+  const occurrences = extractContractFieldOccurrences(content, fields);
 
-  const doc = new DOMParser().parseFromString(content, "text/html");
-  doc
-    .querySelectorAll<HTMLElement>("[data-contract-field-id]")
-    .forEach((element) => {
-      const fieldId = Number(element.dataset.contractFieldId);
-      const field = fieldById.get(fieldId);
-      if (!field) return;
-      const textValue = (element.textContent ?? "").trim();
-      const value = isUnfilledFieldValue(textValue, field)
-        ? null
-        : textValue || null;
-      const existingValue = valuesByFieldId.get(fieldId);
+  occurrences.forEach(({ field, value }) => {
+    const normalizedValue = (value ?? "").trim();
+    const fieldValue = isUnfilledFieldValue(normalizedValue, field)
+      ? null
+      : normalizedValue || null;
+    const existingValue = valuesByFieldId.get(field.id);
 
-      if (!valuesByFieldId.has(fieldId) || (!existingValue && value)) {
-        valuesByFieldId.set(fieldId, value);
-      }
-    });
-
-  fields.forEach((field) => {
-    if (valuesByFieldId.has(field.id)) return;
-
-    const tagPattern = new RegExp(
-      `{{\\s*${escapeRegExp(field.field_key)}\\s*}}`,
-      "i",
-    );
-
-    if (tagPattern.test(content)) {
-      valuesByFieldId.set(field.id, null);
+    if (!valuesByFieldId.has(field.id) || (!existingValue && fieldValue)) {
+      valuesByFieldId.set(field.id, fieldValue);
     }
   });
 
@@ -193,23 +270,17 @@ export function validateRequiredContractFields(
   content: string,
   fields: FieldDefinition[],
 ): MissingRequiredContractField[] {
-  const requiredFieldsById = new Map(
-    fields
-      .filter((field) => field.is_required)
-      .map((field) => [field.id, field]),
-  );
+  const reportedFieldIds = new Set<number>();
+  const occurrences = extractContractFieldOccurrences(content, fields);
 
-  if (requiredFieldsById.size === 0) return [];
-
-  const fieldValues = buildContractFieldValues(content, fields);
-
-  return fieldValues.reduce<MissingRequiredContractField[]>(
-    (missingFields, fieldValue) => {
-      const field = requiredFieldsById.get(fieldValue.field_definition_id);
-      if (!field) return missingFields;
-
-      const value = fieldValue.value?.trim() ?? "";
+  return occurrences.reduce<MissingRequiredContractField[]>(
+    (missingFields, occurrence) => {
+      const { field } = occurrence;
+      const value = occurrence.value?.trim() ?? "";
       if (!value || isUnfilledFieldValue(value, field)) {
+        if (reportedFieldIds.has(field.id)) return missingFields;
+
+        reportedFieldIds.add(field.id);
         missingFields.push({
           field_definition_id: field.id,
           field_label: field.field_label,

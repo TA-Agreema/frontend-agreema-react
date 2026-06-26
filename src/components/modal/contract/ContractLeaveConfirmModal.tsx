@@ -22,7 +22,7 @@ export function ContractLeaveConfirmModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-lg bg-white p-5 shadow-lg">
+      <div className="relative z-10 w-full max-w-lg rounded-lg bg-white p-5 shadow-lg">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
             <AlertCircle className="h-5 w-5" />
@@ -38,19 +38,19 @@ export function ContractLeaveConfirmModal({
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-gray-200 px-4 text-sm text-gray-600 hover:bg-gray-50 sm:w-auto"
           >
             Tetap di Halaman
           </button>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onDiscard}
-              className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+              className="inline-flex h-10 items-center justify-center rounded-md border border-red-200 bg-white px-4 text-sm font-medium text-red-600 hover:bg-red-50"
             >
               Keluar Tanpa Simpan
             </button>
@@ -58,7 +58,7 @@ export function ContractLeaveConfirmModal({
               type="button"
               onClick={onSaveDraft}
               disabled={isSaving || isSaveDisabled}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-4 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
