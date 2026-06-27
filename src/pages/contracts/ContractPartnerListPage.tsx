@@ -23,7 +23,6 @@ import TemplateSelectModal, {
 } from "@/components/modal/template/TemplateSelectModal";
 import {
   fetchPartnerContracts,
-  createContract,
   deleteContract,
 } from "@/services/contract.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
@@ -740,24 +739,9 @@ export default function ContractListPage() {
       {showTemplateModal && (
         <TemplateSelectModal
           onClose={() => setShowTemplateModal(false)}
-          onSelect={async (template: TemplateOption) => {
-            try {
-              const created = await createContract({
-                contract_number: "", // Biarkan backend generate otomatis sesuai prefix kategori
-                title: template.name,
-                template_id: template.id,
-                category_id: template.category_id,
-                status: "draft",
-              });
-
-              // navigate to editor and pass the created contract + template
-              navigate(`/contracts/${created.id}/edit`, {
-                state: { createdContract: created, template },
-              });
-            } catch (err) {
-              console.error("Failed to create contract", err);
-              alert("Gagal membuat kontrak. Periksa koneksi dan permissions.");
-            }
+          onSelect={(template: TemplateOption) => {
+            setShowTemplateModal(false);
+            navigate("/contracts/create", { state: { template } });
           }}
         />
       )}
