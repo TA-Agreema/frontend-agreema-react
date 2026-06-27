@@ -23,6 +23,7 @@ import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import { AlertCircle } from "lucide-react";
+import { ContractDocumentPreview } from "@/components/editor/ContractDocumentPreview";
 
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
@@ -192,11 +193,12 @@ export default function ContractReviewDetailPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Document Viewer (Left) */}
         <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex flex-col items-center gap-6">
-          <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
-            <div
-              className="tiptap-preview text-sm text-gray-800 leading-7 outline-none p-8 min-h-[800px]"
-              dangerouslySetInnerHTML={{ __html: contractHtml }}
-            />
+          <div className="w-full overflow-x-auto pb-2 shrink-0">
+            <ContractDocumentPreview
+              html={contractHtml}
+              paperSize={contract.paper_size}
+              className="border border-gray-200 shadow-sm"
+            >
 
             {/* Addendum */}
             {/* {contract.addendums && contract.addendums.length > 0 && (
@@ -368,6 +370,7 @@ export default function ContractReviewDetailPage() {
                 )}
               </div>
             )}
+            </ContractDocumentPreview>
           </div>
         </div>
 

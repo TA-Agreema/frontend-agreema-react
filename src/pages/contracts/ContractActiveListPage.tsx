@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -25,6 +26,7 @@ import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import {
   fetchContracts,
   deleteContract,
@@ -108,20 +110,24 @@ function RowMenu({
   canManageAddendum,
   canManageTermination,
   canDeleteRow,
+  canRenewContract,
   onView,
   onAddendum,
   onTerminate,
   onDelete,
+  onRenew,
 }: {
   contract: ContractRow;
   isHrd: boolean;
   canManageAddendum: boolean;
   canManageTermination: boolean;
   canDeleteRow: boolean;
+  canRenewContract: boolean;
   onView: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
+  onRenew: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -185,6 +191,16 @@ function RowMenu({
             </button>
           )}
 
+          {canRenewContract && isHrd && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRenew(); setOpen(false); }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
+            >
+              <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
+              Perpanjang Kontrak
+            </button>
+          )}
+
           {canManageTermination && isHrd && (
             <button
               onClick={(e) => { e.stopPropagation(); onTerminate(); setOpen(false); }}
@@ -222,6 +238,7 @@ export default function ContractActiveListPage() {
   const canManageAddendum = hasAnyPermission(["create.addendum", "create.contract_addendum"]);
   const canManageTermination = hasAnyPermission(["create.terminate", "terminate.contract"]);
   const canDeleteRow = hasAnyPermission(["delete.contract"]);
+  const canRenewContract = hasAnyPermission(["create.contract"]);
 
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -229,6 +246,7 @@ export default function ContractActiveListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
+  const [renewTarget, setRenewTarget] = useState<ContractRow | null>(null);
   const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
@@ -304,6 +322,15 @@ export default function ContractActiveListPage() {
     } finally {
       setDeleteTarget(null);
     }
+  };
+
+  const handleRenewContract = () => {
+    if (!renewTarget) return;
+
+    navigate("/contracts/create", {
+      state: { renewFromId: renewTarget.id },
+    });
+    setRenewTarget(null);
   };
 
   // Fetch on mount (no search parameter since client filter handles it)
@@ -570,6 +597,7 @@ export default function ContractActiveListPage() {
                           canManageAddendum={canManageAddendum}
                           canManageTermination={canManageTermination}
                           canDeleteRow={canDeleteRow}
+                          canRenewContract={canRenewContract}
                           onView={() => {
                             if (contract.contract_type === "external") {
                               if (contract.signed_document_url) {
@@ -586,6 +614,7 @@ export default function ContractActiveListPage() {
                           onAddendum={() => setAddendumTarget(contract)}
                           onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
+                          onRenew={() => setRenewTarget(contract)}
                         />
                       </td>
                     </tr>
@@ -619,6 +648,26 @@ export default function ContractActiveListPage() {
           itemName={deleteTarget.title}
           onClose={() => setDeleteTarget(null)}
           onConfirm={handleDelete}
+        />
+      )}
+
+      {renewTarget && (
+        <ConfirmModal
+          title="Perpanjang Kontrak"
+          message={
+            <>
+              Editor akan memuat salinan dari versi terakhir{" "}
+              <span className="font-medium text-foreground">
+                {renewTarget.title}
+              </span>
+              . Kontrak baru belum disimpan dan periode perlu diisi ulang.
+            </>
+          }
+          icon={RefreshCw}
+          tone="success"
+          confirmLabel="Lanjutkan ke Editor"
+          onClose={() => setRenewTarget(null)}
+          onConfirm={handleRenewContract}
         />
       )}
 

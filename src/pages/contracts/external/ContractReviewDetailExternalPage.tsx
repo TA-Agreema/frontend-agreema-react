@@ -18,6 +18,7 @@ import type { ExternalContractDetail } from "@/types/external";
 import { isAxiosError } from "axios";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
+import { ContractDocumentPreview } from "@/components/editor/ContractDocumentPreview";
 // import { AlertCircle } from "lucide-react";
 
 // Interface untuk data peninjauan
@@ -261,12 +262,12 @@ export default function ContractReviewDetailExternalPage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Document Viewer (Left Side) */}
         <div className="flex-1 overflow-y-auto bg-gray-100 p-8 flex flex-col items-center gap-6">
-          <div className="w-full max-w-204 bg-white border border-gray-200 shadow-sm rounded-lg overflow-hidden shrink-0">
-            <div
-              className="tiptap-preview text-sm text-gray-800 leading-7 outline-none p-8 min-h-[800px]"
-              dangerouslySetInnerHTML={{ __html: contractHtml }}
-            />
-
+          <div className="w-full overflow-x-auto pb-2 shrink-0">
+            <ContractDocumentPreview
+              html={contractHtml}
+              paperSize={contract.paper_size}
+              className="border border-gray-200 shadow-sm"
+            >
             {/* section tanda tangan */}
             {contract.signers && contract.signers.length > 0 && (
               <div className="border-t border-gray-200 px-8 py-10">
@@ -403,6 +404,7 @@ export default function ContractReviewDetailExternalPage() {
                 )}
               </div>
             )}
+            </ContractDocumentPreview>
           </div>
         </div>
 

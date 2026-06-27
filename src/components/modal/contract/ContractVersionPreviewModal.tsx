@@ -1,14 +1,21 @@
 import { useMemo, useRef, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, GitCompare, Eye } from "lucide-react";
 import type { ContractVersion } from "@/types/contractVersion";
+import { ContractDocumentPreview } from "@/components/editor/ContractDocumentPreview";
+import type { PaperSize } from "@/lib/editor-paper";
+import { prepareEditorPreviewHtml } from "@/lib/editor-preview-html";
 
 function computeHtmlDiff(prevHtml: string, nextHtml: string): string {
-  if (!prevHtml) return nextHtml;
+  const preparedNextHtml = prepareEditorPreviewHtml(nextHtml);
+  if (!prevHtml) return preparedNextHtml;
 
   try {
     const parser = new DOMParser();
-    const prevDoc = parser.parseFromString(prevHtml, "text/html");
-    const nextDoc = parser.parseFromString(nextHtml, "text/html");
+    const prevDoc = parser.parseFromString(
+      prepareEditorPreviewHtml(prevHtml),
+      "text/html",
+    );
+    const nextDoc = parser.parseFromString(preparedNextHtml, "text/html");
 
     // Query all blocks/elements we want to compare
     const prevElements = Array.from(
@@ -32,7 +39,7 @@ function computeHtmlDiff(prevHtml: string, nextHtml: string): string {
     return nextDoc.body.innerHTML;
   } catch (err) {
     console.error("DOMParser diff failed, falling back to original html", err);
-    return nextHtml;
+    return preparedNextHtml;
   }
 }
 
@@ -46,6 +53,7 @@ function normaliseElementContent(el: Element): string {
 interface Props {
   versions: ContractVersion[];
   viewingVersion: ContractVersion;
+  paperSize?: PaperSize | string | null;
   onClose: () => void;
   onNavigate: (version: ContractVersion) => void;
 }
@@ -53,6 +61,7 @@ interface Props {
 export function ContractVersionPreviewModal({
   versions,
   viewingVersion,
+  paperSize,
   onClose,
   onNavigate,
 }: Props) {
@@ -68,8 +77,7 @@ export function ContractVersionPreviewModal({
   const nextVersion = sorted[currentIndex - 1] ?? null;
 
   const diffHtml = useMemo(() => {
-    if (!prevVersion) return viewingVersion.content;
-    return computeHtmlDiff(prevVersion.content, viewingVersion.content);
+    return computeHtmlDiff(prevVersion?.content ?? "", viewingVersion.content);
   }, [viewingVersion, prevVersion]);
 
   // Auto scroll to first diff element
@@ -195,14 +203,12 @@ export function ContractVersionPreviewModal({
 
         {/* Document Canvas */}
         <div className="flex-1 overflow-y-auto p-8 bg-gray-100/60">
-          <div
-            className="bg-white mx-auto shadow-md border border-gray-200 p-12 min-h-[29.7cm]"
-            style={{ width: "21cm" }}
-          >
-            <div
+          <div className="w-full overflow-x-auto pb-2">
+            <ContractDocumentPreview
               ref={contentRef}
-              className="tiptap-preview text-sm text-gray-800 leading-7 outline-none"
-              dangerouslySetInnerHTML={{ __html: diffHtml }}
+              html={diffHtml}
+              paperSize={paperSize}
+              className="border border-gray-200 shadow-md"
             />
           </div>
         </div>

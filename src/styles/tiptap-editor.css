@@ -86,10 +86,13 @@
 }
 
 .tiptap-preview [data-preview-image-wrapper] {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
 }
 
 .tiptap-preview [data-preview-image-container] {
+  box-sizing: border-box;
   max-width: 100%;
 }
 

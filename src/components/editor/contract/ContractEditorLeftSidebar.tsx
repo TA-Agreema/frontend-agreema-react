@@ -178,7 +178,7 @@ export function ContractEditorLeftSidebar({
                 onChange={(event) =>
                   onContractNumberChange(event.target.value)
                 }
-                placeholder="PKS-001/SLAB/V/2026"
+                placeholder="XX-XX/SLAB/X/XXXX"
                 className={`${inputCls} flex-1 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
                 disabled={disabled}
               />
