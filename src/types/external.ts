@@ -15,6 +15,7 @@ export interface ExternalContractDetail {
         contract_number: string;
         title: string;
         content: string;
+        paper_size?: "a4" | "f4" | null;
         status: string;
         created_by: string;
         template_id: number;

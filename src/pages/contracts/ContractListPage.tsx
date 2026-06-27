@@ -18,7 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  //RefreshCw,
+  RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -27,12 +27,12 @@ import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import TemplateSelectModal, {
   type TemplateOption,
 } from "@/components/modal/template/TemplateSelectModal";
 import {
   fetchContracts,
-  createContract,
   deleteContract,
   downloadContractPdf,
 } from "@/services/contract.service";
@@ -79,7 +79,7 @@ export interface ContractRow {
   category_id: number | null;
   template_id: number | null;
   status: ContractStatus;
-  start_date: string; // "DD-MM-YYYY"
+  start_date: string | null; // "DD-MM-YYYY"
   end_date: string | null;
   created_by: string;
   uploaded_by?: string | null; // khusus kontrak mitra: nama HRD yang mengunggah
@@ -93,6 +93,12 @@ export interface ContractRow {
   }>;
   addendums: Addendum[];
   terminations?: Termination[];
+  parent_contract?: {
+    id: number;
+    contract_number: string | null;
+    title: string | null;
+  } | null;
+  renewal_count?: number;
 }
 
 const PAGE_SIZE = 4;
@@ -306,12 +312,14 @@ function RowMenu({
   canManageTermination,
   canDownloadContract,
   canDeleteRow,
+  canRenewContract,
   onView,
   onEdit,
   onAddendum,
   onTerminate,
   onDelete,
   onDownloadPdf,
+  onRenew,
 }: {
   contract: ContractRow;
   canEdit: boolean;
@@ -319,12 +327,14 @@ function RowMenu({
   canManageTermination: boolean;
   canDownloadContract: boolean;
   canDeleteRow: boolean;
+  canRenewContract: boolean;
   onView: () => void;
   onEdit: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
   onDownloadPdf: () => void;
+  onRenew: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -339,6 +349,7 @@ function RowMenu({
   const canAddAddendum = ["active"].includes(contract.status) && !hasPendingTermination;
   const canEditContract = ["draft", "revision"].includes(contract.status);
   const canDelete = contract.status === "draft";
+  const canRenew = ["active", "approved", "expired"].includes(contract.status);
 
   const { roles } = useAuth();
   const isHrd = roles.includes("hrd");
@@ -349,8 +360,8 @@ function RowMenu({
 
     const rect = buttonRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
-    // Estimasi tinggi menu: max 5 item (~36px each) + divider + padding
-    const estimatedMenuH = 36 * 5 + 12;
+    // Estimasi tinggi menu: max 6 item (~36px each) + padding
+    const estimatedMenuH = 36 * 6 + 12;
     const spaceBelow = viewportHeight - rect.bottom;
 
     setDropUp(spaceBelow < estimatedMenuH + 12);
@@ -445,6 +456,20 @@ function RowMenu({
             </button>
           )}
 
+          {canRenewContract && canRenew && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRenew();
+                setOpen(false);
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
+            >
+              <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
+              Perpanjang Kontrak
+            </button>
+          )}
+
           {canManageTermination && canTerminate && (
             <button
               onClick={(e) => {
@@ -515,6 +540,7 @@ export default function ContractListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
+  const [renewTarget, setRenewTarget] = useState<ContractRow | null>(null);
   const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
@@ -621,6 +647,15 @@ export default function ContractListPage() {
       console.error("Gagal mengunduh PDF kontrak:", err);
       alert("Gagal mengunduh PDF kontrak. Coba lagi.");
     }
+  };
+
+  const handleRenewContract = () => {
+    if (!renewTarget) return;
+
+    navigate("/contracts/create", {
+      state: { renewFromId: renewTarget.id },
+    });
+    setRenewTarget(null);
   };
 
   // Fetch contracts on mount
@@ -971,6 +1006,7 @@ export default function ContractListPage() {
                           canManageTermination={canManageTermination}
                           canDownloadContract={canDownloadContract}
                           canDeleteRow={canDeleteRow}
+                          canRenewContract={canCreateContract}
                           onView={() => {
                             if (isManager) {
                               navigate(`/approvals/${contract.id}`);
@@ -985,6 +1021,7 @@ export default function ContractListPage() {
                           onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
                           onDownloadPdf={() => handleDownloadPdf(contract)}
+                          onRenew={() => setRenewTarget(contract)}
                         />
                       </td>
                     </tr>
@@ -1036,6 +1073,26 @@ export default function ContractListPage() {
         />
       )}
 
+      {renewTarget && (
+        <ConfirmModal
+          title="Perpanjang Kontrak"
+          message={
+            <>
+              Editor akan memuat salinan dari versi terakhir{" "}
+              <span className="font-medium text-foreground">
+                {renewTarget.title}
+              </span>
+              . Kontrak baru belum disimpan dan periode perlu diisi ulang.
+            </>
+          }
+          icon={RefreshCw}
+          tone="success"
+          confirmLabel="Lanjutkan ke Editor"
+          onClose={() => setRenewTarget(null)}
+          onConfirm={handleRenewContract}
+        />
+      )}
+
       {/* Addendum Modal */}
       {addendumTarget && (
         <AddendumModal
@@ -1065,25 +1122,9 @@ export default function ContractListPage() {
       {showTemplateModal && (
         <TemplateSelectModal
           onClose={() => setShowTemplateModal(false)}
-          onSelect={async (template: TemplateOption) => {
-            try {
-              const created = await createContract({
-                contract_number: "", // Biarkan backend generate otomatis sesuai prefix kategori
-                title: template.name,
-                template_id: template.id,
-                category_id: template.category_id,
-                paper_size: template.paper_size,
-                status: "draft",
-              });
-
-              // navigate to editor and pass the created contract + template
-              navigate(`/contracts/${created.id}/edit`, {
-                state: { createdContract: created, template },
-              });
-            } catch (err) {
-              console.error("Failed to create contract", err);
-              alert("Gagal membuat kontrak. Periksa koneksi dan permissions.");
-            }
+          onSelect={(template: TemplateOption) => {
+            setShowTemplateModal(false);
+            navigate("/contracts/create", { state: { template } });
           }}
         />
       )}
