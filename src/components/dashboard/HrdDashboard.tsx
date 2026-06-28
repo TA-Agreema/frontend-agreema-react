@@ -2,8 +2,10 @@ import type { DashboardData } from "@/types/dashboard";
 import { StatCard, RecentLogsList, ExpiringContractsTable } from "./DashboardWidgets";
 import { FileEdit, CheckCircle, Clock, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useNavigate } from "react-router-dom";
 
 export default function HrdDashboard({ data }: { data: DashboardData }) {
+  const navigate = useNavigate();
   const { metrics, distribution, system_distribution, recent_logs, expiring_contracts } = data;
 
   const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#64748b'];
@@ -51,7 +53,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Kontrak Saya</h3>
-          <div className="h-[250px] w-full">
+          <div className="h-62.5 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -80,7 +82,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
 
         <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Sistem Keseluruhan</h3>
-          <div className="h-[250px] w-full">
+          <div className="h-62.5 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -109,7 +111,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
 
         <div className="rounded-xl border bg-white p-6 shadow-sm grid-cols-1 md:col-span-2 xl:col-span-1">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Aktivitas Terkini Kontrak Saya</h3>
-          <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="max-h-62.5 overflow-y-auto pr-2 custom-scrollbar">
             <RecentLogsList logs={recent_logs || []} />
           </div>
         </div>
@@ -119,7 +121,10 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
         <div className="p-6 border-b border-gray-100 bg-gray-50/50">
           <h3 className="text-lg font-semibold text-gray-800">Kontrak Saya Akan Kedaluwarsa</h3>
         </div>
-        <ExpiringContractsTable contracts={expiring_contracts || []} />
+        <ExpiringContractsTable 
+          contracts={expiring_contracts || []}
+          onRowClick={(id) => navigate(`/contracts/${id}/view`)}
+         />
       </div>
     </div>
   );

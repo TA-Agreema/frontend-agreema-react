@@ -30,7 +30,7 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
         {/* Chart */}
         <div className="rounded-xl border bg-white p-6 shadow-sm col-span-1">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribusi Status Kontrak</h3>
-          <div className="h-[250px] w-full">
+          <div className="h-62.5 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

@@ -21,7 +21,7 @@ import {
   ArrowUpDown,
   MailCheck,
   Loader2,
-  //RefreshCw,
+  RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";

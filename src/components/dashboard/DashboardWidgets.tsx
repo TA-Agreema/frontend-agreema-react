@@ -86,7 +86,7 @@ export function RecentLogsList({ logs }: { logs: DashboardLog[] }) {
   );
 }
 
-export function ExpiringContractsTable({ contracts }: { contracts: DashboardExpiringContract[] }) {
+export function ExpiringContractsTable({ contracts, onRowClick, }: { contracts: DashboardExpiringContract[]; onRowClick?: (id: number) => void; }) {
   if (!contracts || contracts.length === 0) {
     return <p className="text-sm text-gray-500 p-4 text-center">Tidak ada kontrak yang akan segera berakhir.</p>;
   }
@@ -98,6 +98,7 @@ export function ExpiringContractsTable({ contracts }: { contracts: DashboardExpi
           <tr>
             <th className="px-4 py-3 rounded-tl-lg">Nomor Kontrak</th>
             <th className="px-4 py-3">Judul</th>
+            <th className="px-4 py-3">Mitra</th>
             <th className="px-4 py-3">Tanggal Berakhir</th>
           </tr>
         </thead>
@@ -106,9 +107,14 @@ export function ExpiringContractsTable({ contracts }: { contracts: DashboardExpi
             const endDate = new Date(c.end_date);
             const daysLeft = Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 3600 * 24));
             return (
-              <tr key={c.id} className="hover:bg-gray-50">
+              <tr
+                key={c.id}
+                className={`hover:bg-gray-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+                onClick={() => onRowClick?.(c.id)}
+              >
                 <td className="px-4 py-3 font-medium text-gray-800">{c.contract_number}</td>
-                <td className="px-4 py-3 text-gray-600 truncate max-w-[200px]">{c.title}</td>
+                <td className="px-4 py-3 text-gray-600 truncate max-w-50">{c.title}</td>
+                <td className="px-4 py-3 text-gray-600">{c.partner_name ?? '-'}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <Clock className={`h-4 w-4 ${daysLeft < 14 ? 'text-red-500' : 'text-amber-500'}`} />

@@ -34,6 +34,7 @@ export interface DashboardExpiringContract {
   contract_number: string;
   end_date: string;
   parties?: any[];
+  partner_name?: string | null;
 }
 
 export interface DashboardTopWaiting {
