@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   // Search,
   Plus,
@@ -18,7 +19,9 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
-  RefreshCw,
+  MailCheck,
+  Loader2,
+  //RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -35,6 +38,7 @@ import {
   fetchContracts,
   deleteContract,
   downloadContractPdf,
+  resendExternalSigning,
 } from "@/services/contract.service";
 import { downloadBlobResponse } from "@/services/download.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
@@ -93,6 +97,7 @@ export interface ContractRow {
   }>;
   addendums: Addendum[];
   terminations?: Termination[];
+  has_expired_token?: boolean;
   parent_contract?: {
     id: number;
     contract_number: string | null;
@@ -320,6 +325,8 @@ function RowMenu({
   onDelete,
   onDownloadPdf,
   onRenew,
+  onResendToken,
+  isResending,
 }: {
   contract: ContractRow;
   canEdit: boolean;
@@ -335,6 +342,8 @@ function RowMenu({
   onDelete: () => void;
   onDownloadPdf: () => void;
   onRenew: () => void;
+  onResendToken?: () => void;
+  isResending?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -353,6 +362,7 @@ function RowMenu({
 
   const { roles } = useAuth();
   const isHrd = roles.includes("hrd");
+  console.log('roles:', roles, 'isHrd:', isHrd, 'status:', contract.status, 'has_expired_token:', contract.has_expired_token);
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -512,6 +522,25 @@ function RowMenu({
             </button>
           )}
 
+          {isHrd && contract.status === "approved" && contract.has_expired_token && onResendToken && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onResendToken();
+                setOpen(false);
+              }}
+              disabled={isResending}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-sky-600 hover:bg-sky-50 transition-colors"
+            >
+              {isResending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MailCheck className="h-4 w-4 opacity-70" />
+              )}
+              {isResending ? "Mengirim Ulang..." : "Kirim Ulang Token"}
+            </button>
+          )}
+
         </div>
       )}
     </div>
@@ -536,6 +565,7 @@ export default function ContractListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [resendingId, setResendingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -658,6 +688,24 @@ export default function ContractListPage() {
     setRenewTarget(null);
   };
 
+  const handleResendToken = async (contract: ContractRow) => {
+    setResendingId(contract.id);
+    try {
+      await resendExternalSigning(contract.id);
+      toast.success("Token berhasil dikirim ulang", {
+        description: `Email peninjauan telah dikirim ulang ke pihak kedua untuk ${contract.title}.`,
+        duration: 5000,
+      });
+    } catch {
+      toast.error("Gagal mengirim ulang token", {
+        description: "Coba lagi atau hubungi administrator.",
+        duration: 5000,
+      });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   // Fetch contracts on mount
   useEffect(() => {
     let mounted = true;
@@ -686,9 +734,15 @@ export default function ContractListPage() {
     };
 
     load();
-    return () => {
-      mounted = false;
-    };
+    // Auto refresh setiap 3 menit (testing)
+  const interval = setInterval(() => {
+    if (mounted) load();
+  }, 3 * 60 * 1000); // disesuaikan dengan addMinutes(3) di backend
+
+  return () => {
+    mounted = false;
+    clearInterval(interval); // ← cleanup interval
+  };
   }, []);
 
   const renderSortIcon = (key: string) => {
@@ -1022,6 +1076,8 @@ export default function ContractListPage() {
                           onDelete={() => setDeleteTarget(contract)}
                           onDownloadPdf={() => handleDownloadPdf(contract)}
                           onRenew={() => setRenewTarget(contract)}
+                          onResendToken={() => handleResendToken(contract)}
+                          isResending={resendingId === contract.id}
                         />
                       </td>
                     </tr>

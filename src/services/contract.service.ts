@@ -188,3 +188,12 @@ export const submitContract = async (id: number): Promise<ContractRow> => {
   );
   return res.data.data;
 };
+
+export const resendExternalSigning = async (
+  id: number,
+): Promise<{ message: string }> => {
+  const res = await api.post<{ message: string }>(
+    `/contracts/${id}/resend-signing`,
+  );
+  return res.data;
+};

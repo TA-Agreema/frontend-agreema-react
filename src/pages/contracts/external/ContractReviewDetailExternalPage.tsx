@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   CheckCircle,
@@ -31,39 +31,6 @@ interface ReviewItem {
   review_document_url?: string | null;
 }
 
-// Token
-const TOKEN_EXPIRY_DAYS = 7;
-const TOKEN_EXPIRY_MS = TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-
-/**
- * Membuat storage key unik per token.
- * Format: `ext_token:<token>`
- */
-function tokenKey(token: string) {
-  return `ext_token:${token}`;
-}
-
-interface TokenMeta {
-  firstAccessAt: number; // kapan pertama kali token dibuka
-  usedAt?: number;       // kapan token dipakai (TTD / revisi)
-}
-
-/** Ambil metadata token dari localStorage. */
-function getTokenMeta(token: string): TokenMeta | null {
-  try {
-    const raw = localStorage.getItem(tokenKey(token));
-    return raw ? (JSON.parse(raw) as TokenMeta) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Simpan / perbarui metadata token di localStorage. */
-function setTokenMeta(token: string, meta: TokenMeta) {
-  localStorage.setItem(tokenKey(token), JSON.stringify(meta));
-}
-
-
 export default function ContractReviewDetailExternalPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
@@ -71,6 +38,8 @@ export default function ContractReviewDetailExternalPage() {
   const [contractDetail, setContractDetail] = useState<ExternalContractDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorTitle] = useState<string>("Token Kedaluwarsa");
+  const [errorVariant] = useState<"info" | "warning">("warning");
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Review form state
@@ -93,8 +62,15 @@ export default function ContractReviewDetailExternalPage() {
 
   const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
 
-  const loadContract = useCallback(async () => {
-    if (!token) return;
+  useEffect(() => {
+  if (!token) {
+    setTimeout(() => {
+      setErrorMsg("Token tidak ditemukan di URL.");
+      setIsLoading(false);
+    }, 0);
+    return;
+  }
+  const run = async () => {
     try {
       const data = await fetchExternalContractPreview(token);
       setContractDetail(data);
@@ -102,7 +78,7 @@ export default function ContractReviewDetailExternalPage() {
         setContractHtml(data.data.content);
       }
     } catch (error: unknown) {
-      let errorMessage = "Gagal memuat kontrak. Token mungkin tidak valid atau sudah kadaluarsa.";
+      let errorMessage = "Gagal memuat kontrak. Token mungkin tidak valid atau sudah kedaluwarsa.";
       if (isAxiosError(error) && error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
@@ -110,42 +86,10 @@ export default function ContractReviewDetailExternalPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  };
 
-  useEffect(() => {
-    if (!token) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setErrorMsg("Token tidak ditemukan di URL.");
-      setIsLoading(false);
-      return;
-    }
-
-    const now = Date.now();
-    let meta = getTokenMeta(token);
-
-    if (meta) {
-      if (meta.usedAt) {
-        setErrorMsg(
-          "Token ini sudah digunakan dan tidak dapat diakses kembali. Silakan hubungi pihak yang mengirimkan kontrak jika ada pertanyaan."
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      if (now - meta.firstAccessAt > TOKEN_EXPIRY_MS) {
-        setErrorMsg(
-          `Token ini telah kadaluarsa (lebih dari ${TOKEN_EXPIRY_DAYS} hari sejak pertama diakses). Silakan minta tautan baru.`
-        );
-        setIsLoading(false);
-        return;
-      }
-    } else {
-      meta = { firstAccessAt: now };
-      setTokenMeta(token, meta);
-    }
-
-    loadContract();
-  }, [token, loadContract]);
+  run();
+}, [token]);
 
   const handleAction = async (status: "approved" | "revised" | "confirmed") => {
     if (!token) return;
@@ -159,9 +103,6 @@ export default function ContractReviewDetailExternalPage() {
     setSubmitError(null);
     try {
       await submitExternalContractReview({ token, status, notes, reviewDocument: reviewFile });
-      //Tandai token sudah dipakai setelah berhasil submit review (TTD atau revisi)
-      const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
-      setTokenMeta(token, { ...existing, usedAt: Date.now() });
 
       setIsSubmitted(true);
     } catch (error: unknown) {
@@ -193,11 +134,18 @@ export default function ContractReviewDetailExternalPage() {
   }
 
   if (errorMsg) {
+    const isInfo = errorVariant === "info";
     return (
       <div className="flex flex-col h-screen items-center justify-center bg-gray-50 px-4 text-center">
-        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-        <h2 className="text-lg font-bold text-gray-800 mb-2">Akses Ditolak</h2>
-        <p className="text-gray-500 mb-6">{errorMsg}</p>
+        <div className="max-w-lg flex flex-col items-center">
+          {isInfo ? (
+            <CheckCircle className="h-12 w-12 text-emerald-500 mb-4" />
+          ) : (
+            <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+          )}
+          <h2 className="text-lg font-bold text-gray-800 mb-2">{errorTitle}</h2>
+          <p className="text-gray-500 mb-6">{errorMsg}</p>
+        </div>
       </div>
     );
   }
@@ -637,10 +585,6 @@ export default function ContractReviewDetailExternalPage() {
           onSuccess={async () => {
             setShowSignModal(false);
             setHasSignedByCanvas(true); // tandai sudah TTD canvas
-
-            // Tandai token sudah dipakai
-            const existing = getTokenMeta(token) ?? { firstAccessAt: Date.now() };
-            setTokenMeta(token, { ...existing, usedAt: Date.now() });
 
             // Langsung selesai tanpa konfirmasi tambahan
             setIsSubmitted(true);
