@@ -17,7 +17,7 @@ export default function UnauthorizedPage() {
 
                 <div className="space-y-2">
                     <h1 className="text-7xl font-bold text-orange-500">403</h1>
-                    <h2 className="text-2xl font-semibold">Akses Ditolak</h2>
+                    <h2 className="text-2xl font-semibold">Halaman Tidak Diizinkan</h2>
                     <p className="text-muted-foreground">
                         Anda tidak memiliki izin untuk mengakses halaman ini. Hubungi administrator jika Anda memerlukan akses.
                     </p>

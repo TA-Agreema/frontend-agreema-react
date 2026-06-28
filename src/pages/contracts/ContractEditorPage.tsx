@@ -836,11 +836,11 @@ export default function ContractEditorPage() {
     );
 
     if (incompleteExternalSigner) {
-      return "Penandatangan eksternal wajib memiliki nama, jabatan, dan email valid sebelum kontrak diajukan.";
+      return "Peninjau eksternal wajib memiliki nama, jabatan, dan email valid sebelum kontrak diajukan.";
     }
 
     if (externalSigners.some((signer) => !isValidEmail(signer.email))) {
-      return "Email penandatangan eksternal tidak valid. Periksa kembali email yang diisi.";
+      return "Email peninjau eksternal tidak valid. Periksa kembali email yang diisi.";
     }
 
     return null;
