@@ -24,7 +24,7 @@ const TYPE_CONFIG: Record<string, {
     iconColor: "text-yellow-600",
   },
   manager_approved: {
-    label: "Kontrak Disetujui",
+    label: "Kontrak Ditandatangani Pihak Pertama",
     icon: CheckCircle,
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
@@ -41,11 +41,11 @@ const TYPE_CONFIG: Record<string, {
     iconBg: "bg-yellow-100",
     iconColor: "text-yellow-500",
   },
-  internal_signed: {
-    label: "Kontrak Ditandatangani Pihak Kedua",
-    icon: CheckCircle,
-    iconBg: "bg-blue-100",
-    iconColor: "text-blue-600",
+  external_revision_requested: {
+    label: "Revisi Diminta Pihak Kedua",
+    icon: RotateCcw,
+    iconBg: "bg-yellow-100",
+    iconColor: "text-yellow-600",
   },
   all_reviewers_signed: {
     label: "Dokumen Disahkan",
@@ -70,12 +70,6 @@ const TYPE_CONFIG: Record<string, {
     icon: FileCheck,
     iconBg: "bg-blue-100",
     iconColor: "text-blue-600",
-  },
-  external_revision_requested: {
-    label: "Revisi Diminta Pihak Kedua",
-    icon: RotateCcw,
-    iconBg: "bg-yellow-100",
-    iconColor: "text-yellow-600",
   },
   contract_activated: {
     label: "Kontrak telah Aktif",
@@ -106,12 +100,6 @@ const TYPE_CONFIG: Record<string, {
     icon: XCircle,
     iconBg: "bg-red-100",
     iconColor: "text-red-600",
-  },
-  all_internal_signed: {
-    label: "Semua Pihak Internal Telah Menandatangani",
-    icon: CheckCircle,
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
   },
   partner_contract_added: {
   label: "Kontrak Mitra Ditambahkan",

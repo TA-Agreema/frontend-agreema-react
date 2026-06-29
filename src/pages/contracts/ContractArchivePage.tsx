@@ -318,7 +318,6 @@ export default function ContractArchivePage() {
 
   return (
     <div className="space-y-6 min-w-0 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"></div>
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-gray-900">
           Arsip Kontrak
@@ -544,7 +543,7 @@ export default function ContractArchivePage() {
                         <td className="px-3 py-4">
                           <div className="flex items-center gap-2.5">
                             <div
-                              className={`p-2.5 rounded-md shrink-0 ${isRejected ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
+                            className="p-2.5 rounded-md shrink-0 bg-red-100 text-red-700"  
                             >
                               <FileText className="h-5 w-5" />
                             </div>
