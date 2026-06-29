@@ -69,7 +69,7 @@ export default function AddendumModal({
       });
 
       toast.success("Addendum berhasil dibuat!", {
-        description: `Addendum ${form.addendum_number} - ${form.title} telah ditambahkan ke ${contract.title}.`,
+        description: `Addendum telah ditambahkan ke ${contract.title}.`,
         duration: 5000,
       });
 
