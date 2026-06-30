@@ -344,8 +344,12 @@ export default function ContractReviewListPage() {
                             <td className="px-3 py-4 text-gray-600 font-medium">
                               {contract.created_by}
                             </td>
-                            <td className="px-3 py-4 text-gray-500 text-xs font-medium">
-                              {contract.start_date || "-"}
+                            <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
+                              {contract.start_date}
+                              <br />
+                              <span className="text-muted-foreground/60">s/d</span>
+                              <br />
+                              {contract.end_date ?? "—"}
                             </td>
 
                             {/* Render dynamic columns cells */}

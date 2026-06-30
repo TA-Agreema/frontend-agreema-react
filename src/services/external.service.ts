@@ -8,6 +8,36 @@ export const fetchExternalContractPreview = async (
   return response.data;
 };
 
+export const downloadExternalContractPdf = async (token: string) => {
+  const res = await api.get<Blob>(`/external/contracts/download?token=${token}`, {
+    responseType: "blob",
+    validateStatus: () => true,
+  });
+
+  if (res.status >= 400) {
+    let message = "Gagal mengunduh dokumen.";
+
+    if (res.data instanceof Blob) {
+      const text = await res.data.text();
+      try {
+        const parsed = JSON.parse(text) as { message?: string; error?: string };
+        message = parsed.message ?? parsed.error ?? message;
+      } catch {
+        message = text || message;
+      }
+    }
+
+    throw {
+      response: {
+        status: res.status,
+        data: { message },
+      },
+    };
+  }
+
+  return res;
+};
+
 export const submitExternalContractReview = async (payload: {
   token: string;
   status: "approved" | "revised" | "confirmed";

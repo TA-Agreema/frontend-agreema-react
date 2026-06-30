@@ -9,10 +9,14 @@ import {
   FileText,
   Paperclip,
   X,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
+import { downloadBlobResponse } from "@/services/download.service";
 import {
   fetchExternalContractPreview,
   submitExternalContractReview,
+  downloadExternalContractPdf,
 } from "@/services/external.service";
 import type { ExternalContractDetail } from "@/types/external";
 import { isAxiosError } from "axios";
@@ -61,6 +65,23 @@ export default function ContractReviewDetailExternalPage() {
   const [hasSignedByCanvas, setHasSignedByCanvas] = useState(false);
 
   const [showRevisionConfirm, setShowRevisionConfirm] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (!token || !contractDetail) return;
+    setIsDownloading(true);
+    try {
+      const res = await downloadExternalContractPdf(token);
+      const filename = contractDetail.data.title
+        ? `Kontrak_${contractDetail.data.title.replace(/\s+/g, "_")}.pdf`
+        : `Kontrak_External.pdf`;
+      downloadBlobResponse(res, filename);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Gagal mengunduh dokumen");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -226,7 +247,7 @@ export default function ContractReviewDetailExternalPage() {
           alt="Agreema Logo"
           className="h-8 w-auto shrink-0"
         />
-        <div className="border-l border-gray-300 pl-4">
+        <div className="border-l border-gray-300 pl-4 flex-1">
           <h1 className="text-base font-semibold text-gray-900 leading-tight">
             Peninjauan Dokumen: {contract.title}
           </h1>
@@ -234,6 +255,18 @@ export default function ContractReviewDetailExternalPage() {
             {contract.contract_number || "Draft"} • Dibuat oleh {contract.created_by}
           </p>
         </div>
+        <button
+          onClick={handleDownloadPdf}
+          disabled={isDownloading}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 active:scale-95 transition-colors"
+        >
+          {isDownloading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Download PDF
+        </button>
       </header>
 
       {/* Main Content Area */}
