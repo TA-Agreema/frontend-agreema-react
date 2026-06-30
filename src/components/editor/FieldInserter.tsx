@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useEditor } from "@tiptap/react";
 import { ChevronDown, Plus } from "lucide-react";
 import { insertContractField } from "@/lib/tiptap-contract-field";
@@ -9,6 +9,7 @@ export interface FieldDefinition {
   field_label: string;
   field_type: string;
   is_active: boolean;
+  is_required: boolean;
 }
 
 export function FieldInserter({

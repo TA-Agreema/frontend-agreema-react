@@ -1,4 +1,3 @@
-import React from "react";
 import { useEditor } from "@tiptap/react";
 import { ImageIcon } from "lucide-react";
 import { ToolbarBtn } from "./ToolbarBtn";

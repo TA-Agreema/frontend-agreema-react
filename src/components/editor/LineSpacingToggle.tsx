@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useEditor } from "@tiptap/react";
 import { ChevronDown, MoveVertical } from "lucide-react";
 

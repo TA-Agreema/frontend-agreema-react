@@ -1,4 +1,3 @@
-import React from "react";
 import { X, User, Mail } from "lucide-react";
 
 interface SignerTypeModalProps {
