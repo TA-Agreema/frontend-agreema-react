@@ -77,12 +77,6 @@ const TYPE_CONFIG: Record<string, {
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
   },
-  contract_expiring: {
-    label: "Kontrak Akan Kedaluwarsa",
-    icon: AlertTriangle,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-500",
-  },
   contract_addendum: {
     label: "Addendum Ditambahkan",
     icon: FileCheck,
@@ -102,11 +96,23 @@ const TYPE_CONFIG: Record<string, {
     iconColor: "text-red-600",
   },
   partner_contract_added: {
-  label: "Kontrak Mitra Ditambahkan",
-  icon: FileUp,
-  iconBg: "bg-blue-100",
-  iconColor: "text-blue-600",
-},
+    label: "Kontrak Mitra Ditambahkan",
+    icon: FileUp,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+  },
+  contract_expiring: {
+    label: "Kontrak Akan Kedaluwarsa",
+    icon: AlertTriangle,
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-500",
+  },
+  contract_expired: {
+    label: "Kontrak Kedaluwarsa",
+    icon: AlertTriangle,
+    iconBg: "bg-red-100",
+    iconColor: "text-red-500",
+  },
 };
 
 const DEFAULT_CONFIG = {

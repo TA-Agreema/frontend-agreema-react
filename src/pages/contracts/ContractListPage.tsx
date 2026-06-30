@@ -622,10 +622,10 @@ export default function ContractListPage() {
     };
 
     load();
-    // Auto refresh setiap 3 menit (testing)
-    const interval = setInterval(() => {
-      if (mounted) load();
-    }, 3 * 60 * 1000); // disesuaikan dengan addMinutes(3) di backend
+    // Auto refresh
+  const interval = setInterval(() => {
+    if (mounted) load();
+  }, 5 * 60 * 1000);
 
     return () => {
       mounted = false;
