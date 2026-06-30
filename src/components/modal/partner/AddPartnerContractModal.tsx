@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Upload, FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { isAxiosError } from "axios";
 import {
   createPartnerContract,
   type CreatePartnerContractPayload,
@@ -80,49 +81,59 @@ export default function AddPartnerContractModal({
     if (isSubmitting) return;
     if (!validate() || !document) return;
 
-    // Tentukan status otomatis berdasarkan tanggal mulai
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set waktu ke awal hari
-
-    let autoStatus: "signed" | "active" = "signed";
-    if (startDate) {
-      const start = new Date(startDate);
-      autoStatus = start <= today ? "active" : "signed";
-    }
-
     setIsSubmitting(true);
     try {
       const payload: CreatePartnerContractPayload = {
         title: title.trim(),
         contract_number: contractNumber.trim(),
         partner_name: partnerName.trim(),
-        status: autoStatus, // Gunakan status otomatis berdasarkan tanggal mulai
         start_date: startDate || null,
         end_date: endDate || null,
         document,
         notes: notes.trim() || null,
       };
 
-      await createPartnerContract(payload);
+      const result = await createPartnerContract(payload);
+      const isActive = result?.status === "active";
 
       toast.success("Kontrak mitra berhasil ditambahkan.", {
-        description: `${title} kini berstatus ${status === "active" ? "aktif" : "disahkan"}.`,
+        description: `"${title}" kini berstatus ${isActive ? "aktif" : "menunggu aktif"}.`,
         duration: 5000,
       });
 
       onSuccess(); // ← refresh data dulu
-      onClose();   // ← lalu tutup modal (otomatis unmount, tidak perlu resetForm)
+      onClose();   // ← lalu tutup modal
     } catch (error: unknown) {
-      console.error("Error detail:", error); 
-      let message = "Gagal menambahkan kontrak mitra. Coba lagi.";
-      if (typeof error === "object" && error !== null) {
-        // @ts-expect-error allow reading axios-like error shape
-        message = error?.response?.data?.message ?? message;
+      console.error("Error detail:", error);
+
+      if (isAxiosError(error) && error.response?.status === 422) {
+        const backendErrors = error.response.data?.errors as Record<string, string[]> | undefined;
+        if (backendErrors) {
+          const fieldMap: Record<string, string> = {
+            contract_number: "contractNumber",
+            title: "title",
+            partner_name: "partnerName",
+            end_date: "endDate",
+            document: "document",
+          };
+          const newErrors: Record<string, string> = {};
+          for (const [field, messages] of Object.entries(backendErrors)) {
+            const key = fieldMap[field] ?? field;
+            newErrors[key] = messages[0];
+          }
+          setErrors(newErrors);
+          return;
+        }
+        const message = error.response.data?.message ?? "Data tidak valid.";
+        toast.error("Validasi gagal", { description: message, duration: 5000 });
+        return;
       }
-      toast.error("Gagal menambahkan kontrak", {
-        description: message,
-        duration: 5000,
-      });
+
+      const message =
+        isAxiosError(error)
+          ? error.response?.data?.message ?? "Gagal menambahkan kontrak mitra."
+          : "Gagal menambahkan kontrak mitra. Coba lagi.";
+      toast.error("Gagal menambahkan kontrak", { description: message, duration: 5000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -161,9 +172,8 @@ export default function AddPartnerContractModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Contoh: Perjanjian Jasa Konsultasi IT"
-              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${
-                errors.title ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${errors.title ? "border-red-300" : "border-gray-200"
+                }`}
             />
             {errors.title && (
               <p className="text-xs text-red-500 mt-1">{errors.title}</p>
@@ -179,9 +189,8 @@ export default function AddPartnerContractModal({
               value={contractNumber}
               onChange={(e) => setContractNumber(e.target.value)}
               placeholder="Contoh: 001/SLI-MITRA/VI/2026"
-              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${
-                errors.contractNumber ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${errors.contractNumber ? "border-red-300" : "border-gray-200"
+                }`}
             />
             {errors.contractNumber && (
               <p className="text-xs text-red-500 mt-1">{errors.contractNumber}</p>
@@ -197,9 +206,8 @@ export default function AddPartnerContractModal({
               value={partnerName}
               onChange={(e) => setPartnerName(e.target.value)}
               placeholder="Nama perusahaan mitra"
-              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${
-                errors.partnerName ? "border-red-300" : "border-gray-200"
-              }`}
+              className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${errors.partnerName ? "border-red-300" : "border-gray-200"
+                }`}
             />
             {errors.partnerName && (
               <p className="text-xs text-red-500 mt-1">{errors.partnerName}</p>
@@ -227,9 +235,8 @@ export default function AddPartnerContractModal({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${
-                  errors.endDate ? "border-red-300" : "border-gray-200"
-                }`}
+                className={`w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all ${errors.endDate ? "border-red-300" : "border-gray-200"
+                  }`}
               />
               {errors.endDate && (
                 <p className="text-xs text-red-500 mt-1">{errors.endDate}</p>
@@ -243,13 +250,12 @@ export default function AddPartnerContractModal({
               Dokumen Kontrak (PDF) <span className="text-red-500">*</span>
             </label>
             <label
-              className={`flex items-center gap-3 w-full rounded-lg border-2 border-dashed px-4 py-3 cursor-pointer transition-all ${
-                errors.document
+              className={`flex items-center gap-3 w-full rounded-lg border-2 border-dashed px-4 py-3 cursor-pointer transition-all ${errors.document
                   ? "border-red-300 bg-red-50/30"
                   : document
                     ? "border-emerald-300 bg-emerald-50/30"
                     : "border-gray-200 hover:border-emerald-400 hover:bg-emerald-50/20"
-              }`}
+                }`}
             >
               <input
                 type="file"

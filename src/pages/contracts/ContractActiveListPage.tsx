@@ -18,6 +18,9 @@ import {
   ArrowDown,
   ArrowUpDown,
   RefreshCw,
+  Download,
+  // Building2,
+  // Handshake,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -30,17 +33,35 @@ import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import {
   fetchContracts,
   deleteContract,
+  downloadContractPdf,
 } from "@/services/contract.service";
+import { downloadBlobResponse } from "@/services/download.service";
 import { fetchManagerContracts } from "@/services/manager.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
 import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 // import type { Termination } from "@/types/termination";
+import type { Termination } from "@/types/termination";
 import type { Addendum, ContractRow } from "./ContractListPage";
 
 const PAGE_SIZE = 8;
+function ContractTypeBadge({ type }: { type?: "internal" | "external" }) {
+  if (type === "external") {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-sky-50 text-sky-700 border border-sky-200">
+        {/* <Handshake className="h-3 w-3" /> */}
+        Eksternal
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-violet-50 text-violet-700 border border-violet-200">
+      {/* <Building2 className="h-3 w-3" /> */}
+      Internal
+    </span>
+  );
+}
 
-// ── Status badge ────────────────────────────────────────────────
 function StatusBadge() {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -111,11 +132,13 @@ function RowMenu({
   canManageTermination,
   canDeleteRow,
   canRenewContract,
+  canDownloadContract,
   onView,
   onAddendum,
   onTerminate,
   onDelete,
   onRenew,
+  onDownloadPdf,
 }: {
   contract: ContractRow;
   isHrd: boolean;
@@ -123,11 +146,13 @@ function RowMenu({
   canManageTermination: boolean;
   canDeleteRow: boolean;
   canRenewContract: boolean;
+  canDownloadContract: boolean;
   onView: () => void;
   onAddendum: () => void;
   onTerminate: () => void;
   onDelete: () => void;
   onRenew: () => void;
+  onDownloadPdf: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropUp, setDropUp] = useState(false);
@@ -158,6 +183,11 @@ function RowMenu({
     return () => window.removeEventListener("scroll", handler, { capture: true });
   }, [open]);
 
+  const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
+  const canRenewThisContract = canRenewContract && contract.contract_type !== "external";
+  const canAddAddendum = !hasPendingTermination;
+  const canTerminate = !hasPendingTermination;
+
   return (
     <div className="relative flex justify-end">
       <button
@@ -181,7 +211,8 @@ function RowMenu({
             Lihat Detail
           </button>
 
-          {canManageAddendum && isHrd && (
+
+          {canManageAddendum && isHrd && canAddAddendum && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddendum(); setOpen(false); }}
               className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
@@ -191,7 +222,7 @@ function RowMenu({
             </button>
           )}
 
-          {canRenewContract && isHrd && (
+          {canRenewThisContract && isHrd && (
             <button
               onClick={(e) => { e.stopPropagation(); onRenew(); setOpen(false); }}
               className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
@@ -201,13 +232,23 @@ function RowMenu({
             </button>
           )}
 
-          {canManageTermination && isHrd && (
+          {canManageTermination && isHrd && canTerminate && (
             <button
               onClick={(e) => { e.stopPropagation(); onTerminate(); setOpen(false); }}
               className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
             >
               <XCircle className="h-4 w-4 opacity-70" />
               Ajukan Pembatalan
+            </button>
+          )}
+
+          {canDownloadContract && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDownloadPdf(); setOpen(false); }}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
+            >
+              <Download className="h-4 w-4 text-muted-foreground opacity-70" />
+              Download PDF
             </button>
           )}
 
@@ -239,6 +280,7 @@ export default function ContractActiveListPage() {
   const canManageTermination = hasAnyPermission(["create.terminate", "terminate.contract"]);
   const canDeleteRow = hasAnyPermission(["delete.contract"]);
   const canRenewContract = hasAnyPermission(["create.contract"]);
+  const canDownloadContract = hasAnyPermission(["download.contract", "read.contract"]);
 
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -278,25 +320,23 @@ export default function ContractActiveListPage() {
     });
   };
 
-  interface TerminationSuccessPayload {
-    data?: {
-      effective_date?: string;
-    };
-    effective_date?: string;
-  }
 
-  const handleTerminationSuccess = useCallback((contractId: number, terminationData: TerminationSuccessPayload) => {
+  const handleTerminationSuccess = useCallback((contractId: number, terminationData: Termination) => {
     setContracts(prev =>
       prev.map(c => {
         if (c.id !== contractId) return c;
-        const effectiveDateStr = terminationData?.data?.effective_date || terminationData?.effective_date;
+        const effectiveDateStr = terminationData?.effective_date;
         let isTerminatedNow = true;
         if (effectiveDateStr) {
           const today = new Date(); today.setHours(0, 0, 0, 0);
           const effectiveDate = new Date(effectiveDateStr); effectiveDate.setHours(0, 0, 0, 0);
           isTerminatedNow = effectiveDate.getTime() <= today.getTime();
         }
-        return { ...c, status: isTerminatedNow ? "terminated" : c.status, end_date: effectiveDateStr || c.end_date };
+        if (isTerminatedNow) {
+          return { ...c, status: "terminated" as const, end_date: effectiveDateStr || c.end_date, terminations: [] };
+        } else {
+          return { ...c, terminations: [terminationData, ...(c.terminations || [])] };
+        }
       })
     );
   }, []);
@@ -331,6 +371,19 @@ export default function ContractActiveListPage() {
       state: { renewFromId: renewTarget.id },
     });
     setRenewTarget(null);
+  };
+
+  const handleDownloadPdf = async (contract: ContractRow) => {
+    try {
+      const response = await downloadContractPdf(contract.id);
+      downloadBlobResponse(
+        response,
+        `${contract.contract_number || contract.title || "kontrak"}.pdf`,
+      );
+    } catch (err) {
+      console.error("Gagal mengunduh PDF kontrak:", err);
+      toast.error("Gagal mengunduh PDF kontrak. Coba lagi.");
+    }
   };
 
   // Fetch on mount (no search parameter since client filter handles it)
@@ -560,8 +613,21 @@ export default function ContractActiveListPage() {
                           <div>
                             <p className="font-medium text-foreground leading-tight">{contract.title}</p>
                             <p className="text-xs text-muted-foreground mt-0.5">{contract.contract_number}</p>
-                            {hasAddendums && (
-                              <p className="text-xs text-emerald-600 mt-0.5">{contract.addendums.length} addendum</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <ContractTypeBadge type={contract.contract_type} />
+                              {hasAddendums && (
+                                <span className="text-xs text-emerald-600">{contract.addendums.length} addendum</span>
+                              )}
+                            </div>
+                            {/* Notifikasi terminasi terjadwal */}
+                            {contract.terminations && contract.terminations.length > 0 && (
+                              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                </span>
+                                Terminasi pada: <span className="font-bold">{contract.terminations[0].effective_date}</span>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -598,6 +664,7 @@ export default function ContractActiveListPage() {
                           canManageTermination={canManageTermination}
                           canDeleteRow={canDeleteRow}
                           canRenewContract={canRenewContract}
+                          canDownloadContract={canDownloadContract}
                           onView={() => {
                             if (contract.contract_type === "external") {
                               if (contract.signed_document_url) {
@@ -615,6 +682,7 @@ export default function ContractActiveListPage() {
                           onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
                           onRenew={() => setRenewTarget(contract)}
+                          onDownloadPdf={() => handleDownloadPdf(contract)}
                         />
                       </td>
                     </tr>
