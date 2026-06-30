@@ -93,6 +93,36 @@ export const fetchManagerContractDetail = async (
   return res.data.data;
 };
 
+export const downloadManagerContractPdf = async (id: number) => {
+  const res = await api.get<Blob>(`${BASE_PATH}/${id}/download`, {
+    responseType: "blob",
+    validateStatus: () => true,
+  });
+
+  if (res.status >= 400) {
+    let message = "Gagal mengunduh dokumen.";
+
+    if (res.data instanceof Blob) {
+      const text = await res.data.text();
+      try {
+        const parsed = JSON.parse(text) as { message?: string; error?: string };
+        message = parsed.message ?? parsed.error ?? message;
+      } catch {
+        message = text || message;
+      }
+    }
+
+    throw {
+      response: {
+        status: res.status,
+        data: { message },
+      },
+    };
+  }
+
+  return res;
+};
+
 export const submitContractReview = async (
   id: number,
   payload: { status: "approved" | "revised" | "rejected"; notes: string; reviewDocument?: File | null },
