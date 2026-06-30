@@ -89,7 +89,7 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
                   ))}
                 </Pie>
                 <RechartsTooltip
-                  formatter={(value: number, name: string) => [value, name.toUpperCase()]}
+                  formatter={(value: any, name: any) => [value, String(name).toUpperCase()]}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend formatter={(value) => <span className="uppercase text-xs font-medium text-gray-600">{value}</span>} />

@@ -240,7 +240,7 @@ export function ContractSignatureBox({
       >
         {hasSignature ? (
           <img
-            src={signaturePath}
+            src={signaturePath || undefined}
             alt="Tanda Tangan"
             className="max-h-24 w-full object-contain"
           />

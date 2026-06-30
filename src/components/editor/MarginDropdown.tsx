@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChevronDown, LayoutTemplate } from "lucide-react";
 import { ToolbarBtn } from "@/components/editor/ToolbarBtn";
 
