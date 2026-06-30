@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -21,7 +21,6 @@ import {
   ArrowUpDown,
   MailCheck,
   Loader2,
-  RefreshCw,
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
@@ -30,7 +29,6 @@ import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import DeleteModal from "@/components/modal/common/DeleteModal";
-import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import TemplateSelectModal, {
   type TemplateOption,
 } from "@/components/modal/template/TemplateSelectModal";
@@ -42,8 +40,6 @@ import {
 } from "@/services/contract.service";
 import { downloadBlobResponse } from "@/services/download.service";
 import AddendumDetailModal from "@/components/modal/addendum/AddendumDetailModal";
-import AddendumModal from "@/components/modal/addendum/AddendumModal";
-import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 import type { Termination } from "@/types/termination";
 
 //  Types
@@ -309,39 +305,27 @@ function TerminationRow({ termination }: { termination: Termination }) {
   );
 }
 
-//  Row Action Dropdown
+//  Row Action Dropdown – Kontrak Proses (hanya: lihat, edit, hapus, download, resend token)
 function RowMenu({
   contract,
   canEdit,
-  canManageAddendum,
-  canManageTermination,
   canDownloadContract,
   canDeleteRow,
-  canRenewContract,
   onView,
   onEdit,
-  onAddendum,
-  onTerminate,
   onDelete,
   onDownloadPdf,
-  onRenew,
   onResendToken,
   isResending,
 }: {
   contract: ContractRow;
   canEdit: boolean;
-  canManageAddendum: boolean;
-  canManageTermination: boolean;
   canDownloadContract: boolean;
   canDeleteRow: boolean;
-  canRenewContract: boolean;
   onView: () => void;
   onEdit: () => void;
-  onAddendum: () => void;
-  onTerminate: () => void;
   onDelete: () => void;
   onDownloadPdf: () => void;
-  onRenew: () => void;
   onResendToken?: () => void;
   isResending?: boolean;
 }) {
@@ -351,18 +335,12 @@ function RowMenu({
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
-
-  // Aksi yang relevan berdasarkan status
-  const canTerminate = ["active"].includes(contract.status) && !hasPendingTermination;
-  const canAddAddendum = ["active"].includes(contract.status) && !hasPendingTermination;
+  // Kontrak Proses: hanya Edit & Delete yang relevan (tidak ada addendum/terminasi/perpanjangan)
   const canEditContract = ["draft", "revision"].includes(contract.status);
   const canDelete = contract.status === "draft";
-  const canRenew = ["active", "approved", "expired"].includes(contract.status);
 
   const { roles } = useAuth();
   const isHrd = roles.includes("hrd");
-  console.log('roles:', roles, 'isHrd:', isHrd, 'status:', contract.status, 'has_expired_token:', contract.has_expired_token);
 
   // Hitung posisi setiap kali menu dibuka
   useEffect(() => {
@@ -452,47 +430,7 @@ function RowMenu({
             </button>
           )}
 
-          {canManageAddendum && canAddAddendum && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddendum();
-                setOpen(false);
-              }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground opacity-70" />
-              Ajukan Addendum
-            </button>
-          )}
-
-          {canRenewContract && canRenew && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRenew();
-                setOpen(false);
-              }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
-              <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
-              Perpanjang Kontrak
-            </button>
-          )}
-
-          {canManageTermination && canTerminate && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onTerminate();
-                setOpen(false);
-              }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <XCircle className="h-4 w-4 opacity-70" />
-              Ajukan Pembatalan
-            </button>
-          )}
+          {/* Kontrak Proses tidak memiliki aksi addendum, terminasi, atau perpanjangan */}
 
           {canDeleteRow && canDelete && (
             <button
@@ -554,8 +492,6 @@ export default function ContractListPage() {
 
   const canCreateContract = hasPermission("create.contract");
   const canEdit = hasPermission("update.contract");
-  const canManageAddendum = hasAnyPermission(["create.addendum", 'create.contract_addendum']);
-  const canManageTermination = hasAnyPermission(["create.terminate", 'terminate.contract']);
   const canDownloadContract = hasAnyPermission(["download.contract", "read.contract"]);
   const canDeleteRow = hasPermission("delete.contract");
 
@@ -570,10 +506,7 @@ export default function ContractListPage() {
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
-  const [renewTarget, setRenewTarget] = useState<ContractRow | null>(null);
-  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
-  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
 
   // Load field definitions
@@ -584,53 +517,14 @@ export default function ContractListPage() {
   // Initialize filter and sorting hook
   const filter = useContractFilter(contracts);
 
-  const handleTerminationSuccess = useCallback((contractId: number, terminationData: Termination) => {
-    setContracts((prev) =>
-      prev.map((c) => {
-        if (c.id === contractId) {
-          const effectiveDateStr = terminationData?.effective_date;
-          let isTerminatedNow = true;
 
-          if (effectiveDateStr) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const effectiveDate = parseContractDate(effectiveDateStr);
-            effectiveDate?.setHours(0, 0, 0, 0);
-            isTerminatedNow = effectiveDate
-              ? effectiveDate.getTime() <= today.getTime()
-              : false;
-          }
-
-          return {
-            ...c,
-            status: isTerminatedNow ? "terminated" : c.status,
-            end_date: effectiveDateStr || c.end_date,
-            terminations: isTerminatedNow ? [] : [terminationData]
-          };
-        }
-        return c;
-      })
-    );
-  }, []);
-
-  // Insert new addendum into local state so UI updates instantly
-  const handleAddendumSuccess = useCallback(
-    (contractId: number, newAddendum: Addendum) => {
-      setContracts((prev) =>
-        prev.map((c) =>
-          c.id === contractId
-            ? { ...c, addendums: [newAddendum, ...c.addendums] }
-            : c,
-        ),
-      );
-      // Auto-expand that contract row to show the new addendum
-      setExpanded((prev) => new Set(prev).add(contractId));
-    },
-    [],
-  );
 
   const filteredContracts = filter.contracts.filter(
-    (c) => c.status !== "terminated" && c.status !== "expired"
+    (c) =>
+      c.status !== "active" &&
+      c.status !== "expired" &&
+      c.status !== "rejected" &&
+      c.status !== "terminated"
   );
   const totalPages = Math.max(1, Math.ceil(filteredContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -679,14 +573,7 @@ export default function ContractListPage() {
     }
   };
 
-  const handleRenewContract = () => {
-    if (!renewTarget) return;
 
-    navigate("/contracts/create", {
-      state: { renewFromId: renewTarget.id },
-    });
-    setRenewTarget(null);
-  };
 
   const handleResendToken = async (contract: ContractRow) => {
     setResendingId(contract.id);
@@ -735,14 +622,14 @@ export default function ContractListPage() {
 
     load();
     // Auto refresh setiap 3 menit (testing)
-  const interval = setInterval(() => {
-    if (mounted) load();
-  }, 3 * 60 * 1000); // disesuaikan dengan addMinutes(3) di backend
+    const interval = setInterval(() => {
+      if (mounted) load();
+    }, 3 * 60 * 1000); // disesuaikan dengan addMinutes(3) di backend
 
-  return () => {
-    mounted = false;
-    clearInterval(interval); // ← cleanup interval
-  };
+    return () => {
+      mounted = false;
+      clearInterval(interval); // ← cleanup interval
+    };
   }, []);
 
   const renderSortIcon = (key: string) => {
@@ -815,7 +702,7 @@ export default function ContractListPage() {
           { label: "Ditinjau", value: "review" },
           { label: "Revisi", value: "revision" },
           { label: "Disetujui Internal", value: "approved" },
-          { label: "Ditolak", value: "rejected" },
+          { label: "Disahkan", value: "signed" },
         ]}
         customFilters={filter.customFilters}
         setCustomFilters={(val) => {
@@ -1056,11 +943,8 @@ export default function ContractListPage() {
                         <RowMenu
                           contract={contract}
                           canEdit={canEdit}
-                          canManageAddendum={canManageAddendum}
-                          canManageTermination={canManageTermination}
                           canDownloadContract={canDownloadContract}
                           canDeleteRow={canDeleteRow}
-                          canRenewContract={canCreateContract}
                           onView={() => {
                             if (isManager) {
                               navigate(`/approvals/${contract.id}`);
@@ -1071,11 +955,8 @@ export default function ContractListPage() {
                           onEdit={() =>
                             navigate(`/contracts/${contract.id}/edit`)
                           }
-                          onAddendum={() => setAddendumTarget(contract)}
-                          onTerminate={() => setTerminateTarget(contract)}
                           onDelete={() => setDeleteTarget(contract)}
                           onDownloadPdf={() => handleDownloadPdf(contract)}
-                          onRenew={() => setRenewTarget(contract)}
                           onResendToken={() => handleResendToken(contract)}
                           isResending={resendingId === contract.id}
                         />
@@ -1129,49 +1010,13 @@ export default function ContractListPage() {
         />
       )}
 
-      {renewTarget && (
-        <ConfirmModal
-          title="Perpanjang Kontrak"
-          message={
-            <>
-              Editor akan memuat salinan dari versi terakhir{" "}
-              <span className="font-medium text-foreground">
-                {renewTarget.title}
-              </span>
-              . Kontrak baru belum disimpan dan periode perlu diisi ulang.
-            </>
-          }
-          icon={RefreshCw}
-          tone="success"
-          confirmLabel="Lanjutkan ke Editor"
-          onClose={() => setRenewTarget(null)}
-          onConfirm={handleRenewContract}
-        />
-      )}
 
-      {/* Addendum Modal */}
-      {addendumTarget && (
-        <AddendumModal
-          contract={addendumTarget}
-          onClose={() => setAddendumTarget(null)}
-          onSuccess={handleAddendumSuccess}
-        />
-      )}
 
-      {/* Addendum Detail/Preview Modal */}
+      {/* Addendum Detail*/}
       {viewAddendumTarget && (
         <AddendumDetailModal
           addendum={viewAddendumTarget}
           onClose={() => setViewAddendumTarget(null)}
-        />
-      )}
-
-      {/* Termination Modal */}
-      {terminateTarget && (
-        <TerminationModal
-          contract={terminateTarget}
-          onClose={() => setTerminateTarget(null)}
-          onSuccess={handleTerminationSuccess}
         />
       )}
 

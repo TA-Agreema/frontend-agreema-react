@@ -27,6 +27,7 @@ import AddendumModal from "@/components/modal/addendum/AddendumModal";
 import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 import AddPartnerContractModal from "@/components/modal/partner/AddPartnerContractModal";
 import type { ContractRow, ContractStatus, Addendum } from "./ContractListPage";
+import type { Termination } from "@/types/termination";
 
 const PAGE_SIZE = 4;
 
@@ -45,8 +46,8 @@ const STATUS_CONFIG: Partial<
     className: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   signed: {
-    label: "Disahkan",
-    className: "bg-purple-50 text-purple-700 border-purple-200",
+    label: "Menunggu Aktif",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
   },
   expired: {
     label: "Berakhir",
@@ -154,8 +155,9 @@ function RowMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Aksi yang relevan berdasarkan status
-  const canAddAddendum = ["active"].includes(contract.status);
-  const canTerminate = ["active"].includes(contract.status);
+  const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
+  const canAddAddendum = ["active"].includes(contract.status) && !hasPendingTermination;
+  const canTerminate = ["active"].includes(contract.status) && !hasPendingTermination;
   const canDelete = contract.status !== "active";
 
   // Hitung posisi setiap kali menu dibuka
@@ -278,11 +280,11 @@ function RowMenu({
 // Main Page
 export default function ContractListPage() {
   const navigate = useNavigate();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, hasAnyPermission } = usePermissions();
 
   const canCreateContract = hasPermission('create.contract');
-  const canManageAddendum = hasPermission('create.addendum');
-  const canManageTermination = hasPermission('create.terminate');
+  const canManageAddendum = hasAnyPermission(["create.addendum", "create.contract_addendum"]);
+  const canManageTermination = hasAnyPermission(["create.terminate", "terminate.contract"]);
   const canDeleteRow = hasPermission('delete.contract');
 
   const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
@@ -298,11 +300,23 @@ export default function ContractListPage() {
   const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
   const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
 
-  const handleTerminationSuccess = useCallback((contractId: number) => {
+  const handleTerminationSuccess = useCallback((contractId: number, terminationData: Termination) => {
     setContracts((prev) =>
-      prev.map((c) =>
-        c.id === contractId ? { ...c, status: "terminated" } : c
-      )
+      prev.map((c) => {
+        if (c.id !== contractId) return c;
+        const effectiveDateStr = terminationData?.effective_date;
+        let isTerminatedNow = true;
+        if (effectiveDateStr) {
+          const today = new Date(); today.setHours(0, 0, 0, 0);
+          const effectiveDate = new Date(effectiveDateStr); effectiveDate.setHours(0, 0, 0, 0);
+          isTerminatedNow = effectiveDate.getTime() <= today.getTime();
+        }
+        if (isTerminatedNow) {
+          return { ...c, status: "terminated" as const };
+        } else {
+          return { ...c, terminations: [terminationData, ...(c.terminations || [])] };
+        }
+      })
     );
   }, []);
 
@@ -545,6 +559,15 @@ export default function ContractListPage() {
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {contract.addendums.length} addendum
                               </p>
+                            )}
+                            {contract.terminations && contract.terminations.length > 0 && (
+                              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                </span>
+                                Terminasi pada: <span className="font-bold ml-1">{contract.terminations[0].effective_date}</span>
+                              </div>
                             )}
                           </div>
                         </div>
