@@ -15,7 +15,7 @@ export default function TerminationDetailModal({ termination, onClose }: Props) 
         return () => document.removeEventListener("keydown", handler);
     }, [onClose]);
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+    const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const appBaseUrl = baseUrl.replace(/\/api\/?$/, "");
     const rawDocumentPath = termination.termination_document_path?.trim();
     const isAbsoluteDocumentUrl = !!rawDocumentPath && /^https?:\/\//i.test(rawDocumentPath);
