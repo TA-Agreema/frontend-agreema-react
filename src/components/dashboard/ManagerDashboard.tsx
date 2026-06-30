@@ -9,38 +9,43 @@ export default function ManagerDashboard({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Hero Stats */}
-      <Link to="/approvals" className="cursor-pointer rounded-xl border bg-gradient-to-r from-amber-500 to-orange-500 p-8 shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-6">
-        <div >
-          <div>
+      <div className="grid gap-6">
+        <Link to="/approvals" className="cursor-pointer rounded-xl border bg-gradient-to-r from-amber-500 to-orange-500 p-8 shadow-md text-white flex items-center justify-between gap-6 relative overflow-hidden">
+          <div className="z-10">
             <h2 className="text-3xl font-bold mb-2">
               {metrics.waiting_approval} Dokumen
             </h2>
             <p className="text-amber-50 font-medium text-lg">
-              Menunggu Persetujuan / Review Anda
+              Menunggu Review Substansi
             </p>
           </div>
-          <Clock className="h-16 w-16 text-amber-100 opacity-80" />
-        </div>
-      </Link>
+          <Clock className="h-20 w-20 text-amber-100 opacity-20 absolute -bottom-4 -right-4" />
+        </Link>
+        {/* <Link to="/approvals" className="cursor-pointer rounded-xl border bg-gradient-to-r from-blue-500 to-indigo-500 p-8 shadow-md text-white flex items-center justify-between gap-6 relative overflow-hidden">
+          <div className="z-10">
+            <h2 className="text-3xl font-bold mb-2">
+              {metrics.waiting_signature} Dokumen
+            </h2>
+            <p className="text-blue-50 font-medium text-lg">
+              Menunggu Tanda Tangan Final
+            </p>
+          </div>
+          <FileText className="h-20 w-20 text-blue-100 opacity-20 absolute -bottom-4 -right-4" />
+        </Link> */}
+      </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <StatCard
-          title="Total Kontrak Aktif (Keseluruhan)"
-          value={metrics.total_system_active?.toString() || "0"}
-          icon={CheckCircle}
-          color="bg-blue-600"
-        />
-        <StatCard
-          title="Disetujui Bulan Ini"
-          value={metrics.approved_this_month?.toString() || "0"}
+          title="Total Disetujui"
+          value={metrics.total_approved?.toString() || "0"}
           icon={CheckCircle}
           color="bg-emerald-600"
           href="/approvals"
         />
         <StatCard
-          title="Ditolak Bulan Ini"
-          value={metrics.revision_requested_this_month?.toString() || "0"}
+          title="Total Dibatalkan/Terminated"
+          value={metrics.total_rejected?.toString() || "0"}
           icon={XCircle}
           color="bg-rose-600"
           href="/approvals"
