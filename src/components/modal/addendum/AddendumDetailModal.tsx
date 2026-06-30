@@ -18,7 +18,7 @@ export default function AddendumDetailModal({
         return () => document.removeEventListener("keydown", handler);
     }, [onClose]);
 
-    const baseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+    const baseUrl = import.meta.env.VITE_API_BASE_URL;
     const appBaseUrl = baseUrl.replace(/\/api\/?$/, "");
     const rawDocumentPath = addendum.document_path?.trim();
     const isAbsoluteDocumentUrl = !!rawDocumentPath && /^https?:\/\//i.test(rawDocumentPath);
