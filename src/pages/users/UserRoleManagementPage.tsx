@@ -5,6 +5,7 @@ import { usePermissions } from "@/contexts/PermissionContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { isAxiosError } from "axios";
 import {
   Users,
   Shield,
@@ -222,7 +223,17 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
   }, [totalUsers]);
 
   useEffect(() => {
-    void loadData();
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadData();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   const filtered = useMemo(() => {
@@ -315,9 +326,24 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
           toast.error("Password wajib diisi");
           return;
         }
+
+        const normalizedEmail = data.email.trim().toLowerCase();
+        const emailAlreadyExists = users.some(
+          (user) => user.email.trim().toLowerCase() === normalizedEmail,
+        );
+
+        if (emailAlreadyExists) {
+          form.setError("email", {
+            type: "validate",
+            message: "Email sudah digunakan oleh pengguna lain",
+          });
+          toast.error("Email sudah digunakan");
+          return;
+        }
+
         await createUser({
           name: data.name,
-          email: data.email,
+          email: normalizedEmail,
           password: data.password,
           job_title: data.job_title,
           department: data.department,
@@ -331,10 +357,26 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
       await loadData();
       setIsDialogOpen(false);
       form.reset();
-    } catch (e) {
-      console.error(e);
-      toast.success("User dibuat", {
-        description: `${data.name} berhasil ditambahkan.`,
+    } catch (error: unknown) {
+      console.error(error);
+
+      if (isAxiosError(error) && error.response?.status === 422) {
+        const emailError = error.response.data?.errors?.email?.[0];
+        if (emailError) {
+          form.setError("email", {
+            type: "server",
+            message: emailError,
+          });
+          toast.error("Email sudah digunakan");
+          return;
+        }
+      }
+
+      const message = isAxiosError(error)
+        ? error.response?.data?.message
+        : undefined;
+      toast.error(editingUser ? "Gagal memperbarui user" : "Gagal membuat user", {
+        description: message ?? "Terjadi kesalahan. Silakan coba lagi.",
       });
     } finally {
       setIsSubmitting(false);
@@ -527,7 +569,17 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
   }, [totalRoles]);
 
   useEffect(() => {
-    void loadData();
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void loadData();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadData]);
 
   const filtered = useMemo(() => {

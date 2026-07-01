@@ -949,11 +949,15 @@ export default function ContractListPage() {
                             if (isManager) {
                               navigate(`/approvals/${contract.id}`);
                             } else {
-                              navigate(`/contracts/${contract.id}/view`);
+                              navigate(`/contracts/${contract.id}/view`, {
+                                state: { returnTo: "/contracts" },
+                              });
                             }
                           }}
                           onEdit={() =>
-                            navigate(`/contracts/${contract.id}/edit`)
+                            navigate(`/contracts/${contract.id}/edit`, {
+                              state: { returnTo: "/contracts" },
+                            })
                           }
                           onDelete={() => setDeleteTarget(contract)}
                           onDownloadPdf={() => handleDownloadPdf(contract)}
@@ -1025,7 +1029,9 @@ export default function ContractListPage() {
           onClose={() => setShowTemplateModal(false)}
           onSelect={(template: TemplateOption) => {
             setShowTemplateModal(false);
-            navigate("/contracts/create", { state: { template } });
+            navigate("/contracts/create", {
+              state: { template, returnTo: "/contracts" },
+            });
           }}
         />
       )}

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Bell, X, CheckCheck, AlertTriangle, CheckCircle, RotateCcw, XCircle, FileCheck, FileUp, Clock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/use-notifications";
 import type { AppNotification } from "@/services/notification.service";
 
@@ -142,6 +142,7 @@ export function NotificationBell() {
   }
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { notifications, unreadCount, loading, handleMarkRead, handleMarkAllRead, handleDelete } =
     useNotifications();
 
@@ -172,7 +173,9 @@ export function NotificationBell() {
     if (managerTypes.includes(notif.type)) {
       navigate(`/approvals/${notif.contract_id}`);
     } else {
-      navigate(`/contracts/${notif.contract_id}/view`);
+      navigate(`/contracts/${notif.contract_id}/view`, {
+        state: { returnTo: `${location.pathname}${location.search}` },
+      });
     }
 
     setOpen(false);

@@ -610,7 +610,9 @@ export default function ContractArchivePage() {
                                     toast.error("Dokumen kontrak tidak ditemukan.");
                                   }
                                 } else {
-                                  navigate(`/contracts/${contract.id}/view`);
+                                  navigate(`/contracts/${contract.id}/view`, {
+                                    state: { returnTo: "/contracts/archive" },
+                                  });
                                 }
                               }}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
