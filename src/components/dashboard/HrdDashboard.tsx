@@ -112,7 +112,11 @@ export default function HrdDashboard({ data }: { data: DashboardData }) {
         </div>
         <ExpiringContractsTable
           contracts={expiring_contracts || []}
-          onRowClick={(id) => navigate(`/contracts/${id}/view`)}
+          onRowClick={(id) =>
+            navigate(`/contracts/${id}/view`, {
+              state: { returnTo: "/dashboard" },
+            })
+          }
         />
       </div>
     </div>

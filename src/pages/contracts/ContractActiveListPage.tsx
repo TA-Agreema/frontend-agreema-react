@@ -368,7 +368,7 @@ export default function ContractActiveListPage() {
     if (!renewTarget) return;
 
     navigate("/contracts/create", {
-      state: { renewFromId: renewTarget.id },
+      state: { renewFromId: renewTarget.id, returnTo: "/contracts/active" },
     });
     setRenewTarget(null);
   };
@@ -675,7 +675,9 @@ export default function ContractActiveListPage() {
                             } else if (isManager) {
                               navigate(`/approvals/${contract.id}`);
                             } else {
-                              navigate(`/contracts/${contract.id}/view`);
+                              navigate(`/contracts/${contract.id}/view`, {
+                                state: { returnTo: "/contracts/active" },
+                              });
                             }
                           }}
                           onAddendum={() => setAddendumTarget(contract)}

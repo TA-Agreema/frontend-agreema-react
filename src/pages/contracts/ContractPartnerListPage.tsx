@@ -619,7 +619,9 @@ export default function ContractListPage() {
                                 toast.error("Dokumen kontrak tidak ditemukan.");
                               }
                             } else {
-                              navigate(`/contracts/${contract.id}/view`);
+                              navigate(`/contracts/${contract.id}/view`, {
+                                state: { returnTo: "/contracts/partners" },
+                              });
                             }
                           }}
                           onAddendum={() => setAddendumTarget(contract)}

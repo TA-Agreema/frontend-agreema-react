@@ -224,10 +224,15 @@ export default function ContractEditorPage() {
   type NavState = {
     template?: TemplateOption;
     renewFromId?: number;
+    returnTo?: string;
   } | null;
   const navState = (location.state as NavState) ?? null;
   const initialTemplate = navState?.template ?? null;
   const renewFromId = navState?.renewFromId ?? null;
+  const returnTo =
+    navState?.returnTo?.startsWith("/") && !navState.returnTo.startsWith("//")
+      ? navState.returnTo
+      : "/contracts";
 
   const [showTemplateModal, setShowTemplateModal] = useState(
     !isEdit && !initialTemplate && !renewFromId,
@@ -975,7 +980,7 @@ export default function ContractEditorPage() {
   const handleSaveDraft = async () => {
     const savedContract = await persistDraft();
     if (savedContract) {
-      navigate("/contracts");
+      navigate(returnTo);
     }
   };
 
@@ -1081,7 +1086,7 @@ export default function ContractEditorPage() {
 
   const handleRequestExit = () => {
     if (isStrictlyReadOnly || (!hasUnsavedChanges && !hasLocalDraft())) {
-      navigate("/contracts");
+      navigate(returnTo);
       return;
     }
 
@@ -1092,7 +1097,7 @@ export default function ContractEditorPage() {
     localStorage.removeItem(draftKey);
     setHasUnsavedChanges(false);
     setShowLeaveConfirm(false);
-    navigate("/contracts");
+    navigate(returnTo);
   };
 
   return (
@@ -1337,7 +1342,7 @@ export default function ContractEditorPage() {
           const submitted = await handleSubmit();
           // If submit returned a contract object, navigate to list and pass id
           if (submitted && (submitted as ContractRow).id) {
-            navigate("/contracts", {
+            navigate(returnTo, {
               state: { submittedId: (submitted as ContractRow).id },
             });
           }
