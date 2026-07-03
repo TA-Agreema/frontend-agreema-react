@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -14,6 +15,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   RefreshCw,
+  MoreVertical,
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
@@ -217,6 +219,142 @@ function RejectionRow({ notes, colSpan }: { notes: string; colSpan: number }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+function ArchiveActionMenu({
+  contract,
+  canCreateContract,
+  onView,
+  onCreateFromContract,
+}: {
+  contract: ContractRow;
+  canCreateContract: boolean;
+  onView: () => void;
+  onCreateFromContract: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+    placement: "top" | "bottom";
+  } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const canCreateFromContract =
+    canCreateContract &&
+    contract.status === "expired" &&
+    contract.contract_type !== "external";
+
+  const handleToggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 224;
+      const estimatedMenuHeight = canCreateFromContract ? 88 : 48;
+      const gap = 4;
+      const placement =
+        window.innerHeight - rect.bottom >= estimatedMenuHeight
+          ? "bottom"
+          : "top";
+      const top = placement === "bottom" ? rect.bottom + gap : rect.top - gap;
+      const left = Math.min(
+        Math.max(gap, rect.right - menuWidth),
+        window.innerWidth - menuWidth - gap,
+      );
+
+      setMenuPosition({ top, left, placement });
+    }
+
+    setOpen((value) => !value);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        menuRef.current?.contains(target) ||
+        buttonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setOpen(false);
+    };
+    const handleScroll = () => setOpen(false);
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("scroll", handleScroll, { capture: true });
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("scroll", handleScroll, { capture: true });
+    };
+  }, [open]);
+
+  return (
+    <div className="flex justify-end">
+      <button
+        ref={buttonRef}
+        type="button"
+        title="Buka menu aksi"
+        aria-label="Buka menu aksi kontrak"
+        aria-expanded={open}
+        onClick={handleToggleMenu}
+        className="p-1.5 rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+
+      {open &&
+        menuPosition &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+            className={`fixed z-[100] w-56 overflow-hidden rounded-lg border bg-card py-1 shadow-xl ${menuPosition.placement === "top" ? "-translate-y-full" : ""}`}
+          >
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onView();
+                setOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+            >
+              <Eye className="h-4 w-4 text-muted-foreground opacity-70" />
+              Lihat Detail
+            </button>
+
+            {canCreateFromContract && (
+              <button
+                type="button"
+                disabled={contract.has_open_renewal}
+                title={
+                  contract.has_open_renewal
+                    ? "Kontrak turunan untuk kontrak ini masih diproses"
+                    : undefined
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (contract.has_open_renewal) return;
+                  onCreateFromContract();
+                  setOpen(false);
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+              >
+                <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
+                {contract.has_open_renewal
+                  ? "Kontrak sedang diproses"
+                  : "Buat Kontrak Baru"}
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
+    </div>
   );
 }
 
@@ -607,9 +745,10 @@ export default function ContractArchivePage() {
                             className="px-3 py-4 text-right"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => {
+                            <ArchiveActionMenu
+                              contract={contract}
+                              canCreateContract={canCreateContract}
+                              onView={() => {
                                   if (contract.contract_type === "external") {
                                     if (contract.signed_document_url) {
                                       window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
@@ -621,37 +760,11 @@ export default function ContractArchivePage() {
                                       state: { returnTo: "/contracts/archive" },
                                     });
                                   }
-                                }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                Detail
-                              </button>
-
-                              {canCreateContract &&
-                                contract.status === "expired" &&
-                                contract.contract_type !== "external" && (
-                                  <button
-                                    type="button"
-                                    disabled={contract.has_open_renewal}
-                                    onClick={() => {
-                                      if (contract.has_open_renewal) return;
-                                      setRenewTarget(contract);
-                                    }}
-                                    title={
-                                      contract.has_open_renewal
-                                        ? "Kontrak turunan untuk kontrak ini masih diproses"
-                                        : undefined
-                                    }
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
-                                  >
-                                    <RefreshCw className="h-3.5 w-3.5" />
-                                    {contract.has_open_renewal
-                                      ? "Kontrak sedang diproses"
-                                      : "Buat Kontrak Baru"}
-                                  </button>
-                                )}
-                            </div>
+                              }}
+                              onCreateFromContract={() =>
+                                setRenewTarget(contract)
+                              }
+                            />
                           </td>
                         )}
                       </tr>
