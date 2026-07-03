@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  RefreshCw,
 } from "lucide-react";
 import Pagination from "@/components/Pagination";
 import { fetchContracts } from "@/services/contract.service";
@@ -25,6 +26,8 @@ import { useContractFilter } from "@/hooks/useContractFilter";
 import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
 import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
+import { usePermissions } from "@/contexts/PermissionContext";
+import ConfirmModal from "@/components/modal/common/ConfirmModal";
 
 const PAGE_SIZE = 10;
 
@@ -229,13 +232,16 @@ export default function ContractArchivePage() {
   );
   const [viewTerminationTarget, setViewTerminationTarget] =
     useState<Termination | null>(null);
+  const [renewTarget, setRenewTarget] = useState<ContractRow | null>(null);
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
     [],
   );
 
   const { roles } = useAuth();
+  const { hasAnyPermission } = usePermissions();
   const isHrd = roles.includes("hrd");
   const isManager = roles.includes("manager");
+  const canCreateContract = hasAnyPermission(["create.contract"]);
 
   // Load field definitions
   useEffect(() => {
@@ -601,25 +607,51 @@ export default function ContractArchivePage() {
                             className="px-3 py-4 text-right"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <button
-                              onClick={() => {
-                                if (contract.contract_type === "external") {
-                                  if (contract.signed_document_url) {
-                                    window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  if (contract.contract_type === "external") {
+                                    if (contract.signed_document_url) {
+                                      window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                                    } else {
+                                      toast.error("Dokumen kontrak tidak ditemukan.");
+                                    }
                                   } else {
-                                    toast.error("Dokumen kontrak tidak ditemukan.");
+                                    navigate(`/contracts/${contract.id}/view`, {
+                                      state: { returnTo: "/contracts/archive" },
+                                    });
                                   }
-                                } else {
-                                  navigate(`/contracts/${contract.id}/view`, {
-                                    state: { returnTo: "/contracts/archive" },
-                                  });
-                                }
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-                            >
-                              <Eye className="h-3.5 w-3.5" />
-                              Detail
-                            </button>
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Detail
+                              </button>
+
+                              {canCreateContract &&
+                                contract.status === "expired" &&
+                                contract.contract_type !== "external" && (
+                                  <button
+                                    type="button"
+                                    disabled={contract.has_open_renewal}
+                                    onClick={() => {
+                                      if (contract.has_open_renewal) return;
+                                      setRenewTarget(contract);
+                                    }}
+                                    title={
+                                      contract.has_open_renewal
+                                        ? "Kontrak turunan untuk kontrak ini masih diproses"
+                                        : undefined
+                                    }
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                    {contract.has_open_renewal
+                                      ? "Kontrak sedang diproses"
+                                      : "Buat Kontrak Baru"}
+                                  </button>
+                                )}
+                            </div>
                           </td>
                         )}
                       </tr>
@@ -681,6 +713,34 @@ export default function ContractArchivePage() {
         <TerminationDetailModal
           termination={viewTerminationTarget}
           onClose={() => setViewTerminationTarget(null)}
+        />
+      )}
+
+      {renewTarget && (
+        <ConfirmModal
+          title="Buat Kontrak Baru"
+          message={
+            <>
+              Editor akan memuat salinan versi terakhir dari{" "}
+              <span className="font-medium text-foreground">
+                {renewTarget.title}
+              </span>
+              . Nomor kontrak akan dibuat baru dan periode perlu diisi ulang.
+            </>
+          }
+          icon={RefreshCw}
+          tone="success"
+          confirmLabel="Lanjutkan ke Editor"
+          onClose={() => setRenewTarget(null)}
+          onConfirm={() => {
+            navigate("/contracts/create", {
+              state: {
+                renewFromId: renewTarget.id,
+                returnTo: "/contracts/archive",
+              },
+            });
+            setRenewTarget(null);
+          }}
         />
       )}
     </div>
