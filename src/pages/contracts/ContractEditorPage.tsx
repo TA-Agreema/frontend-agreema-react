@@ -253,6 +253,8 @@ export default function ContractEditorPage() {
 
   // Form
   const [contractNumber, setContractNumber] = useState("");
+  const [isGeneratingContractNumber, setIsGeneratingContractNumber] =
+    useState(!isEdit);
   const [externalContractNumber, setExternalContractNumber] = useState("");
   const [title, setTitle] = useState(
     initialTemplate?.name ||
@@ -362,8 +364,9 @@ export default function ContractEditorPage() {
       generateContractNumber()
         .then((num) => setContractNumber(num))
         .catch(() => {
-          /* silent — user can type manually */
-        });
+          /* silent — user can generate ulang */
+        })
+        .finally(() => setIsGeneratingContractNumber(false));
     }
   }, [refreshFields, isEdit]);
 
@@ -1198,6 +1201,7 @@ export default function ContractEditorPage() {
               maxSize={SIDEBAR_MAX_PX}>
               <ContractEditorLeftSidebar
                 contractNumber={contractNumber}
+                isGeneratingContractNumber={isGeneratingContractNumber}
                 externalContractNumber={externalContractNumber}
                 title={title}
                 startDate={startDate}
@@ -1216,11 +1220,13 @@ export default function ContractEditorPage() {
                 onStartDateChange={setStartDate}
                 onEndDateChange={setEndDate}
                 onPartnerNameChange={setSelectedPartnerName}
-                onRegenerateContractNumber={() =>
+                onRegenerateContractNumber={() => {
+                  setIsGeneratingContractNumber(true);
                   generateContractNumber(selectedTemplate?.category_id)
                     .then(setContractNumber)
                     .catch(() => { })
-                }
+                    .finally(() => setIsGeneratingContractNumber(false));
+                }}
                 onUpdateSigner={updateSigner}
                 onRemoveSigner={removeSigner}
                 onAddSignerClick={() => setShowSignerTypeModal(true)}

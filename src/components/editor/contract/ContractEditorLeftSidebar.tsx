@@ -1,4 +1,4 @@
-import { ArrowLeft, GripVertical, Plus } from "lucide-react";
+import { ArrowLeft, GripVertical, Plus, RefreshCw } from "lucide-react";
 import type { Category } from "@/types/category";
 import type { TemplateOption } from "@/components/modal/template/TemplateSelectModal";
 import {
@@ -29,6 +29,7 @@ export type InternalSignerUser = {
 
 type ContractEditorLeftSidebarProps = {
   contractNumber: string;
+  isGeneratingContractNumber: boolean;
   externalContractNumber: string;
   title: string;
   startDate: string;
@@ -55,6 +56,7 @@ type ContractEditorLeftSidebarProps = {
 
 export function ContractEditorLeftSidebar({
   contractNumber,
+  isGeneratingContractNumber,
   externalContractNumber,
   title,
   startDate,
@@ -178,23 +180,33 @@ export function ContractEditorLeftSidebar({
 
           <ContractFormField label="Nomor Kontrak Internal">
             <div className="flex gap-1.5">
-              <input
-                value={contractNumber}
-                onChange={(event) =>
-                  onContractNumberChange(event.target.value)
-                }
-                placeholder="XX-XX/SLAB/X/XXXX"
-                className={`${inputCls} flex-1 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
-                disabled={disabled}
-              />
+              {isGeneratingContractNumber ? (
+                <div
+                  aria-label="Sedang membuat nomor kontrak"
+                  className="h-9 flex-1 animate-pulse rounded-md bg-gray-200"
+                />
+              ) : (
+                <input
+                  value={contractNumber}
+                  onChange={(event) =>
+                    onContractNumberChange(event.target.value)
+                  }
+                  placeholder="XX-XX/SLAB/X/XXXX"
+                  className={`${inputCls} flex-1 ${disabled ? "opacity-50 bg-gray-100 cursor-not-allowed" : ""}`}
+                  disabled={disabled}
+                />
+              )}
               {!isEdit && !disabled && (
                 <button
                   type="button"
                   title="Generate ulang nomor kontrak"
                   onClick={onRegenerateContractNumber}
-                  className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0"
+                  disabled={isGeneratingContractNumber}
+                  className="px-2 py-1.5 border border-gray-200 rounded-md text-gray-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors text-xs shrink-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:text-gray-400 disabled:hover:border-gray-200"
                 >
-                  ↺
+                  <RefreshCw
+                    className={`h-4 w-4 ${isGeneratingContractNumber ? "animate-spin" : ""}`}
+                  />
                 </button>
               )}
             </div>
