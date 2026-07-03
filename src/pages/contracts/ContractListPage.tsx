@@ -100,6 +100,7 @@ export interface ContractRow {
     title: string | null;
   } | null;
   renewal_count?: number;
+  has_open_renewal?: boolean;
 }
 
 const PAGE_SIZE = 4;

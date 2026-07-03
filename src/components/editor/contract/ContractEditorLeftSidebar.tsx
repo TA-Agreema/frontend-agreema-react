@@ -138,6 +138,11 @@ export function ContractEditorLeftSidebar({
             </div>
           </div>
 
+          <p className="text-[10px] leading-relaxed text-gray-500">
+            <span className="font-bold text-red-500">*</span> Wajib diisi
+            sebelum kontrak diajukan.
+          </p>
+
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 space-y-1.5">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               Seret ke Dokumen
@@ -213,7 +218,7 @@ export function ContractEditorLeftSidebar({
             )}
           </ContractFormField>
 
-          <ContractFormField label="Judul Dokumen">
+          <ContractFormField label="Judul Dokumen" required>
             <input
               value={title}
               onChange={(event) => onTitleChange(event.target.value)}
@@ -223,7 +228,7 @@ export function ContractEditorLeftSidebar({
             />
           </ContractFormField>
 
-          <ContractFormField label="Tanggal Mulai">
+          <ContractFormField label="Tanggal Mulai" required>
             <input
               type="date"
               min={getTodayString()}
@@ -234,7 +239,7 @@ export function ContractEditorLeftSidebar({
             />
           </ContractFormField>
 
-          <ContractFormField label="Tanggal Selesai">
+          <ContractFormField label="Tanggal Selesai" required>
             <input
               type="date"
               value={endDate}
@@ -244,7 +249,7 @@ export function ContractEditorLeftSidebar({
             />
           </ContractFormField>
 
-          <ContractFormField label="Mitra">
+          <ContractFormField label="Mitra" required>
             <input
               type="text"
               value={selectedPartnerName}
@@ -269,7 +274,12 @@ export function ContractEditorLeftSidebar({
           </ContractFormField>
 
           <div className="space-y-2.5 pt-0.5">
-            <p className="text-xs font-bold text-gray-700">Penandatangan</p>
+            <p className="text-xs font-bold text-gray-700">
+              Penandatangan
+              <span className="ml-0.5 text-red-500" aria-hidden="true">
+                *
+              </span>
+            </p>
             {signers.map((signer) => (
               <ContractSignerRow
                 key={signer.id}

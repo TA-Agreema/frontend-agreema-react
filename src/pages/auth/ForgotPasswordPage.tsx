@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2 } from "lucide-react";
+import { isAxiosError } from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,10 +45,23 @@ export default function ForgotPasswordPage() {
     try {
       const response = await requestPasswordReset(data.email);
       setMessage(response.message);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (isAxiosError(err) && err.response?.status === 422) {
+        const emailError = err.response.data?.errors?.email?.[0];
+        if (emailError) {
+          form.setError("email", {
+            type: "server",
+            message: emailError,
+          });
+          return;
+        }
+      }
+
       setError(
-        err?.response?.data?.message ??
-          "Gagal mengirim email reset password. Silakan coba lagi.",
+        isAxiosError(err)
+          ? err.response?.data?.message ??
+              "Gagal mengirim email reset password. Silakan coba lagi."
+          : "Gagal mengirim email reset password. Silakan coba lagi.",
       );
     } finally {
       setIsLoading(false);

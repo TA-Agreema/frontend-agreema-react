@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -155,15 +156,36 @@ function RowMenu({
   onDownloadPdf: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{
+    top: number;
+    left: number;
+    placement: "top" | "bottom";
+  } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setDropUp(window.innerHeight - rect.bottom < 200);
-  }, [open]);
+  const handleToggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const menuWidth = 208;
+      const estimatedMenuHeight = 280;
+      const gap = 4;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const placement =
+        spaceBelow >= estimatedMenuHeight ? "bottom" : "top";
+      const top = placement === "bottom" ? rect.bottom + gap : rect.top - gap;
+      const left = Math.min(
+        Math.max(gap, rect.right - menuWidth),
+        window.innerWidth - menuWidth - gap,
+      );
+
+      setMenuPosition({ top, left, placement });
+    }
+
+    setOpen((value) => !value);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -184,7 +206,10 @@ function RowMenu({
   }, [open]);
 
   const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
-  const canRenewThisContract = canRenewContract && contract.contract_type !== "external";
+  const canRenewThisContract =
+    canRenewContract &&
+    contract.contract_type !== "external" &&
+    contract.status === "active";
   const canAddAddendum = !hasPendingTermination;
   const canTerminate = !hasPendingTermination;
 
@@ -192,16 +217,17 @@ function RowMenu({
     <div className="relative flex justify-end">
       <button
         ref={buttonRef}
-        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        onClick={handleToggleMenu}
         className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
 
-      {open && (
+      {open && menuPosition && createPortal(
         <div
           ref={menuRef}
-          className={`absolute right-0 w-52 rounded-lg border bg-card shadow-xl z-50 overflow-hidden py-1 ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}`}
+          style={{ top: menuPosition.top, left: menuPosition.left }}
+          className={`fixed w-52 rounded-lg border bg-card shadow-xl z-[100] overflow-hidden py-1 ${menuPosition.placement === "top" ? "-translate-y-full" : ""}`}
         >
           <button
             onClick={(e) => { e.stopPropagation(); onView(); setOpen(false); }}
@@ -224,11 +250,25 @@ function RowMenu({
 
           {canRenewThisContract && isHrd && (
             <button
-              onClick={(e) => { e.stopPropagation(); onRenew(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
+              type="button"
+              disabled={contract.has_open_renewal}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (contract.has_open_renewal) return;
+                onRenew();
+                setOpen(false);
+              }}
+              title={
+                contract.has_open_renewal
+                  ? "Kontrak turunan untuk kontrak ini masih diproses"
+                  : undefined
+              }
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
             >
               <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
-              Perpanjang Kontrak
+              {contract.has_open_renewal
+                ? "Perpanjangan sedang diproses"
+                : "Perpanjang Kontrak"}
             </button>
           )}
 
@@ -261,7 +301,8 @@ function RowMenu({
               Hapus
             </button>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

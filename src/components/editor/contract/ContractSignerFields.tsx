@@ -7,12 +7,24 @@ export const EDITOR_INPUT_CLASS =
 type ContractFormFieldProps = {
   label: string;
   children: ReactNode;
+  required?: boolean;
 };
 
-export function ContractFormField({ label, children }: ContractFormFieldProps) {
+export function ContractFormField({
+  label,
+  children,
+  required = false,
+}: ContractFormFieldProps) {
   return (
     <div className="space-y-1">
-      <label className="text-xs font-semibold text-gray-600">{label}</label>
+      <label className="text-xs font-semibold text-gray-600">
+        {label}
+        {required && (
+          <span className="ml-0.5 text-red-500" aria-hidden="true">
+            *
+          </span>
+        )}
+      </label>
       {children}
     </div>
   );
