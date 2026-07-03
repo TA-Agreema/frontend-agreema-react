@@ -57,11 +57,13 @@ export default function ForgotPasswordPage() {
         }
       }
 
+      const backendMessage = isAxiosError(err)
+        ? err.response?.data?.message
+        : null;
+
       setError(
-        isAxiosError(err)
-          ? err.response?.data?.message ??
-              "Gagal mengirim email reset password. Silakan coba lagi."
-          : "Gagal mengirim email reset password. Silakan coba lagi.",
+        backendMessage ??
+          "Gagal mengirim email reset password. Silakan coba lagi.",
       );
     } finally {
       setIsLoading(false);
