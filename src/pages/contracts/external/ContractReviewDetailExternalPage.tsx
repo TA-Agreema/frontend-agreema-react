@@ -23,6 +23,7 @@ import { isAxiosError } from "axios";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import { ContractDocumentPreview } from "@/components/editor/ContractDocumentPreview";
+import { ContractSignatureBox } from "@/components/editor/contract/ContractSignerFields";
 // import { AlertCircle } from "lucide-react";
 
 // Interface untuk data peninjauan
@@ -313,102 +314,32 @@ export default function ContractReviewDetailExternalPage() {
                   ) : (
                     /* Alur lama: TTD digital per signer */
                     <div className="flex justify-around gap-6 flex-wrap">
-                      {contract.signers.map((signer) => {
-                        const name =
-                          signer.signer_type === "internal"
-                            ? signer.user?.name
-                            : signer.signer_name;
-                        const role =
-                          signer.signer_type === "internal"
-                            ? signer.user?.job_title
-                            : signer.signer_role;
-                        const email = signer.external_email;
-
+                       {contract.signers.map((signer) => {
                         const latestSignature =
                           signer.signatures && signer.signatures.length > 0
                             ? signer.signatures[signer.signatures.length - 1]
                             : null;
-
-                        const signatureImage =
-                          latestSignature?.signature_path ?? null;
+                        const signatureImage = latestSignature?.signature_path ?? null;
                         const signedAt = latestSignature?.signed_at ?? null;
-                        const isSigned = !!signatureImage;
-                        console.log('signer:', signer.id, signer.signer_type, 'signatures:', signer.signatures, 'isSigned:', isSigned);
-
-                        return (
-                          <div
+                        
+                         return (
+                          <ContractSignatureBox
                             key={signer.id}
-                            className="flex flex-col items-start gap-2 min-w-50"
-                          >
-                            {/* Tanggal — tampil jika sudah tanda tangan */}
-                            <p className="text-xs text-gray-400">
-                              Tanggal:{" "}
-                              {isSigned && signedAt
-                                ? new Date(signedAt).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
-                                : "[DD/MM/YYYY]"}
-                            </p>
-
-                            {/* Area Tanda Tangan */}
-                            <div
-                              className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${isSigned ? "w-45 h-25" : "w-full h-25"
-                                }`}
-                            >
-                              {isSigned ? (
-                                // Siapapun yang sudah TTD — tampilkan gambar
-                                <img
-                                  src={signatureImage}
-                                  alt="Tanda Tangan"
-                                  className="h-full w-full object-contain p-1"
-                                />
-                              ) : signer.signer_type === "external" ? (
-                                signatureImage ? (
-                                  <img
-                                    src={signatureImage}
-                                    alt="Tanda Tangan Eksternal"
-                                    className="max-h-16 max-w-full object-contain"
-                                  />
-                                ) : (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Clock className="h-4 w-4 text-gray-300" />
-                                    <span className="text-[10px] text-gray-300 uppercase tracking-widest text-center px-2">
-                                      Menunggu Tanda Tangan
-                                    </span>
-                                  </div>
-                                )
-                              ) : (
-                                <span className="text-xs text-gray-300 uppercase tracking-widest">
-                                  Area Tanda Tangan
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Badge status */}
-                            {!isSigned && (
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${signer.signer_type === "external"
-                                  ? "bg-sky-100 text-sky-600"
-                                  : "bg-gray-100 text-gray-400"
-                                  }`}
-                              >
-                                <Clock className="h-3 w-3" />
-                                {signer.signer_type === "external"
-                                  ? "Menunggu via Token"
-                                  : "Belum Ditandatangani"}
-                              </span>
-                            )}
-
-                            <p className="text-sm font-bold text-gray-900 mt-1">{name}</p>
-                            {role && <p className="text-xs text-gray-500">{role}</p>}
-                            {email && (
-                              <p className="text-xs text-gray-400 flex items-center gap-1">
-                                ✉ {email}
-                              </p>
-                            )}
-                          </div>
+                            isExternal={signer.signer_type === "external"}
+                            name={
+                              signer.signer_type === "internal"
+                                ? signer.user?.name
+                                : signer.signer_name || undefined
+                            }
+                            title={
+                              signer.signer_type === "internal"
+                                ? signer.user?.job_title || undefined
+                                : signer.signer_role || undefined
+                            }
+                            email={signer.external_email || undefined}
+                            date={signedAt || undefined}
+                            signaturePath={signatureImage}
+                          />
                         );
                       })}
                     </div>

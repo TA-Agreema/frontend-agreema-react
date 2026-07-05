@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Bell, X, CheckCheck, AlertTriangle, CheckCircle, RotateCcw, XCircle, FileCheck, FileUp, Clock } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/hooks/use-notifications";
 import type { AppNotification } from "@/services/notification.service";
 
@@ -77,12 +78,6 @@ const TYPE_CONFIG: Record<string, {
     iconBg: "bg-emerald-100",
     iconColor: "text-emerald-600",
   },
-  contract_expiring: {
-    label: "Kontrak Akan Kedaluwarsa",
-    icon: AlertTriangle,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-500",
-  },
   contract_addendum: {
     label: "Addendum Ditambahkan",
     icon: FileCheck,
@@ -102,11 +97,23 @@ const TYPE_CONFIG: Record<string, {
     iconColor: "text-red-600",
   },
   partner_contract_added: {
-  label: "Kontrak Mitra Ditambahkan",
-  icon: FileUp,
-  iconBg: "bg-blue-100",
-  iconColor: "text-blue-600",
-},
+    label: "Kontrak Mitra Ditambahkan",
+    icon: FileUp,
+    iconBg: "bg-blue-100",
+    iconColor: "text-blue-600",
+  },
+  contract_expiring: {
+    label: "Kontrak Akan Kedaluwarsa",
+    icon: AlertTriangle,
+    iconBg: "bg-orange-100",
+    iconColor: "text-orange-500",
+  },
+  contract_expired: {
+    label: "Kontrak Kedaluwarsa",
+    icon: AlertTriangle,
+    iconBg: "bg-red-100",
+    iconColor: "text-red-500",
+  },
 };
 
 const DEFAULT_CONFIG = {
@@ -120,9 +127,9 @@ function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString("id-ID", {
     year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }) + " " + date.toLocaleTimeString("id-ID", {
+    month: "long",
+    day: "numeric",
+  }) + " pukul " + date.toLocaleTimeString("id-ID", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -131,6 +138,8 @@ function formatDate(dateStr: string) {
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+  const { roles } = useAuth(); 
+  const isManager = roles.includes("manager");
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => {
@@ -168,10 +177,12 @@ export function NotificationBell() {
       return;
     }
 
-    const managerTypes = ["review_requested"];
+    const editorTypes = ["manager_revision_requested", "external_revision_requested"];
 
-    if (managerTypes.includes(notif.type)) {
+    if (isManager) {
       navigate(`/approvals/${notif.contract_id}`);
+    } else if (editorTypes.includes(notif.type)) {
+      navigate(`/contracts/${notif.contract_id}/edit`);
     } else {
       navigate(`/contracts/${notif.contract_id}/view`, {
         state: { returnTo: `${location.pathname}${location.search}` },

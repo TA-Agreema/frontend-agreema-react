@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   CheckCircle,
   Loader2,
-  Clock,
   FileText,
   Download,
   // FileSignature,
@@ -21,13 +20,13 @@ import { downloadBlobResponse } from "@/services/download.service";
 // import type { Addendum } from "@/pages/contracts/ContractListPage";
 import ContractApprovalSignPage from "@/pages/contracts/ContractApprovalSignPage";
 import ContractRejectPage from "@/pages/contracts/ContractRejectPage";
-// import ContractStatusSidebar from "@/components/sidebar/ContractStatusSidebar";
 import type { StatusEntry, FeedbackEntry } from "@/types/statusLogs";
 import ReviewRightSidebar from "@/components/ReviewRightSidebarManager";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
 import { AlertCircle } from "lucide-react";
 import { ContractDocumentPreview } from "@/components/editor/ContractDocumentPreview";
 import { Button } from "@/components/ui/button";
+import { ContractSignatureBox } from "@/components/editor/contract/ContractSignerFields";
 
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
@@ -285,124 +284,69 @@ export default function ContractReviewDetailPage() {
               </div>
             )} */}
 
-              {/* Tanda Tangan */}
-              {contract.signers && contract.signers.length > 0 && (
-                <div className="border-t border-gray-200 px-8 py-10">
-                  <h2 className="text-center text-sm font-semibold tracking-widest text-gray-700 uppercase mb-8">
-                    Tanda Tangan
-                  </h2>
-                  {contract.signed_document_url ? (
-                    <div className="flex flex-col items-center gap-4 py-4">
-                      <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
-                        <CheckCircle className="h-8 w-8 text-emerald-600 shrink-0" />
-                        <div>
-                          <p className="text-sm font-semibold text-emerald-800">
-                            Dokumen Bertanda Tangan Telah Diupload
-                          </p>
-                          <p className="text-xs text-emerald-600 mt-0.5">
-                            Dokumen fisik yang sudah ditandatangani kedua pihak tersedia.
-                          </p>
-                        </div>
+            {/* Tanda Tangan */}
+            {contract.signers && contract.signers.length > 0 && (
+              <div className="border-t border-gray-200 px-8 py-10">
+                <h2 className="text-center text-sm font-semibold tracking-widest text-gray-700 uppercase mb-8">
+                  Tanda Tangan
+                </h2>
+                {contract.signed_document_url ? (
+                  <div className="flex flex-col items-center gap-4 py-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
+                      <CheckCircle className="h-8 w-8 text-emerald-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-emerald-800">
+                          Dokumen Bertanda Tangan Telah Diupload
+                        </p>
+                        <p className="text-xs text-emerald-600 mt-0.5">
+                          Dokumen fisik yang sudah ditandatangani kedua pihak tersedia.
+                        </p>
                       </div>
-                      <a
-                        href={contract.signed_document_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
-                      >
-                        <FileText className="h-4 w-4 text-emerald-600" />
-                        Lihat Dokumen Bertanda Tangan
-                      </a>
                     </div>
-                  ) : (
-                    <div className="flex justify-around gap-6 flex-wrap">
-                      {contract.signers.map((signer) => {
-                        const name =
-                          signer.signer_type === "internal"
-                            ? signer.user?.name
-                            : signer.signer_name;
-                        const role =
-                          signer.signer_type === "internal"
-                            ? signer.user?.job_title
-                            : signer.signer_role;
-                        const email = signer.external_email;
-                        const latestSignature =
-                          signer.signatures && signer.signatures.length > 0
-                            ? signer.signatures.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0] ?? null
-                            : null;
-                        const signatureImage = latestSignature?.signature_path ?? null;
-                        const signedAt = latestSignature?.signed_at ?? null;
-                        const isSigned = !!signatureImage;
+                    <a
+                      href={contract.signed_document_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+                    >
+                      <FileText className="h-4 w-4 text-emerald-600" />
+                      Lihat Dokumen Bertanda Tangan
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex justify-around gap-6 flex-wrap">
+                    {contract.signers.map((signer) => {
+                      const latestSignature =
+                        signer.signatures && signer.signatures.length > 0
+                          ? signer.signatures.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0] ?? null
+                          : null;
+                      const signatureImage = latestSignature?.signature_path ?? null;
+                      const signedAt = latestSignature?.signed_at ?? null;
 
-                        return (
-                          <div key={signer.id} className="flex flex-col items-start gap-2 min-w-50">
-                            <p className="text-xs text-gray-400">
-                              Tanggal:{" "}
-                              {isSigned && signedAt
-                                ? new Date(signedAt).toLocaleDateString("id-ID", {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                })
-                                : "[DD/MM/YYYY]"}
-                            </p>
-                            <div
-                              className={`border border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden ${isSigned ? "w-45 h-25" : "w-full h-25"
-                                }`}
-                            >
-                              {signer.signer_type === "internal" && isSigned ? (
-                                <img
-                                  src={signatureImage}
-                                  alt="Tanda Tangan"
-                                  className="h-full w-full object-contain p-1"
-                                />
-                              ) : signer.signer_type === "external" ? (
-                                signatureImage ? (
-                                  <img
-                                    src={signatureImage}
-                                    alt="Tanda Tangan Eksternal"
-                                    className="max-h-16 max-w-full object-contain"
-                                  />
-                                ) : (
-                                  <div className="flex flex-col items-center gap-1">
-                                    <Clock className="h-4 w-4 text-gray-300" />
-                                    <span className="text-[10px] text-gray-300 uppercase tracking-widest text-center px-2">
-                                      Menunggu Tanda Tangan
-                                    </span>
-                                  </div>
-                                )
-                              ) : (
-                                <span className="text-xs text-gray-300 uppercase tracking-widest">
-                                  Area Tanda Tangan
-                                </span>
-                              )}
-                            </div>
-                            {signer.signer_type === "internal" && !isSigned && (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-gray-100 text-gray-400">
-                                <Clock className="h-3 w-3" />
-                                Belum Ditandatangani
-                              </span>
-                            )}
-                            {signer.signer_type === "external" && !isSigned && (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium bg-sky-100 text-sky-600">
-                                <Clock className="h-3 w-3" />
-                                Menunggu via Token
-                              </span>
-                            )}
-                            <p className="text-sm font-bold text-gray-900 mt-1">{name}</p>
-                            {role && <p className="text-xs text-gray-500">{role}</p>}
-                            {email && (
-                              <p className="text-xs text-gray-400 flex items-center gap-1">
-                                ✉ {email}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+                      return (
+                        <ContractSignatureBox
+                          key={signer.id}
+                          isExternal={signer.signer_type === "external"}
+                          name={
+                            signer.signer_type === "internal"
+                              ? signer.user?.name
+                              : signer.signer_name || undefined
+                          }
+                          title={
+                            signer.signer_type === "internal"
+                              ? signer.user?.job_title || undefined
+                              : signer.signer_role || undefined
+                          }
+                          email={signer.external_email || undefined}
+                          date={signedAt || undefined}
+                          signaturePath={signatureImage}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             </ContractDocumentPreview>
           </div>
         </div>

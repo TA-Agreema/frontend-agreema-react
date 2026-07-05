@@ -225,19 +225,17 @@ export function ContractSignatureBox({
   fontFamily,
 }: ContractSignatureBoxProps) {
   const formattedDate = date
-    ? new Date(date)
-        .toLocaleDateString("id-ID", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-        .replace(/\//g, "/")
-    : "[DD/MM/YYYY]";
+  ? new Date(date + (date.includes("T") ? "" : "T00:00:00")).toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+  : "[Menunggu Tanda Tangan]";
   const hasSignature = Boolean(signaturePath);
 
   return (
     <div
-      className="flex w-[250px] flex-col items-center gap-2 text-center text-gray-900"
+      className="flex w-62.5 flex-col items-center gap-2 text-center text-gray-900"
       style={fontFamily ? { fontFamily } : undefined}
     >
       <p className="text-xs leading-none text-gray-700">

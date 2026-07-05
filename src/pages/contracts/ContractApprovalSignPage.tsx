@@ -125,7 +125,7 @@ useEffect(() => {
     };
 
     loadContract();
-  }, [id, isExternalMode]);
+  }, [id, isExternalMode, token]);
 
   const handleDownload = async () => {
     console.log("handleDownload called", { isExternalMode, id, token });
@@ -462,7 +462,7 @@ useEffect(() => {
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                     <span>
-                      Tanda tangan tersimpan secara otomatis di area canvas.
+                      Tanda tangan tersimpan secara otomatis.
                     </span>
                     <button
                       type="button"
