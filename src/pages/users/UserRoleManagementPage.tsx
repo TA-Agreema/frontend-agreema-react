@@ -181,7 +181,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRole, setSelectedRole] = useState("");
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     userId: number | null;
@@ -260,7 +260,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
 
   const handleAdd = () => {
     setEditingUser(null);
-    setSelectedRoles([]);
+    setSelectedRole("");
     form.reset({
       name: "",
       email: "",
@@ -274,7 +274,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
-    setSelectedRoles(user.roles ?? []);
+    setSelectedRole(user.roles?.[0] ?? "");
     form.reset({
       name: user.name,
       email: user.email,
@@ -327,6 +327,11 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
           return;
         }
 
+        if (!selectedRole) {
+          toast.error("Role wajib dipilih");
+          return;
+        }
+
         const normalizedEmail = data.email.trim().toLowerCase();
         const emailAlreadyExists = users.some(
           (user) => user.email.trim().toLowerCase() === normalizedEmail,
@@ -348,7 +353,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
           job_title: data.job_title,
           department: data.department,
           is_active: data.is_active,
-          roles: selectedRoles,
+          role: selectedRole,
         });
         toast.success("User dibuat", {
           description: `${data.name} berhasil ditambahkan.`,
@@ -382,11 +387,6 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
       setIsSubmitting(false);
     }
   };
-
-  const toggleRole = (r: string) =>
-    setSelectedRoles((p) =>
-      p.includes(r) ? p.filter((x) => x !== r) : [...p, r],
-    );
 
   return (
     <div className="rounded-xl border bg-card overflow-hidden shadow-sm">
@@ -505,8 +505,8 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
         onOpenChange={setIsDialogOpen}
         form={form}
         roles={roles}
-        selectedRoles={selectedRoles}
-        onToggleRole={toggleRole}
+        selectedRole={selectedRole}
+        onRoleChange={setSelectedRole}
         editingUser={editingUser}
         isSubmitting={isSubmitting}
         onSubmit={onSubmit}

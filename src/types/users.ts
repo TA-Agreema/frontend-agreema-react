@@ -16,7 +16,7 @@ export interface CreateUserRequest {
     job_title: string;
     department: string;
     is_active: number;
-    roles: string[];
+    role: string;
 }
 
 export interface UpdateUserRequest {
@@ -27,5 +27,5 @@ export interface UpdateUserRequest {
 }
 
 export interface UpdateUserRolesRequest {
-    roles: string[];
+    role: string;
 }
