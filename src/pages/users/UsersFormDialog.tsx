@@ -38,8 +38,8 @@ interface UserFormDialogProps {
     form: UseFormReturn<UserFormValues>
 
     roles: Role[]
-    selectedRoles: string[]
-    onToggleRole: (roleName: string) => void
+    selectedRole: string
+    onRoleChange: (roleName: string) => void
 
     editingUser: User | null
     isSubmitting: boolean
@@ -52,8 +52,8 @@ export default function UserFormDialog({
     onOpenChange,
     form,
     roles,
-    selectedRoles,
-    onToggleRole,
+    selectedRole,
+    onRoleChange,
     editingUser,
     isSubmitting,
     onSubmit,
@@ -181,22 +181,19 @@ export default function UserFormDialog({
                         {!editingUser && (
                             <div className="space-y-2">
                                 <FormLabel>Role</FormLabel>
-                                <div className="flex flex-wrap gap-2">
+                                <select
+                                    value={selectedRole}
+                                    onChange={(event) => onRoleChange(event.target.value)}
+                                    required
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    <option value="" disabled>Pilih role</option>
                                     {roles.map((role) => (
-                                        <button
-                                            key={role.id}
-                                            type="button"
-                                            onClick={() => onToggleRole(role.name)}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium
-                        ${selectedRoles.includes(role.name)
-                                                    ? "bg-emerald-600 text-white"
-                                                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                                                }`}
-                                        >
+                                        <option key={role.id} value={role.name}>
                                             {role.name}
-                                        </button>
+                                        </option>
                                     ))}
-                                </div>
+                                </select>
                             </div>
                         )}
 
