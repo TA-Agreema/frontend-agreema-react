@@ -1296,7 +1296,7 @@ export default function ContractEditorPage() {
                             name={s.name || undefined}
                             title={s.title || undefined}
                             email={s.email || undefined}
-                            date={s.signedAt || startDate}
+                            date={s.signedAt || undefined}
                             signaturePath={s.signaturePath}
                             fontFamily={signatureFontFamily}
                           />

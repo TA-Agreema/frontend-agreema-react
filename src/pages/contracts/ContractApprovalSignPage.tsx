@@ -125,7 +125,7 @@ useEffect(() => {
     };
 
     loadContract();
-  }, [id, isExternalMode]);
+  }, [id, isExternalMode, token]);
 
   const handleDownload = async () => {
     console.log("handleDownload called", { isExternalMode, id, token });

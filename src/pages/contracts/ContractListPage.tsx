@@ -53,7 +53,6 @@ export type ContractStatus =
   | "signed"
   | "rejected"
   | "expired"
-  | "terminating"
   | "terminated";
 
 export interface Addendum {
@@ -142,10 +141,6 @@ const STATUS_CONFIG: Record<
   expired: {
     label: "Berakhir",
     className: "bg-slate-100 text-slate-500 border-slate-200",
-  },
-  terminating: {
-    label: "Akan Dihentikan",
-    className: "bg-orange-50 text-orange-700 border-orange-200",
   },
   terminated: {
     label: "Dihentikan",
@@ -718,7 +713,7 @@ export default function ContractListPage() {
       {/* Table Card */}
       <div className="rounded-xl border bg-card shadow-sm">
         {/* Table */}
-        <div className="overflow-x-auto min-h-[280px] pb-12">
+        <div className="overflow-x-auto min-h-70 pb-12">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
