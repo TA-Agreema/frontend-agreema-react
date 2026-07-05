@@ -152,7 +152,9 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Dokumen Pendukung</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Dokumen Pendukung <span className="text-red-500">*</span>
+                            </label>
                             <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
                                 <input type="file" id="file" className="hidden" accept=".pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
                                 <label htmlFor="file" className="cursor-pointer flex flex-col items-center justify-center gap-2">

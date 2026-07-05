@@ -19,7 +19,7 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Seluruh Kontrak"
           value={metrics.total_contracts?.toString() || "0"}
@@ -32,12 +32,12 @@ export default function AdminDashboard({ data }: { data: DashboardData }) {
           icon={TrendingUp}
           color="bg-emerald-600"
         />
-        <StatCard
+        {/* <StatCard
           title="Pertumbuhan Bulan Ini"
           value={metrics.growth ? `+${metrics.growth}%` : "0%"}
           icon={TrendingUp}
           color="bg-purple-600"
-        />
+        /> */}
         <StatCard
           title="Kontrak Lewat Waktu"
           value={metrics.overdue_contracts?.toString() || "0"}

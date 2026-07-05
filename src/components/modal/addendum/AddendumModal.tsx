@@ -216,7 +216,9 @@ export default function AddendumModal({
 
           {/* Upload Dokumen */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Dokumen Addendum</label>
+            <label className="text-sm font-medium text-foreground">
+              Dokumen Addendum <span className="text-red-500">*</span>
+            </label>
             <div
               onClick={() => fileRef.current?.click()}
               className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors py-5 px-4 text-center"
