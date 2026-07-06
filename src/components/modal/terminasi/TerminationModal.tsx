@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import { X, UploadCloud, AlertCircle } from "lucide-react";
+import {
+    X,
+    UploadCloud,
+    // AlertCircle 
+} from "lucide-react";
 import { createTermination } from "@/services/termination.service";
 import type { ContractRow } from "@/pages/contracts/ContractListPage";
 import type { Termination } from "@/types/termination";
@@ -8,48 +12,88 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-interface Props {
+interface TerminationFormData {
+    termination_number: string;
+    title: string;
+    termination_reason: string;
+    termination_note: string;
+    effective_date: string;
+    document: File | null;
+}
+
+const TERMINATION_EMPTY: TerminationFormData = {
+    termination_number: "",
+    title: "",
+    termination_reason: "",
+    termination_note: "",
+    effective_date: "",
+    document: null,
+};
+
+type LaravelValidationErrors = Partial<Record<keyof TerminationFormData, string[]>>;
+
+export default function TerminationModal({
+    contract,
+    onClose,
+    onSuccess
+}: {
     contract: ContractRow;
     onClose: () => void;
     onSuccess: (contractId: number, termination: Termination) => void;
-}
-
-export default function TerminationModal({ contract, onClose, onSuccess }: Props) {
+}) {
+    const [form, setForm] = useState<TerminationFormData>(TERMINATION_EMPTY);
     const [loading, setLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<LaravelValidationErrors>({});
 
-    const [formData, setFormData] = useState({
-        termination_number: "",
-        title: "",
-        termination_reason: "",
-        termination_note: "",
-        effective_date: "",
-    });
-    const [file, setFile] = useState<File | null>(null);
+    const set = (field: keyof TerminationFormData, value: string | File | null) => {
+        setForm((prev) => ({ ...prev, [field]: value }));
+
+        setFieldErrors((prev) => {
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
         setLoading(true);
-        setErrorMsg(null);
+        // setErrorMsg(null);
+        setFieldErrors({});
 
         try {
             const result = await createTermination(contract.id, {
-                ...formData,
-                document: file || undefined,
+                termination_number: form.termination_number.trim(),
+                title: form.title.trim(),
+                termination_reason: form.termination_reason.trim(),
+                termination_note: form.termination_note.trim() || undefined,
+                effective_date: form.effective_date,
+                document: form.document || undefined,
             });
+
             onSuccess(contract.id, result);
 
             toast.success("Terminasi Berhasil Diajukan!", {
-                description: `${contract.title} akan dihentikan pada ${formData.effective_date}.`,
+                description: `${contract.title} akan dihentikan pada ${form.effective_date}.`,
                 duration: 5000,
             });
+
             onClose();
         } catch (err: unknown) {
-            if (isAxiosError(err) && err.response?.data?.message) {
-                setErrorMsg(err.response.data.message);
-            } else {
-                setErrorMsg("Gagal membuat terminasi. Coba lagi.");
+            let msg = "Gagal membuat terminasi. Coba lagi.";
+
+            if (isAxiosError(err)) {
+                msg = err.response?.data?.message ?? msg;
+
+                if (err.response?.status === 422 && err.response.data?.errors) {
+                    setFieldErrors(err.response.data.errors);
+                }
             }
+
+            // setErrorMsg(msg);
+            toast.error("Gagal membuat terminasi.", { description: msg });
         } finally {
             setLoading(false);
         }
@@ -94,23 +138,36 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1">
-                    {errorMsg && (
+                    {/* {errorMsg && (
                         <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg flex items-start gap-2 text-sm">
                             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>{errorMsg}</span>
                         </div>
-                    )}
+                    )} */}
 
                     <form id="terminationForm" onSubmit={handleSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Nomor Terminasi <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nomor Terminasi <span className="text-red-500">*</span>
+                            </label>
+
                             <Input
-                                required
                                 type="text"
                                 placeholder="Contoh: TERM-001"
-                                value={formData.termination_number}
-                                onChange={(e) => setFormData(p => ({ ...p, termination_number: e.target.value }))}
+                                value={form.termination_number}
+                                onChange={(e) => set("termination_number", e.target.value)}
+                                className={
+                                    fieldErrors.termination_number
+                                        ? "border-red-500 focus-visible:ring-red-500"
+                                        : ""
+                                }
                             />
+
+                            {fieldErrors.termination_number && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    {fieldErrors.termination_number[0]}
+                                </p>
+                            )}
                         </div>
 
                         <div>
@@ -119,25 +176,42 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                                 required
                                 type="text"
                                 placeholder="Masukkan judul terminasi"
-                                value={formData.title}
-                                onChange={(e) => setFormData(p => ({ ...p, title: e.target.value }))}
+                                value={form.title}
+                                onChange={(e) => set("title", e.target.value)}
+                                className={
+                                    fieldErrors.title
+                                        ? "border-red-500 focus-visible:ring-red-500"
+                                        : ""
+                                }
                             />
+
+                            {fieldErrors.title && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    {fieldErrors.title[0]}
+                                </p>
+                            )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Alasan Terminasi <span className="text-red-500">*</span></label>
-                            <select required value={formData.termination_reason} onChange={(e) => setFormData(p => ({ ...p, termination_reason: e.target.value }))} className="w-full border rounded-lg px-3 h-9 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white border-gray-200">
+                            <select required value={form.termination_reason} onChange={(e) => set("termination_reason", e.target.value)} className="w-full border rounded-lg px-3 h-9 text-sm focus:ring-2 focus:ring-emerald-500 outline-none bg-white border-gray-200">
                                 <option value="">Pilih Alasan</option>
                                 <option value="Kesepakatan Bersama">Kesepakatan Bersama</option>
                                 <option value="Pelanggaran Kontrak">Pelanggaran Kontrak</option>
                                 <option value="Force Majeure">Force Majeure</option>
                                 <option value="Lainnya">Lainnya</option>
                             </select>
+
+                            {fieldErrors.termination_reason && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    {fieldErrors.termination_reason[0]}
+                                </p>
+                            )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Catatan Tambahan</label>
-                            <textarea value={formData.termination_note} onChange={(e) => setFormData(p => ({ ...p, termination_note: e.target.value }))} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none min-h-[80px] border-gray-200" />
+                            <textarea value={form.termination_note} onChange={(e) => set("termination_note", e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none min-h-[80px] border-gray-200" />
                         </div>
 
                         <div>
@@ -146,22 +220,43 @@ export default function TerminationModal({ contract, onClose, onSuccess }: Props
                                 required
                                 type="date"
                                 // min={getTodayString()}
-                                value={formData.effective_date}
-                                onChange={(e) => setFormData(p => ({ ...p, effective_date: e.target.value }))}
+                                value={form.effective_date}
+                                onChange={(e) => set("effective_date", e.target.value)}
                             />
                         </div>
-
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Dokumen Pendukung <span className="text-red-500">*</span>
                             </label>
-                            <div className="border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition-colors">
-                                <input type="file" id="file" className="hidden" accept=".pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-                                <label htmlFor="file" className="cursor-pointer flex flex-col items-center justify-center gap-2">
+
+                            <div
+                                className={`border-2 border-dashed rounded-lg p-4 text-center hover:bg-gray-50 transition-colors ${fieldErrors.document ? "border-red-500" : "border-gray-200"
+                                    }`}
+                            >
+                                <input
+                                    type="file"
+                                    id="file"
+                                    className="hidden"
+                                    accept=".pdf,application/pdf"
+                                    onChange={(e) => set("document", e.target.files?.[0] ?? null)}
+                                />
+
+                                <label
+                                    htmlFor="file"
+                                    className="cursor-pointer flex flex-col items-center justify-center gap-2"
+                                >
                                     <UploadCloud className="w-8 h-8 text-gray-400" />
-                                    <span className="text-sm text-gray-600">{file ? file.name : "Klik untuk unggah dokumen (PDF)"}</span>
+                                    <span className="text-sm text-gray-600">
+                                        {form.document ? form.document.name : "Klik untuk unggah dokumen PDF"}
+                                    </span>
                                 </label>
                             </div>
+
+                            {fieldErrors.document && (
+                                <p className="text-xs text-red-500 mt-1">
+                                    {fieldErrors.document[0]}
+                                </p>
+                            )}
                         </div>
                     </form>
                 </div>

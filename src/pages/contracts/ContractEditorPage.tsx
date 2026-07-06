@@ -827,15 +827,23 @@ export default function ContractEditorPage() {
 
   const getSubmitSignerValidationMessage = () => {
     const filledSigners = buildSignersPayload();
+    const internalSigners = filledSigners.filter(
+      (signer) => signer.type === "internal",
+    );
     const externalSigners = filledSigners.filter(
       (signer) => signer.type === "external",
     );
 
-    if (
-      !filledSigners.some((signer) => signer.type === "internal") ||
-      externalSigners.length === 0
-    ) {
-      return "Pengajuan membutuhkan minimal satu penandatangan internal dan satu penandatangan eksternal.";
+    if (filledSigners.length !== 2) {
+      return "Pengajuan membutuhkan tepat dua penandatangan.";
+    }
+
+    const isValidComposition =
+      (internalSigners.length === 2 && externalSigners.length === 0) ||
+      (internalSigners.length === 1 && externalSigners.length === 1);
+
+    if (!isValidComposition) {
+      return "Kombinasi penandatangan hanya boleh 2 internal atau 1 internal dan 1 eksternal.";
     }
 
     const incompleteExternalSigner = externalSigners.find(
