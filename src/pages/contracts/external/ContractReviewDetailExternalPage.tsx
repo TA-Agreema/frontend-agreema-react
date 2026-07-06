@@ -534,7 +534,7 @@ export default function ContractReviewDetailExternalPage() {
 
             <p className="text-sm text-gray-600 leading-relaxed">
               Apakah Anda yakin ingin <strong>menyetujui</strong> kontrak ini?
-              Dengan menyetujui, kontrak akan resmi aktif dan berlaku.
+              Dengan menyetujui, kontrak akan aktif dan berlaku sesuai periode yang ditentukan.
             </p>
 
             {submitError && (

@@ -30,7 +30,7 @@ export default function ContractRejectPage({
     try {
       await onSubmit(reason);
       toast.error("Kontrak ditolak.", {
-        description: "Penolakan kontrak telah dikirim ke pembuat kontrak.",
+        description: "Penolakan kontrak telah dikirim ke pembuat kontrak untuk dibuat ulang.",
         duration: 5000,
       });
     } catch {
