@@ -25,7 +25,10 @@ import TerminationDetailModal from "@/components/modal/terminasi/TerminationDeta
 import { useAuth } from "@/contexts/AuthContext";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
-import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
+import {
+  fetchFieldDefinitions,
+  type FieldDefinition,
+} from "@/services/field.service";
 import type { Addendum, ContractRow, ContractStatus } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 import { usePermissions } from "@/contexts/PermissionContext";
@@ -216,6 +219,19 @@ function RejectionRow({ notes, colSpan }: { notes: string; colSpan: number }) {
       </td>
     </tr>
   );
+}
+
+function getArchivedStatusLabel(status: string) {
+  switch (status) {
+    case "rejected":
+      return "Ditolak";
+    case "terminated":
+      return "Dihentikan";
+    case "expired":
+      return "Berakhir";
+    default:
+      return "Dibatalkan";
+  }
 }
 
 function ArchiveActionMenu({
@@ -432,8 +448,8 @@ export default function ContractArchivePage() {
         if (!mounted) return;
         setError(
           err?.response?.data?.message ??
-          err?.message ??
-          "Failed to load contracts",
+            err?.message ??
+            "Failed to load contracts",
         );
       } finally {
         if (mounted) setLoading(false);
@@ -629,8 +645,15 @@ export default function ContractArchivePage() {
               )}
               {!loading && !error && paginated.length === 0 && (
                 <tr>
-                  <td colSpan={tableColSpan} className="py-16 text-center text-muted-foreground text-sm">
-                    {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.statusFilter !== "all" || filter.customFilters.length > 0
+                  <td
+                    colSpan={tableColSpan}
+                    className="py-16 text-center text-muted-foreground text-sm"
+                  >
+                    {filter.search ||
+                    filter.startYearFilter !== "all" ||
+                    filter.endYearFilter !== "all" ||
+                    filter.statusFilter !== "all" ||
+                    filter.customFilters.length > 0
                       ? "Tidak ada kontrak yang cocok dengan filter aktif"
                       : "Belum ada arsip kontrak"}
                   </td>
@@ -645,6 +668,9 @@ export default function ContractArchivePage() {
                   const hasAddendums = addendums.length > 0;
                   const hasTerminations = terminations.length > 0;
                   const isRejected = contract.status === "rejected";
+                  const archivedStatusLabel = getArchivedStatusLabel(
+                    String(contract.status),
+                  );
                   const rejectionNotes = (() => {
                     const reviews =
                       contract.signers?.flatMap((s: any) => s.reviews ?? []) ??
@@ -682,9 +708,7 @@ export default function ContractArchivePage() {
                         </td>
                         <td className="px-3 py-4">
                           <div className="flex items-center gap-2.5">
-                            <div
-                            className="p-2.5 rounded-md shrink-0 bg-red-100 text-red-700"  
-                            >
+                            <div className="p-2.5 rounded-md shrink-0 bg-red-100 text-red-700">
                               <FileText className="h-5 w-5" />
                             </div>
                             <div>
@@ -694,9 +718,7 @@ export default function ContractArchivePage() {
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {hasAddendums
                                   ? `${addendums.length} addendum`
-                                  : isRejected
-                                    ? "Ditolak"
-                                    : "Dibatalkan"}
+                                  : archivedStatusLabel}
                               </p>
                             </div>
                           </div>
@@ -745,17 +767,23 @@ export default function ContractArchivePage() {
                               contract={contract}
                               canCreateContract={canCreateContract}
                               onView={() => {
-                                  if (contract.contract_type === "external") {
-                                    if (contract.signed_document_url) {
-                                      window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
-                                    } else {
-                                      toast.error("Dokumen kontrak tidak ditemukan.");
-                                    }
+                                if (contract.contract_type === "external") {
+                                  if (contract.signed_document_url) {
+                                    window.open(
+                                      contract.signed_document_url,
+                                      "_blank",
+                                      "noopener,noreferrer",
+                                    );
                                   } else {
-                                    navigate(`/contracts/${contract.id}/view`, {
-                                      state: { returnTo: "/contracts/archive" },
-                                    });
+                                    toast.error(
+                                      "Dokumen kontrak tidak ditemukan.",
+                                    );
                                   }
+                                } else {
+                                  navigate(`/contracts/${contract.id}/view`, {
+                                    state: { returnTo: "/contracts/archive" },
+                                  });
+                                }
                               }}
                               onCreateFromContract={() =>
                                 setRenewTarget(contract)
