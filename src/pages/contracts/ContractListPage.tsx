@@ -102,7 +102,7 @@ export interface ContractRow {
   has_open_renewal?: boolean;
 }
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 //  Status Config
 
