@@ -528,7 +528,6 @@ export default function ContractReviewDetailExternalPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Konfirmasi Persetujuan</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
               </div>
             </div>
 
