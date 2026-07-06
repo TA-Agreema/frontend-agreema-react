@@ -15,6 +15,8 @@ interface AddendumFormData {
   effective_date?: string;
 }
 
+type LaravelValidationErrors = Partial<Record<keyof AddendumFormData, string[]>>;
+
 const ADDENDUM_EMPTY: AddendumFormData = {
   title: "",
   addendum_number: "",
@@ -34,19 +36,28 @@ export default function AddendumModal({
 }) {
   const [form, setForm] = useState<AddendumFormData>(ADDENDUM_EMPTY);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<LaravelValidationErrors>({});
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const set = (field: keyof AddendumFormData, value: string | File | null) =>
+  const set = (field: keyof AddendumFormData, value: string | File | null) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    // setError(null);
+
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (!form.title.trim() || !form.addendum_number.trim()) {
-      setError("Judul dan Nomor Addendum wajib diisi.");
-      return;
-    }
+    // setError(null);
+    // if (!form.title.trim() || !form.addendum_number.trim()) {
+    //   setError("Judul dan Nomor Addendum wajib diisi.");
+    //   return;
+    // }
     setSubmitting(true);
     try {
       const result = await createAddendum(contract.id, {
@@ -76,12 +87,27 @@ export default function AddendumModal({
       onClose();
     } catch (err: unknown) {
       let msg = "Gagal menyimpan addendum.";
-      if (typeof err === "object" && err !== null) {
-        // @ts-expect-error axios shape
-        msg = err?.response?.data?.message ?? err?.message ?? msg;
-      }
-      setError(msg);
 
+      if (typeof err === "object" && err !== null) {
+        const axiosError = err as {
+          response?: {
+            status?: number;
+            data?: {
+              message?: string;
+              errors?: LaravelValidationErrors;
+            };
+          };
+          message?: string;
+        };
+
+        msg = axiosError.response?.data?.message ?? axiosError.message ?? msg;
+
+        if (axiosError.response?.status === 422 && axiosError.response.data?.errors) {
+          setFieldErrors(axiosError.response.data.errors);
+        }
+      }
+
+      // setError(msg);
       toast.error("Gagal membuat addendum.", { description: msg });
     } finally {
       setSubmitting(false);
@@ -149,11 +175,11 @@ export default function AddendumModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-6 py-5 overflow-y-auto max-h-[70vh]">
-          {error && (
+          {/* {error && (
             <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
               {error}
             </div>
-          )}
+          )} */}
 
           {/* Nomor*/}
           <div className="space-y-1.5">
@@ -166,7 +192,14 @@ export default function AddendumModal({
               placeholder="cth. ADD-001"
               value={form.addendum_number}
               onChange={(e) => set("addendum_number", e.target.value)}
+              className={fieldErrors.addendum_number ? "border-red-500 focus-visible:ring-red-500" : ""}
             />
+
+            {fieldErrors.addendum_number && (
+              <p className="text-xs text-red-500">
+                {fieldErrors.addendum_number[0]}
+              </p>
+            )}
           </div>
 
           {/* Judul */}
@@ -180,7 +213,14 @@ export default function AddendumModal({
               placeholder="Perubahan klausul pembayaran"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
+              className={fieldErrors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
             />
+
+            {fieldErrors.title && (
+              <p className="text-xs text-red-500">
+                {fieldErrors.title[0]}
+              </p>
+            )}
           </div>
 
           {/* Deskripsi*/}
@@ -210,13 +250,22 @@ export default function AddendumModal({
                 // min={getTodayString()}
                 value={form.effective_date}
                 onChange={(e) => set("effective_date", e.target.value)}
+                className={fieldErrors.effective_date ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
             </div>
+
+            {fieldErrors.effective_date && (
+              <p className="text-xs text-red-500">
+                {fieldErrors.effective_date[0]}
+              </p>
+            )}
           </div>
 
           {/* Upload Dokumen */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Dokumen Addendum</label>
+            <label className="text-sm font-medium text-foreground">
+              Dokumen Addendum <span className="text-red-500">*</span>
+            </label>
             <div
               onClick={() => fileRef.current?.click()}
               className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors py-5 px-4 text-center"
@@ -238,6 +287,11 @@ export default function AddendumModal({
               className="hidden"
               onChange={(e) => set("document", e.target.files?.[0] ?? null)}
             />
+            {fieldErrors.document && (
+              <p className="text-xs text-red-500">
+                {fieldErrors.document[0]}
+              </p>
+            )}
             {form.document && (
               <button
                 type="button"

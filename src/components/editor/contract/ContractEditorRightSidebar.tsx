@@ -21,17 +21,47 @@ type ContractFeedback = {
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-500 border border-gray-200",
-  review: "bg-amber-50 text-amber-700 border border-amber-200",
-  active: "bg-emerald-50 text-emerald-700 border border-emerald-200",
-  revision: "bg-orange-50 text-orange-700 border border-orange-200",
+  draft:       "bg-gray-100 text-gray-500 border border-gray-200",
+  review:      "bg-amber-50 text-amber-700 border border-amber-200",
+  approved:    "bg-blue-50 text-blue-700 border border-blue-200",
+  signed:      "bg-purple-50 text-purple-700 border border-purple-200",
+  active:      "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  revision:    "bg-orange-50 text-orange-700 border border-orange-200",
+  rejected:    "bg-red-50 text-red-600 border border-red-200",
+  terminated:  "bg-red-50 text-red-600 border border-red-200",
 };
 
 const STATUS_DOT: Record<string, string> = {
-  draft: "bg-gray-400",
-  review: "bg-amber-400",
-  active: "bg-emerald-500",
-  revision: "bg-orange-400",
+  draft:       "bg-gray-400",
+  review:      "bg-amber-400",
+  approved:    "bg-blue-400",
+  signed:      "bg-purple-500",
+  active:      "bg-emerald-500",
+  revision:    "bg-orange-400",
+  rejected:    "bg-red-500",
+  terminated:  "bg-red-700",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+    draft:       "Draft",
+    review:      "Ditinjau",
+    revision:    "Revisi",
+    approved:    "Disetujui Internal",
+    rejected:    "Ditolak",
+    signed:      "Disahkan",
+    active:      "Aktif",
+    terminated:  "Dihentikan",
+};
+
+const STATUS_DESC: Record<string, string> = {
+  draft:       "Dokumen disimpan sebagai draft",
+  review:      "Dokumen telah diajukan untuk ditinjau",
+  approved:    "Dokumen telah disetujui oleh pihak internal",
+  signed:      "Dokumen telah disahkan oleh semua pihak",
+  active:      "Dokumen kontrak telah aktif",
+  revision:    "Dokumen dikembalikan untuk direvisi",
+  rejected:    "Dokumen telah ditolak",
+  terminated:  "Dokumen kontrak telah diterminasi",
 };
 
 export function ContractEditorRightSidebar({
@@ -53,9 +83,6 @@ export function ContractEditorRightSidebar({
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               Riwayat Status
             </p>
-            <button className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium">
-              Timeline
-            </button>
           </div>
           <div className="space-y-2">
             {statusLogs.length > 0 ? (
@@ -67,7 +94,7 @@ export function ContractEditorRightSidebar({
                         }`}
                     />
                     {index < statusLogs.length - 1 && (
-                      <div className="w-px flex-1 bg-gray-200 mt-1 min-h-[20px]" />
+                      <div className="w-px flex-1 bg-gray-200 mt-1 min-h-5" />
                     )}
                   </div>
                   <div className="pb-2 min-w-0 flex-1">
@@ -77,17 +104,19 @@ export function ContractEditorRightSidebar({
                           "bg-gray-100 text-gray-500"
                           }`}
                       >
-                        {log.new_status.toUpperCase()}
+                        {STATUS_LABEL[log.new_status] ?? log.new_status.toUpperCase()}
                       </span>
                       <span className="text-[10px] text-gray-400">
-                        {log.created_at}
+                        {new Date(log.created_at).toLocaleString("id-ID", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                     <p className="text-xs font-medium text-gray-700 truncate">
-                      Diperbarui oleh: {log.changed_by}
+                      {log.changed_by === "System" || log.changed_by === "Admin Agreema"
+                        ? "Diperbarui otomatis oleh sistem"
+                        : `Diperbarui oleh ${log.changed_by}`}
                     </p>
                     <p className="text-[11px] text-gray-400 truncate">
-                      Dari {log.old_status} ke {log.new_status}
+                      {STATUS_DESC[log.new_status] ?? `Dokumen berpindah ke status ${STATUS_LABEL[log.new_status] ?? log.new_status}`}
                     </p>
                   </div>
                 </div>
@@ -105,7 +134,7 @@ export function ContractEditorRightSidebar({
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               Riwayat Versi
             </p>
-            <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+            <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
               {versions.length}
             </span>
           </div>
@@ -143,7 +172,7 @@ export function ContractEditorRightSidebar({
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Umpan Balik & Revisi
                 </p>
-                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
+                <span className="min-w-4.5 h-4.5 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
                   {feedbacks.length}
                 </span>
               </div>

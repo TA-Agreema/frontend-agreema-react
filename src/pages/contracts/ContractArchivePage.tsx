@@ -69,10 +69,6 @@ const STATUS_CONFIG: Record<
     label: "Berakhir",
     className: "bg-slate-100 text-slate-500 border-slate-200",
   },
-  terminating: {
-    label: "Sedang Dihentikan",
-    className: "bg-orange-100 text-orange-800 border-orange-300",
-  },
   terminated: {
     label: "Dihentikan",
     className: "bg-red-50 text-red-600 border-red-200",

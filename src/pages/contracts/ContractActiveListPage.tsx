@@ -66,7 +66,6 @@ function ContractTypeBadge({ type }: { type?: "internal" | "external" }) {
 function StatusBadge() {
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
       Aktif
     </span>
   );
@@ -524,7 +523,7 @@ export default function ContractActiveListPage() {
       {/* Table Card */}
       <div className="rounded-xl border bg-card shadow-sm">
         {/* Table */}
-        <div className="overflow-x-auto min-h-[280px]">
+        <div className="overflow-x-auto min-h-70">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
