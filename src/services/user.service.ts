@@ -1,5 +1,5 @@
 import api from "@/lib/axios";
-import type { User, CreateUserRequest, UpdateUserRequest, UpdateUserRolesRequest } from "@/types/users";
+import type { User, CreateUserRequest, UpdateUserRequest } from "@/types/users";
 
 export const fetchUsers = async (): Promise<User[]> => {
     const res = await api.get("/users");
@@ -23,9 +23,4 @@ export const updateUser = async (id: number, data: UpdateUserRequest) => {
 
 export const deleteUser = async (id: number) => {
     await api.delete(`/users/delete-user/${id}`);
-};
-
-export const updateUserRoles = async (id: number, data: UpdateUserRolesRequest) => {
-    const res = await api.patch(`/users/update-user-roles/${id}`, data);
-    return res.data;
 };
