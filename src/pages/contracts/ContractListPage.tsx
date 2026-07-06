@@ -713,7 +713,7 @@ export default function ContractListPage() {
       {/* Table Card */}
       <div className="rounded-xl border bg-card shadow-sm">
         {/* Table */}
-        <div className="overflow-x-auto min-h-70 pb-12">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
