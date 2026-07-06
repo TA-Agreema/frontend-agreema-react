@@ -1,17 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Tag,
-  Plus,
-  Search,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
   AlertCircle,
   MoreVertical,
   Pencil,
+  Plus,
+  Search,
+  Tag,
   ToggleLeft,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import Pagination from "@/components/Pagination";
-import PermissionGuard from "@/middlewares/PermissionGuard";
-import { Navigate } from "react-router-dom";
+import DeleteModal from "@/components/modal/common/DeleteModal";
+import CategoryFormModal from "@/components/modal/template/CategoryFormModal";
+import StatusBadge from "@/components/ui/status-badge";
 import {
   createCategory,
   deleteCategory,
@@ -19,13 +28,22 @@ import {
   toggleCategoryStatus,
   updateCategory,
 } from "@/services/category.service";
-import type { Category } from "@/types/category";
-import CategoryFormModal from "@/components/modal/template/CategoryFormModal";
-import DeleteModal from "@/components/modal/common/DeleteModal";
-import StatusBadge from "@/components/ui/status-badge";
-import { toast } from "sonner";
+import type { Category, CategoryPayload } from "@/types/category";
 
 const PAGE_SIZE = 10;
+const TABLE_COLUMNS = "grid-cols-[2fr_3fr_1.5fr_1.5fr_48px]";
+const EMPTY_DESCRIPTION = "Tidak ada deskripsi";
+
+type CategoryFormValues = {
+  name: string;
+  description: string;
+};
+
+type ModalState =
+  | { type: "create" }
+  | { type: "edit"; category: Category }
+  | { type: "delete"; category: Category }
+  | null;
 
 const getApiErrorMessage = (error: unknown, fallback: string): string => {
   const message = (error as { response?: { data?: { message?: string } } })
@@ -33,171 +51,36 @@ const getApiErrorMessage = (error: unknown, fallback: string): string => {
   return message || fallback;
 };
 
-//  Status Badge
+const buildCategoryPayload = (values: CategoryFormValues): CategoryPayload => ({
+  name: values.name,
+  description: values.description || null,
+});
 
-//  Action Menu
+const filterCategories = (categories: Category[], keyword: string) => {
+  const normalizedKeyword = keyword.trim().toLowerCase();
 
-interface CategoryActionMenuProps {
-  category: Category;
-  onEdit: (c: Category) => void;
-  onToggleStatus: (c: Category) => void;
-  onDelete: (c: Category) => void;
-  disabled?: boolean;
-}
+  if (!normalizedKeyword) {
+    return categories;
+  }
 
-function CategoryActionMenu({
-  category,
-  onEdit,
-  onToggleStatus,
-  onDelete,
-  disabled = false,
-}: CategoryActionMenuProps) {
-  const [open, setOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(false);
+  return categories.filter((category) => {
+    const name = category.name.toLowerCase();
+    const description = category.description?.toLowerCase() ?? "";
 
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
+    return (
+      name.includes(normalizedKeyword) ||
+      description.includes(normalizedKeyword)
+    );
+  });
+};
 
-  const canDelete = category.templates_count === 0;
-  const canToggleStatus = category.templates_count === 0;
-
-  //  Hitung posisi setiap kali menu dibuka
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-
-    const rect = buttonRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    // Estimasi tinggi menu: header (py-1) + 3 item (py-2 each ~36px) + divider
-    const estimatedMenuH = 36 * 3 + 8 + 2;
-    const spaceBelow = viewportHeight - rect.bottom;
-
-    setDropUp(spaceBelow < estimatedMenuH + 12);
-  }, [open]);
-
-  //  Tutup saat klik di luar (lebih reliable daripada overlay div)
-  useEffect(() => {
-    if (!open) return;
-
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        menuRef.current?.contains(target) ||
-        buttonRef.current?.contains(target)
-      )
-        return;
-      setOpen(false);
-    };
-
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [open]);
-
-  //  Tutup saat parent di-scroll
-  useEffect(() => {
-    if (!open) return;
-    const handleScroll = () => setOpen(false);
-    // capture:true agar tertangkap di semua scroll container
-    window.addEventListener("scroll", handleScroll, { capture: true });
-    return () =>
-      window.removeEventListener("scroll", handleScroll, { capture: true });
-  }, [open]);
-
-  return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={() => setOpen((v) => !v)}
-        disabled={disabled}
-        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
-        <MoreVertical className="h-4 w-4" />
-      </button>
-
-      {open && (
-        <div
-          ref={menuRef}
-          className={`
-            absolute right-0 w-48 rounded-lg border bg-card shadow-xl
-            z-50 overflow-hidden py-1
-            ${dropUp ? "bottom-full mb-1" : "top-full mt-1"}
-          `}>
-          {/* Edit */}
-          <button
-            onClick={() => {
-              onEdit(category);
-              setOpen(false);
-            }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-muted transition-colors">
-            <Pencil className="h-4 w-4 text-muted-foreground" />
-            Edit Kategori
-          </button>
-
-          {/* Toggle status */}
-          <button
-            onClick={() => {
-              onToggleStatus(category);
-              setOpen(false);
-            }}
-            disabled={!canToggleStatus}
-            title={
-              !canToggleStatus
-                ? "Tidak dapat dinonaktifkan karena memiliki kontrak aktif"
-                : undefined
-            }
-            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
-              canToggleStatus
-                ? "hover:bg-muted"
-                : "text-muted-foreground cursor-not-allowed opacity-50"
-            }`}>
-            <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-            {category.is_active ? "Nonaktifkan" : "Aktifkan"}
-          </button>
-
-          <hr className="my-1 border-border" />
-
-          {/* Hapus */}
-          <button
-            onClick={() => {
-              if (!canDelete) return;
-              onDelete(category);
-              setOpen(false);
-            }}
-            disabled={!canDelete}
-            title={
-              !canDelete
-                ? "Tidak dapat dihapus karena memiliki template aktif"
-                : undefined
-            }
-            className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
-              canDelete
-                ? "text-red-600 hover:bg-red-50"
-                : "text-muted-foreground cursor-not-allowed opacity-50"
-            }`}>
-            <Trash2 className="h-4 w-4" />
-            Hapus
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-//  Main Page
-
-export default function ContractCategoryPage() {
+function useContractCategories() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Category | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
-
-  //  Data fetching
-
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       setErrorMessage(null);
       const data = await fetchCategories();
@@ -209,73 +92,47 @@ export default function ContractCategoryPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    void loadCategories();
   }, []);
 
-  //  Filtering & pagination
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadCategories();
+    });
+  }, [loadCategories]);
 
-  const filtered = useMemo(
-    () =>
-      categories.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          (c.description ?? "").toLowerCase().includes(search.toLowerCase()),
-      ),
-    [categories, search],
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
-  );
-
-  const handleSearch = (value: string) => {
-    setSearch(value);
-    setPage(1);
-  };
-
-  //  Handlers
-
-  const handleSubmitCategory = async (data: {
-    name: string;
-    description: string;
-  }) => {
+  const saveCategory = async (
+    values: CategoryFormValues,
+    editTarget?: Category,
+  ) => {
     try {
       setIsSubmitting(true);
-      const payload = {
-        name: data.name,
-        description: data.description || null,
-      };
+      const payload = buildCategoryPayload(values);
 
       if (editTarget) {
         await updateCategory(editTarget.id, payload);
-        setEditTarget(null);
         toast.success("Kategori diperbarui", {
-          description: `"Kategori {data.name} berhasil diperbarui.`,
+          description: `Kategori ${values.name} berhasil diperbarui.`,
         });
       } else {
         await createCategory(payload);
-        setAddOpen(false);
         toast.success("Kategori dibuat", {
-          description: `Kategori ${data.name} berhasil dibuat.`,
+          description: `Kategori ${values.name} berhasil dibuat.`,
         });
       }
+
       await loadCategories();
+      return true;
     } catch (error) {
       toast.error("Gagal menyimpan kategori", {
         description: getApiErrorMessage(error, "Silakan coba lagi."),
       });
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleToggleStatus = async (category: Category) => {
+  const toggleStatus = async (category: Category) => {
     try {
       setIsSubmitting(true);
       const updated = await toggleCategoryStatus(category.id);
@@ -286,7 +143,7 @@ export default function ContractCategoryPage() {
           description: updated.is_active
             ? `Kategori ${category.name} kini aktif.`
             : `Kategori ${category.name} telah dinonaktifkan.`,
-        }
+        },
       );
     } catch (error) {
       toast.error("Gagal mengubah status kategori", {
@@ -297,204 +154,517 @@ export default function ContractCategoryPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
+  const removeCategory = async (category: Category) => {
     try {
       setIsSubmitting(true);
-      await deleteCategory(deleteTarget.id);
-      const name = deleteTarget.name;
-      setDeleteTarget(null);
+      await deleteCategory(category.id);
       await loadCategories();
       toast.success("Kategori dihapus", {
-        description: `Kategori ${name} berhasil dihapus.`,
+        description: `Kategori ${category.name} berhasil dihapus.`,
       });
+      return true;
     } catch (error) {
-    toast.error("Gagal menghapus kategori", {
-      description: getApiErrorMessage(error, "Silakan coba lagi."),
-    });
+      toast.error("Gagal menghapus kategori", {
+        description: getApiErrorMessage(error, "Silakan coba lagi."),
+      });
+      return false;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Render
+  return {
+    categories,
+    errorMessage,
+    isLoading,
+    isSubmitting,
+    removeCategory,
+    saveCategory,
+    toggleStatus,
+  };
+}
+
+interface CategoryActionMenuProps {
+  category: Category;
+  disabled?: boolean;
+  onDelete: (category: Category) => void;
+  onEdit: (category: Category) => void;
+  onToggleStatus: (category: Category) => void;
+}
+
+function CategoryActionMenu({
+  category,
+  disabled = false,
+  onDelete,
+  onEdit,
+  onToggleStatus,
+}: CategoryActionMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const canMutateAvailability = category.templates_count === 0;
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) {
+      return;
+    }
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const estimatedMenuHeight = 118;
+    const spaceBelow = window.innerHeight - rect.bottom;
+
+    setDropUp(spaceBelow < estimatedMenuHeight + 12);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+
+      if (
+        menuRef.current?.contains(target) ||
+        buttonRef.current?.contains(target)
+      ) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleScroll = () => setOpen(false);
+
+    window.addEventListener("scroll", handleScroll, { capture: true });
+    return () =>
+      window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [open]);
 
   return (
-    <PermissionGuard
-      roles={["admin"]}
-      fallback={<Navigate to="/unauthorized" replace />}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Manajemen Kategori Kontrak
-          </h2>
-          <p className="text-muted-foreground">
-            Kelola kategori dan tipe kontrak dalam sistem
-          </p>
-        </div>
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        disabled={disabled}
+        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50">
+        <MoreVertical className="h-4 w-4" />
+      </button>
 
-        {/* Info banner */}
-        <div className="flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          Kategori yang memiliki kontrak aktif tidak dapat dihapus maupun
-          dinonaktifkan.
-        </div>
-
-        {/* Error */}
-        {errorMessage && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {errorMessage}
-          </div>
-        )}
-
-        {/* Table card */}
-        <div className="rounded-xl border bg-card shadow-sm">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-6 py-4 border-b gap-3">
-            <div className="relative flex-1 max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-              <input
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Cari kategori..."
-                className="w-full rounded-md border bg-background pl-9 pr-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-              />
-            </div>
-            <button
-              onClick={() => setAddOpen(true)}
-              disabled={isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium shrink-0 disabled:opacity-50">
-              <Plus className="h-4 w-4" />
-              Tambah Kategori
-            </button>
-          </div>
-
-          {/* Column headers */}
-          <div className="grid grid-cols-[2fr_3fr_1.5fr_1.5fr_48px] px-5 py-3 border-b bg-muted/30">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Kategori
-            </span>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Deskripsi
-            </span>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center">
-              Jumlah Kontrak
-            </span>
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-center">
-              Status
-            </span>
-            <span />
-          </div>
-
-          {/* Body */}
-          {isLoading ? (
-            /* Loading skeleton */
-            <div className="divide-y">
-              {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-[2fr_3fr_1.5fr_1.5fr_48px] px-6 py-5 items-center gap-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-muted animate-pulse" />
-                    <div className="h-3 w-28 rounded bg-muted animate-pulse" />
-                  </div>
-                  <div className="h-3 w-48 rounded bg-muted animate-pulse" />
-                  <div className="h-3 w-6 rounded bg-muted animate-pulse mx-auto" />
-                  <div className="h-5 w-14 rounded-full bg-muted animate-pulse mx-auto" />
-                  <div />
-                </div>
-              ))}
-            </div>
-          ) : paginated.length === 0 ? (
-            /* Empty state */
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <Tag className="h-8 w-8 opacity-30" />
-              <p className="text-sm">Tidak ada kategori ditemukan</p>
-            </div>
-          ) : (
-            /* Rows */
-            <div className="divide-y">
-              {paginated.map((category) => (
-                <div
-                  key={category.id}
-                  className="grid grid-cols-[2fr_3fr_1.5fr_1.5fr_48px] px-6 py-5 items-center hover:bg-muted/30 transition-colors">
-                  {/* Name */}
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-md bg-emerald-50 text-emerald-600 shrink-0">
-                      <Tag className="h-4 w-4" />
-                    </div>
-                    <span className="text-sm font-medium">{category.name}</span>
-                  </div>
-
-                  {/* Description */}
-                  <p className="text-sm text-muted-foreground max-w-[420px] line-clamp-2 pr-4">
-                    {category.description ?? (
-                      <span className="italic opacity-50">
-                        Tidak ada deskripsi
-                      </span>
-                    )}
-                  </p>
-
-                  {/* Contract count */}
-                  <span className="text-sm text-center">
-                    {category.templates_count}
-                  </span>
-
-                  {/* Status */}
-                  <div className="flex justify-center">
-                    <StatusBadge isActive={category.is_active} />
-                  </div>
-
-                  {/* Actions */}
-                  <CategoryActionMenu
-                    category={category}
-                    onEdit={(c) => setEditTarget(c)}
-                    onToggleStatus={handleToggleStatus}
-                    onDelete={(c) => setDeleteTarget(c)}
-                    disabled={isSubmitting}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          <Pagination
-            page={safePage}
-            totalPages={totalPages}
-            onChange={setPage}
+      {open && (
+        <div
+          ref={menuRef}
+          className={`absolute right-0 z-50 w-48 overflow-hidden rounded-lg border bg-card py-1 shadow-xl ${
+            dropUp ? "bottom-full mb-1" : "top-full mt-1"
+          }`}>
+          <ActionMenuButton
+            icon={<Pencil className="h-4 w-4 text-muted-foreground" />}
+            label="Edit Kategori"
+            onClick={() => {
+              onEdit(category);
+              setOpen(false);
+            }}
+          />
+          <ActionMenuButton
+            icon={<ToggleLeft className="h-4 w-4 text-muted-foreground" />}
+            label={category.is_active ? "Nonaktifkan" : "Aktifkan"}
+            disabled={!canMutateAvailability}
+            title={
+              !canMutateAvailability
+                ? "Tidak dapat dinonaktifkan karena memiliki template aktif"
+                : undefined
+            }
+            onClick={() => {
+              onToggleStatus(category);
+              setOpen(false);
+            }}
+          />
+          <hr className="my-1 border-border" />
+          <ActionMenuButton
+            danger
+            icon={<Trash2 className="h-4 w-4" />}
+            label="Hapus"
+            disabled={!canMutateAvailability}
+            title={
+              !canMutateAvailability
+                ? "Tidak dapat dihapus karena memiliki template aktif"
+                : undefined
+            }
+            onClick={() => {
+              onDelete(category);
+              setOpen(false);
+            }}
           />
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Modals */}
-        {addOpen && (
-          <CategoryFormModal
-            mode="add"
-            onClose={() => setAddOpen(false)}
-            onSubmit={handleSubmitCategory}
-            submitting={isSubmitting}
-          />
-        )}
-        {editTarget && (
-          <CategoryFormModal
-            mode="edit"
-            initial={editTarget}
-            onClose={() => setEditTarget(null)}
-            onSubmit={handleSubmitCategory}
-            submitting={isSubmitting}
-          />
-        )}
-        {deleteTarget && (
-          <DeleteModal
-            title="Hapus Kategori"
-            itemName={deleteTarget.name}
-            onClose={() => setDeleteTarget(null)}
-            onConfirm={handleDelete}
-            isLoading={isSubmitting}
-          />
-        )}
+interface ActionMenuButtonProps {
+  icon: ReactNode;
+  label: string;
+  danger?: boolean;
+  disabled?: boolean;
+  title?: string;
+  onClick: () => void;
+}
+
+function ActionMenuButton({
+  danger = false,
+  disabled = false,
+  icon,
+  label,
+  title,
+  onClick,
+}: ActionMenuButtonProps) {
+  const enabledClassName = danger
+    ? "text-red-600 hover:bg-red-50"
+    : "hover:bg-muted";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors ${
+        disabled
+          ? "cursor-not-allowed text-muted-foreground opacity-50"
+          : enabledClassName
+      }`}>
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+interface CategoryToolbarProps {
+  search: string;
+  disabled?: boolean;
+  onAdd: () => void;
+  onSearchChange: (value: string) => void;
+}
+
+function CategoryToolbar({
+  search,
+  disabled = false,
+  onAdd,
+  onSearchChange,
+}: CategoryToolbarProps) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+      <div className="relative max-w-xs flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder="Cari kategori..."
+          className="w-full rounded-md border bg-background py-2 pl-9 pr-3 text-sm placeholder:text-muted-foreground transition-all focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+        />
       </div>
-    </PermissionGuard>
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={disabled}
+        className="flex shrink-0 items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50">
+        <Plus className="h-4 w-4" />
+        Tambah Kategori
+      </button>
+    </div>
+  );
+}
+
+function CategoryTableHeader() {
+  return (
+    <div className={`grid ${TABLE_COLUMNS} border-b bg-muted/30 px-5 py-3`}>
+      <TableHeading>Kategori</TableHeading>
+      <TableHeading>Deskripsi</TableHeading>
+      <TableHeading centered>Jumlah Kontrak</TableHeading>
+      <TableHeading centered>Status</TableHeading>
+      <span />
+    </div>
+  );
+}
+
+interface TableHeadingProps {
+  children: ReactNode;
+  centered?: boolean;
+}
+
+function TableHeading({ centered = false, children }: TableHeadingProps) {
+  return (
+    <span
+      className={`text-xs font-medium uppercase tracking-wide text-muted-foreground ${
+        centered ? "text-center" : ""
+      }`}>
+      {children}
+    </span>
+  );
+}
+
+interface CategoryTableBodyProps {
+  categories: Category[];
+  isLoading: boolean;
+  isSubmitting: boolean;
+  onDelete: (category: Category) => void;
+  onEdit: (category: Category) => void;
+  onToggleStatus: (category: Category) => void;
+}
+
+function CategoryTableBody({
+  categories,
+  isLoading,
+  isSubmitting,
+  onDelete,
+  onEdit,
+  onToggleStatus,
+}: CategoryTableBodyProps) {
+  if (isLoading) {
+    return <CategoryTableSkeleton />;
+  }
+
+  if (categories.length === 0) {
+    return <CategoryEmptyState />;
+  }
+
+  return (
+    <div className="divide-y">
+      {categories.map((category) => (
+        <CategoryTableRow
+          key={category.id}
+          category={category}
+          isSubmitting={isSubmitting}
+          onDelete={onDelete}
+          onEdit={onEdit}
+          onToggleStatus={onToggleStatus}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CategoryTableSkeleton() {
+  return (
+    <div className="divide-y">
+      {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+        <div
+          key={index}
+          className={`grid ${TABLE_COLUMNS} items-center gap-4 px-6 py-5`}>
+          <div className="flex items-center gap-2.5">
+            <div className="h-7 w-7 animate-pulse rounded-md bg-muted" />
+            <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+          </div>
+          <div className="h-3 w-48 animate-pulse rounded bg-muted" />
+          <div className="mx-auto h-3 w-6 animate-pulse rounded bg-muted" />
+          <div className="mx-auto h-5 w-14 animate-pulse rounded-full bg-muted" />
+          <div />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CategoryEmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
+      <Tag className="h-8 w-8 opacity-30" />
+      <p className="text-sm">Tidak ada kategori ditemukan</p>
+    </div>
+  );
+}
+
+interface CategoryTableRowProps {
+  category: Category;
+  isSubmitting: boolean;
+  onDelete: (category: Category) => void;
+  onEdit: (category: Category) => void;
+  onToggleStatus: (category: Category) => void;
+}
+
+function CategoryTableRow({
+  category,
+  isSubmitting,
+  onDelete,
+  onEdit,
+  onToggleStatus,
+}: CategoryTableRowProps) {
+  return (
+    <div
+      className={`grid ${TABLE_COLUMNS} items-center px-6 py-5 transition-colors hover:bg-muted/30`}>
+      <div className="flex items-center gap-2.5">
+        <div className="shrink-0 rounded-md bg-emerald-50 p-1.5 text-emerald-600">
+          <Tag className="h-4 w-4" />
+        </div>
+        <span className="text-sm font-medium">{category.name}</span>
+      </div>
+
+      <p className="line-clamp-2 max-w-[420px] pr-4 text-sm text-muted-foreground">
+        {category.description ?? (
+          <span className="italic opacity-50">{EMPTY_DESCRIPTION}</span>
+        )}
+      </p>
+
+      <span className="text-center text-sm">{category.templates_count}</span>
+
+      <div className="flex justify-center">
+        <StatusBadge isActive={category.is_active} />
+      </div>
+
+      <CategoryActionMenu
+        category={category}
+        disabled={isSubmitting}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onToggleStatus={onToggleStatus}
+      />
+    </div>
+  );
+}
+
+export default function ContractCategoryPage() {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [modal, setModal] = useState<ModalState>(null);
+
+  const {
+    categories,
+    errorMessage,
+    isLoading,
+    isSubmitting,
+    removeCategory,
+    saveCategory,
+    toggleStatus,
+  } = useContractCategories();
+
+  const filteredCategories = useMemo(
+    () => filterCategories(categories, search),
+    [categories, search],
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredCategories.length / PAGE_SIZE),
+  );
+  const safePage = Math.min(page, totalPages);
+  const paginatedCategories = filteredCategories.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const handleSubmitCategory = async (values: CategoryFormValues) => {
+    const saved = await saveCategory(
+      values,
+      modal?.type === "edit" ? modal.category : undefined,
+    );
+
+    if (saved) {
+      setModal(null);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (modal?.type !== "delete") {
+      return;
+    }
+
+    const deleted = await removeCategory(modal.category);
+
+    if (deleted) {
+      setModal(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">
+          Manajemen Kategori Kontrak
+        </h2>
+        <p className="text-muted-foreground">
+          Kelola kategori dan tipe kontrak dalam sistem
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2.5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        Kategori yang memiliki kontrak aktif tidak dapat dihapus maupun
+        dinonaktifkan.
+      </div>
+
+      {errorMessage && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="rounded-xl border bg-card shadow-sm">
+        <CategoryToolbar
+          search={search}
+          disabled={isSubmitting}
+          onAdd={() => setModal({ type: "create" })}
+          onSearchChange={handleSearchChange}
+        />
+        <CategoryTableHeader />
+        <CategoryTableBody
+          categories={paginatedCategories}
+          isLoading={isLoading}
+          isSubmitting={isSubmitting}
+          onDelete={(category) => setModal({ type: "delete", category })}
+          onEdit={(category) => setModal({ type: "edit", category })}
+          onToggleStatus={toggleStatus}
+        />
+        <Pagination
+          page={safePage}
+          totalPages={totalPages}
+          onChange={setPage}
+        />
+      </div>
+
+      {modal?.type === "create" && (
+        <CategoryFormModal
+          mode="add"
+          onClose={() => setModal(null)}
+          onSubmit={handleSubmitCategory}
+          submitting={isSubmitting}
+        />
+      )}
+
+      {modal?.type === "edit" && (
+        <CategoryFormModal
+          mode="edit"
+          initial={modal.category}
+          onClose={() => setModal(null)}
+          onSubmit={handleSubmitCategory}
+          submitting={isSubmitting}
+        />
+      )}
+
+      {modal?.type === "delete" && (
+        <DeleteModal
+          title="Hapus Kategori"
+          itemName={modal.category.name}
+          onClose={() => setModal(null)}
+          onConfirm={handleDeleteCategory}
+          isLoading={isSubmitting}
+        />
+      )}
+    </div>
   );
 }

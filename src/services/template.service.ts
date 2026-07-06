@@ -7,7 +7,6 @@ import type {
 } from "@/types/template";
 
 const BASE_PATH = "/templates";
-
 export const fetchTemplates = async (): Promise<Template[]> => {
   const res = await api.get<TemplateListResponse>(BASE_PATH);
   return res.data.data;

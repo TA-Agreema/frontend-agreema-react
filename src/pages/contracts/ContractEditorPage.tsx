@@ -85,6 +85,7 @@ import {
   submitContract,
   generateContractNumber,
   fetchSigners,
+  deleteContract,
   downloadContractPdf,
 } from "@/services/contract.service";
 import {
@@ -155,6 +156,12 @@ type ContractStatusLog = {
   created_at: string;
 };
 
+type ContractEditorNavigationState = {
+  template?: TemplateOption;
+  renewFromId?: number;
+  returnTo?: string;
+} | null;
+
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   const responseData = (
     error as {
@@ -213,6 +220,248 @@ function getActiveDocumentFontFamily(
   return documentFont;
 }
 
+function ContractEditorHeader() {
+  return (
+    <header className="flex items-center justify-between px-5 h-12 bg-white border-b border-gray-200 shrink-0 z-10">
+      <div className="flex items-center gap-2.5">
+        <img
+          src="/Agreema.svg"
+          alt="Agreema Logo"
+          className="h-10 w-auto shrink-0"
+        />
+      </div>
+    </header>
+  );
+}
+
+interface ContractEditorActionBarProps {
+  selectedTemplate: TemplateOption | null;
+  saveError: string | null;
+  isSaving: boolean;
+  isReadOnly: boolean;
+  isViewRoute: boolean;
+  onSaveDraft: () => void;
+  onSubmit: () => void;
+}
+
+function ContractEditorActionBar({
+  selectedTemplate,
+  saveError,
+  isSaving,
+  isReadOnly,
+  isViewRoute,
+  onSaveDraft,
+  onSubmit,
+}: ContractEditorActionBarProps) {
+  return (
+    <div className="flex items-center justify-between px-5 h-10 bg-white border-b border-gray-200 shrink-0 z-10">
+      <div className="flex items-center gap-2">
+        {selectedTemplate && (
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md truncate max-w-65">
+            {selectedTemplate.name}
+          </span>
+        )}
+        {saveError && (
+          <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {saveError}
+          </div>
+        )}
+      </div>
+
+      {!isViewRoute && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onSaveDraft}
+            disabled={isSaving || isReadOnly}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium">
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
+            Simpan Draft
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isSaving || isReadOnly}
+            className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
+            {isSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <CheckCircle className="h-3.5 w-3.5" />
+            )}
+            Ajukan
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ContractSignatureSectionProps {
+  signedDocumentUrl: string | null;
+  signers: Signer[];
+  signatureFontFamily: string;
+  pageMargin: MarginStyle;
+}
+
+function ContractSignatureSection({
+  signedDocumentUrl,
+  signers,
+  signatureFontFamily,
+  pageMargin,
+}: ContractSignatureSectionProps) {
+  return (
+    <div
+      className="pt-8 mt-auto border-t border-dashed border-gray-200"
+      style={{
+        paddingBottom: pageMargin.bottom,
+        paddingLeft: pageMargin.left,
+        paddingRight: pageMargin.right,
+      }}>
+      {signedDocumentUrl ? (
+        <div className="flex flex-col items-center gap-4 py-4">
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
+            <CheckCircle className="h-8 w-8 text-emerald-600 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">
+                Dokumen Bertanda Tangan Telah Diupload
+              </p>
+              <p className="text-xs text-emerald-600 mt-0.5">
+                Dokumen fisik yang sudah ditandatangani kedua pihak tersedia.
+              </p>
+            </div>
+          </div>
+
+          <a
+            href={signedDocumentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+            <FileText className="h-4 w-4 text-emerald-600" />
+            Lihat Dokumen Bertanda Tangan
+          </a>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
+          {signers.map((signer) => (
+            <ContractSignatureBox
+              key={signer.id}
+              isExternal={signer.type === "external"}
+              name={signer.name || undefined}
+              title={signer.title || undefined}
+              email={signer.email || undefined}
+              date={signer.signedAt || undefined}
+              signaturePath={signer.signaturePath}
+              fontFamily={signatureFontFamily}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface ContractEditorDialogsProps {
+  showSignerTypeModal: boolean;
+  showSaveDraftConfirm: boolean;
+  showSubmitConfirm: boolean;
+  showLeaveConfirm: boolean;
+  showFieldModal: boolean;
+  isSaving: boolean;
+  isReadOnly: boolean;
+  viewingVersion: ContractVersion | null;
+  versions: ContractVersion[];
+  paperSize: PaperSize;
+  onCloseSignerType: () => void;
+  onSelectSignerType: (type: SignerType) => void;
+  onCloseSaveDraft: () => void;
+  onConfirmSaveDraft: () => Promise<void>;
+  onCloseSubmit: () => void;
+  onConfirmSubmit: () => Promise<void>;
+  onCloseLeave: () => void;
+  onDiscardAndExit: () => Promise<void>;
+  onSaveDraft: () => Promise<void>;
+  onCloseField: () => void;
+  onRefreshFields: () => Promise<void>;
+  onCloseVersion: () => void;
+  onNavigateVersion: (version: ContractVersion) => void;
+}
+
+function ContractEditorDialogs({
+  showSignerTypeModal,
+  showSaveDraftConfirm,
+  showSubmitConfirm,
+  showLeaveConfirm,
+  showFieldModal,
+  isSaving,
+  isReadOnly,
+  viewingVersion,
+  versions,
+  paperSize,
+  onCloseSignerType,
+  onSelectSignerType,
+  onCloseSaveDraft,
+  onConfirmSaveDraft,
+  onCloseSubmit,
+  onConfirmSubmit,
+  onCloseLeave,
+  onDiscardAndExit,
+  onSaveDraft,
+  onCloseField,
+  onRefreshFields,
+  onCloseVersion,
+  onNavigateVersion,
+}: ContractEditorDialogsProps) {
+  return (
+    <>
+      <SignerTypeModal
+        isOpen={showSignerTypeModal}
+        onClose={onCloseSignerType}
+        onSelect={onSelectSignerType}
+      />
+      <SaveDraftConfirmModal
+        isOpen={showSaveDraftConfirm}
+        isSaving={isSaving}
+        onClose={onCloseSaveDraft}
+        onConfirm={onConfirmSaveDraft}
+      />
+      <SubmitConfirmModal
+        isOpen={showSubmitConfirm}
+        onClose={onCloseSubmit}
+        submitting={isSaving}
+        onConfirm={onConfirmSubmit}
+      />
+      <ContractLeaveConfirmModal
+        isOpen={showLeaveConfirm}
+        isSaving={isSaving}
+        isSaveDisabled={isReadOnly}
+        onClose={onCloseLeave}
+        onDiscard={onDiscardAndExit}
+        onSaveDraft={onSaveDraft}
+      />
+      {showFieldModal && (
+        <FieldManageModal
+          onClose={onCloseField}
+          onRefreshFields={onRefreshFields}
+        />
+      )}
+      {viewingVersion && (
+        <ContractVersionPreviewModal
+          versions={versions}
+          viewingVersion={viewingVersion}
+          paperSize={paperSize}
+          onClose={onCloseVersion}
+          onNavigate={onNavigateVersion}
+        />
+      )}
+    </>
+  );
+}
+
 export default function ContractEditorPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -221,12 +470,8 @@ export default function ContractEditorPage() {
   const location = useLocation();
   const isViewRoute = location.pathname.endsWith("/view");
 
-  type NavState = {
-    template?: TemplateOption;
-    renewFromId?: number;
-    returnTo?: string;
-  } | null;
-  const navState = (location.state as NavState) ?? null;
+  const navState =
+    (location.state as ContractEditorNavigationState) ?? null;
   const initialTemplate = navState?.template ?? null;
   const renewFromId = navState?.renewFromId ?? null;
   const returnTo =
@@ -327,6 +572,7 @@ export default function ContractEditorPage() {
   const contractLoadedRef = useRef(false);
   const renewalLoadedRef = useRef(false);
   const appliedTemplateRef = useRef<string | null>(null);
+  const previewCreatedContractIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -952,19 +1198,15 @@ export default function ContractEditorPage() {
     const payloadOverrides = isPreview
       ? { title: title.trim() || "Preview Kontrak" }
       : undefined;
-
     if (!isPreview && !title.trim()) {
       setSaveError("Judul kontrak wajib diisi.");
       return;
     }
-
     setIsSaving(true);
     setSaveError(null);
-
     try {
       const persistedId = draftContractId ?? (id ? Number(id) : null);
       let savedContract: ContractRow;
-
       if (persistedId) {
         savedContract = await updateContract(
           persistedId,
@@ -974,6 +1216,9 @@ export default function ContractEditorPage() {
         savedContract = await createContract(
           buildPayload("draft", payloadOverrides),
         );
+        if (isPreview) {
+          previewCreatedContractIdRef.current = savedContract.id;
+        }
         setDraftContractId(savedContract.id);
       }
 
@@ -1104,7 +1349,23 @@ export default function ContractEditorPage() {
     setShowLeaveConfirm(true);
   };
 
-  const handleDiscardAndExit = () => {
+  const handleDiscardAndExit = async () => {
+    const previewCreatedContractId = previewCreatedContractIdRef.current;
+    if (previewCreatedContractId) {
+      try {
+        await deleteContract(previewCreatedContractId);
+        previewCreatedContractIdRef.current = null;
+      } catch (error) {
+        setSaveError(
+          getApiErrorMessage(
+            error,
+            "Gagal membuang draft sementara. Coba lagi.",
+          ),
+        );
+        return;
+      }
+    }
+
     localStorage.removeItem(draftKey);
     setHasUnsavedChanges(false);
     setShowLeaveConfirm(false);
@@ -1124,73 +1385,26 @@ export default function ContractEditorPage() {
         className="flex flex-col h-screen overflow-hidden bg-gray-100"
         onInputCapture={() => setHasUnsavedChanges(true)}
         onChangeCapture={() => setHasUnsavedChanges(true)}>
-        {/*  Global Header  */}
-        <header className="flex items-center justify-between px-5 h-12 bg-white border-b border-gray-200 shrink-0 z-10">
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/Agreema.svg"
-              alt="Agreema Logo"
-              className="h-10 w-auto shrink-0"
-            />
-          </div>
-        </header>
+        <ContractEditorHeader />
 
-        {/*  Action Bar  */}
-        <div className="flex items-center justify-between px-5 h-10 bg-white border-b border-gray-200 shrink-0 z-10">
-          <div className="flex items-center gap-2">
-            {selectedTemplate && (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md truncate max-w-65">
-                {selectedTemplate.name}
-              </span>
-            )}
-            {saveError && (
-              <div className="flex items-center gap-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {saveError}
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
-              {!isViewRoute && (
-                <>
-                  <button
-                    onClick={() => setShowSaveDraftConfirm(true)}
-                    disabled={isSaving || isStrictlyReadOnly}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium">
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Save className="h-3.5 w-3.5" />
-                    )}
-                    Simpan Draft
-                  </button>
-                  <button
-                    onClick={() => {
-                      const submitValidationMessage =
-                        getSubmitValidationMessage();
-                      if (submitValidationMessage) {
-                        setSaveError(submitValidationMessage);
-                        return;
-                      }
+        <ContractEditorActionBar
+          selectedTemplate={selectedTemplate}
+          saveError={saveError}
+          isSaving={isSaving}
+          isReadOnly={isStrictlyReadOnly}
+          isViewRoute={isViewRoute}
+          onSaveDraft={() => setShowSaveDraftConfirm(true)}
+          onSubmit={() => {
+            const submitValidationMessage = getSubmitValidationMessage();
+            if (submitValidationMessage) {
+              setSaveError(submitValidationMessage);
+              return;
+            }
 
-                      setSaveError(null);
-                      setShowSubmitConfirm(true);
-                    }}
-                    disabled={isSaving || isStrictlyReadOnly}
-                    className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-md bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-50 shadow-sm">
-                    {isSaving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <CheckCircle className="h-3.5 w-3.5" />
-                    )}
-                    → Ajukan
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+            setSaveError(null);
+            setShowSubmitConfirm(true);
+          }}
+        />
 
         {/*  3-Column Resizable (pixel-based)  */}
         <div className="flex-1 overflow-hidden">
@@ -1264,54 +1478,12 @@ export default function ContractEditorPage() {
                 onSaveAndPreviewPdf={handleSaveAndPreviewPdf}
                 pdfPreviewFilename={pdfPreviewFilename}
                 childrenAfterEditor={
-                  <div
-                    className="pt-8 mt-auto border-t border-dashed border-gray-200"
-                    style={{
-                      paddingBottom: pageMargin.bottom,
-                      paddingLeft: pageMargin.left,
-                      paddingRight: pageMargin.right,
-                    }}>
-                    {signedDocumentUrl ? (
-                      <div className="flex flex-col items-center gap-4 py-4">
-                        <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-4 w-full max-w-md">
-                          <CheckCircle className="h-8 w-8 text-emerald-600 shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-emerald-800">
-                              Dokumen Bertanda Tangan Telah Diupload
-                            </p>
-                            <p className="text-xs text-emerald-600 mt-0.5">
-                              Dokumen fisik yang sudah ditandatangani kedua
-                              pihak tersedia.
-                            </p>
-                          </div>
-                        </div>
-
-                        <a
-                          href={signedDocumentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-                          <FileText className="h-4 w-4 text-emerald-600" />
-                          Lihat Dokumen Bertanda Tangan
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-x-10 gap-y-8 justify-items-center">
-                        {signers.map((s) => (
-                          <ContractSignatureBox
-                            key={s.id}
-                            isExternal={s.type === "external"}
-                            name={s.name || undefined}
-                            title={s.title || undefined}
-                            email={s.email || undefined}
-                            date={s.signedAt || undefined}
-                            signaturePath={s.signaturePath}
-                            fontFamily={signatureFontFamily}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <ContractSignatureSection
+                    signedDocumentUrl={signedDocumentUrl}
+                    signers={signers}
+                    signatureFontFamily={signatureFontFamily}
+                    pageMargin={pageMargin}
+                  />
                 }
               />
             </Panel>
@@ -1334,61 +1506,37 @@ export default function ContractEditorPage() {
         </div>
       </div>
 
-      <SignerTypeModal
-        isOpen={showSignerTypeModal}
-        onClose={() => setShowSignerTypeModal(false)}
-        onSelect={addSigner}
-      />
-
-      <SaveDraftConfirmModal
-        isOpen={showSaveDraftConfirm}
+      <ContractEditorDialogs
+        showSignerTypeModal={showSignerTypeModal}
+        showSaveDraftConfirm={showSaveDraftConfirm}
+        showSubmitConfirm={showSubmitConfirm}
+        showLeaveConfirm={showLeaveConfirm}
+        showFieldModal={showFieldModal}
         isSaving={isSaving}
-        onClose={() => setShowSaveDraftConfirm(false)}
-        onConfirm={handleConfirmSaveDraft}
-      />
-
-      <SubmitConfirmModal
-        isOpen={showSubmitConfirm}
-        onClose={() => setShowSubmitConfirm(false)}
-        submitting={isSaving}
-        onConfirm={async () => {
+        isReadOnly={isStrictlyReadOnly}
+        viewingVersion={viewingVersion}
+        versions={versions}
+        paperSize={paperSize}
+        onCloseSignerType={() => setShowSignerTypeModal(false)}
+        onSelectSignerType={addSigner}
+        onCloseSaveDraft={() => setShowSaveDraftConfirm(false)}
+        onConfirmSaveDraft={handleConfirmSaveDraft}
+        onCloseSubmit={() => setShowSubmitConfirm(false)}
+        onConfirmSubmit={async () => {
           setShowSubmitConfirm(false);
           const submitted = await handleSubmit();
-          // If submit returned a contract object, navigate to list and pass id
-          if (submitted && (submitted as ContractRow).id) {
-            navigate(returnTo, {
-              state: { submittedId: (submitted as ContractRow).id },
-            });
+          if (submitted?.id) {
+            navigate(returnTo, { state: { submittedId: submitted.id } });
           }
         }}
-      />
-
-      <ContractLeaveConfirmModal
-        isOpen={showLeaveConfirm}
-        isSaving={isSaving}
-        isSaveDisabled={isStrictlyReadOnly}
-        onClose={() => setShowLeaveConfirm(false)}
-        onDiscard={handleDiscardAndExit}
+        onCloseLeave={() => setShowLeaveConfirm(false)}
+        onDiscardAndExit={handleDiscardAndExit}
         onSaveDraft={handleSaveDraft}
+        onCloseField={() => setShowFieldModal(false)}
+        onRefreshFields={refreshFields}
+        onCloseVersion={() => setViewingVersion(null)}
+        onNavigateVersion={setViewingVersion}
       />
-
-      {showFieldModal && (
-        <FieldManageModal
-          onClose={() => setShowFieldModal(false)}
-          onRefreshFields={refreshFields}
-        />
-      )}
-
-      {/* Modal Preview Versi — komponen terpisah dengan diff highlighting */}
-      {viewingVersion && (
-        <ContractVersionPreviewModal
-          versions={versions}
-          viewingVersion={viewingVersion}
-          paperSize={paperSize}
-          onClose={() => setViewingVersion(null)}
-          onNavigate={(v) => setViewingVersion(v)}
-        />
-      )}
     </>
   );
 }
