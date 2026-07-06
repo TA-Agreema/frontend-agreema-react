@@ -411,7 +411,7 @@ useEffect(() => {
                 className={`flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-colors border-l border-slate-200 ${mode === "upload" ? "bg-emerald-700 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
               >
                 <Upload className="h-4 w-4" />
-                Upload Manual
+                Tanda Tangan Manual
               </button>
             </div>
             {isExternalMode && internalSignatureType && (

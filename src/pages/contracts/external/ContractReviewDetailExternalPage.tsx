@@ -528,13 +528,12 @@ export default function ContractReviewDetailExternalPage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-gray-900">Konfirmasi Persetujuan</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Tindakan ini tidak dapat dibatalkan.</p>
               </div>
             </div>
 
             <p className="text-sm text-gray-600 leading-relaxed">
               Apakah Anda yakin ingin <strong>menyetujui</strong> kontrak ini?
-              Dengan menyetujui, kontrak akan resmi aktif dan berlaku.
+              Dengan menyetujui, kontrak akan aktif dan berlaku sesuai periode yang ditentukan.
             </p>
 
             {submitError && (
