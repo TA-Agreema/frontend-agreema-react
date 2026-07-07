@@ -156,36 +156,23 @@ function TemplateFieldItem({
   );
 }
 
-function TemplateFieldGroup({
-  title,
+function TemplateFieldList({
   fields,
   onInsert,
 }: {
-  title: string;
   fields: FieldDefinition[];
   onInsert: (field: FieldDefinition) => void;
 }) {
   return (
     <div className="space-y-0.5">
       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 pt-3 pb-1.5">
-        {title}
+        Daftar Field
       </p>
       {fields.map((field) => (
         <TemplateFieldItem key={field.id} field={field} onInsert={onInsert} />
       ))}
     </div>
   );
-}
-
-function groupTemplateFields(fields: FieldDefinition[]) {
-  return fields.reduce((groups, field) => {
-    const type = field.field_type || "general";
-    const title = type.charAt(0).toUpperCase() + type.slice(1);
-    const groupFields = groups.get(title) ?? [];
-    groupFields.push(field);
-    groups.set(title, groupFields);
-    return groups;
-  }, new Map<string, FieldDefinition[]>());
 }
 
 export function TemplateFieldSidebar({
@@ -199,8 +186,6 @@ export function TemplateFieldSidebar({
   onInsert: (field: FieldDefinition) => void;
   onManageFields: () => void;
 }) {
-  const fieldGroups = groupTemplateFields(fields);
-
   return (
     <aside
       className="shrink-0 border-l bg-card flex flex-col overflow-y-auto"
@@ -233,16 +218,7 @@ export function TemplateFieldSidebar({
             Belum ada field aktif.
           </div>
         ) : (
-          <div>
-            {[...fieldGroups.entries()].map(([title, groupFields]) => (
-              <TemplateFieldGroup
-                key={title}
-                title={title}
-                fields={groupFields}
-                onInsert={onInsert}
-              />
-            ))}
-          </div>
+          <TemplateFieldList fields={fields} onInsert={onInsert} />
         )}
       </div>
     </aside>
