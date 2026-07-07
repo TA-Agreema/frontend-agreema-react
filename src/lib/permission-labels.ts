@@ -18,7 +18,7 @@ const PERMISSION_LABELS: Record<string, string> = {
   "read.user": "Lihat User",
   "update.user": "Update User",
   "delete.user": "Hapus User",
-  "update.user.roles": "Update Role User",
+  // "update.user.roles": "Update Role User",
   "update.user.status": "Update Status User",
   "read.permission": "Lihat Permission",
 
