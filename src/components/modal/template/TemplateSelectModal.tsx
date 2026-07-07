@@ -36,6 +36,7 @@ interface TemplateSelectModalProps {
 // ─── Mapper: Template (API) → TemplateOption ──────────────────────────────────
 
 function mapTemplateToOption(t: Template): TemplateOption {
+  // Modal hanya membutuhkan subset data template untuk kartu pilihan dan inisialisasi editor kontrak.
   return {
     id: t.id,
     name: t.name,
@@ -76,7 +77,7 @@ export default function TemplateSelectModal({
         const mapped = activeTemplates.map(mapTemplateToOption);
         setTemplates(mapped);
 
-        // Build category list dari data yang ada
+        // Kategori dibangun dari template aktif agar sidebar filter selalu mengikuti data terbaru.
         const uniqueCategories = [
           "Semua",
           ...Array.from(new Set(mapped.map((t) => t.category).filter((c) => c !== "-"))),
@@ -133,7 +134,7 @@ export default function TemplateSelectModal({
         {/*  Body  */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left: category filter */}
-          <div className="w-44 shrink-0 border-r bg-gray-50/60 flex flex-col py-3 gap-0.5 px-2">
+          <div className="w-44 shrink-0 border-r bg-gray-50/60 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-3">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-1">
               Kategori
             </p>
@@ -149,7 +150,8 @@ export default function TemplateSelectModal({
                 {activeCategory === cat && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                 )}
-                <span className={activeCategory === cat ? "" : "ml-3.5"}>
+                <span
+                  className={`min-w-0 whitespace-normal break-words leading-snug ${activeCategory === cat ? "" : "ml-3.5"}`}>
                   {cat}
                 </span>
               </button>
