@@ -545,12 +545,18 @@ export default function ContractListPage() {
   // Action handlers
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const deletedTitle = deleteTarget.title;
     try {
       await deleteContract(deleteTarget.id);
       setContracts((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+      toast.success("Draft kontrak dihapus", {
+        description: `${deletedTitle} berhasil dihapus dari daftar kontrak proses.`,
+      });
     } catch (err) {
       console.error("Gagal menghapus kontrak:", err);
-      alert("Gagal menghapus kontrak. Coba lagi.");
+      toast.error("Gagal menghapus draft kontrak", {
+        description: "Coba lagi atau hubungi administrator.",
+      });
     } finally {
       setDeleteTarget(null);
     }
