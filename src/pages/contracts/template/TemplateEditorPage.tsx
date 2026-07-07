@@ -1,6 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useEditor } from "@tiptap/react";
+import { type Editor, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
@@ -76,7 +83,10 @@ import {
   fetchFieldDefinitions,
   type FieldDefinition,
 } from "@/services/field.service";
-import { downloadTemplatePdf } from "@/services/template.service";
+import {
+  deleteTemplate,
+  downloadTemplatePdf,
+} from "@/services/template.service";
 import FieldManageModal from "@/components/modal/contract/FieldManageModal";
 import UnsavedChangesModal from "@/components/modal/common/UnsavedChangesModal";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
@@ -87,10 +97,37 @@ import PermissionGuard from "@/middlewares/PermissionGuard";
 //  Types
 
 type EditorTab = "visual" | "upload" | "preview";
+type TemplateStatus = "Active" | "Inactive";
+type ResizeTarget = "left" | "right";
 
 const SIDEBAR_DEFAULT_PX = 260;
 const SIDEBAR_MIN_PX = 200;
 const SIDEBAR_MAX_PX = 480;
+
+const TEMPLATE_EDITOR_EXTENSIONS = [
+  StarterKit,
+  Underline,
+  TextAlign.configure({ types: ["heading", "paragraph"] }),
+  Link.configure({ openOnClick: false }),
+  TextStyle,
+  Color,
+  Highlight.configure({ multicolor: true }),
+  FontFamily,
+  FontSize,
+  LineHeight,
+  ContractField,
+  PageBreak,
+  HorizontalRule,
+  ResizableTable.configure({
+    resizable: true,
+    lastColumnResizable: true,
+    cellMinWidth: 1,
+  }),
+  ResizableTableRow,
+  BorderedTableHeader,
+  BorderedTableCell,
+  ImageResize,
+];
 
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   const responseData = (
@@ -113,6 +150,375 @@ const getApiErrorMessage = (error: unknown, fallback: string) => {
   return firstError ?? fallback;
 };
 
+const clampSidebarWidth = (width: number) =>
+  Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, width));
+
+function useResizableSidebars() {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const resizingRef = useRef<ResizeTarget | null>(null);
+  const [leftWidth, setLeftWidth] = useState(SIDEBAR_DEFAULT_PX);
+  const [rightWidth, setRightWidth] = useState(SIDEBAR_DEFAULT_PX);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!resizingRef.current || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const width =
+        resizingRef.current === "left"
+          ? event.clientX - containerRect.left
+          : containerRect.right - event.clientX;
+      const setWidth =
+        resizingRef.current === "left" ? setLeftWidth : setRightWidth;
+
+      setWidth(clampSidebarWidth(Math.round(width)));
+    };
+
+    const stopResizing = () => {
+      resizingRef.current = null;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", stopResizing);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", stopResizing);
+    };
+  }, []);
+
+  return {
+    containerRef,
+    leftWidth,
+    rightWidth,
+    startResizing: (target: ResizeTarget) => {
+      resizingRef.current = target;
+    },
+    resetLeftWidth: () => setLeftWidth(SIDEBAR_DEFAULT_PX),
+    resetRightWidth: () => setRightWidth(SIDEBAR_DEFAULT_PX),
+  };
+}
+
+interface TemplateEditorHeaderProps {
+  loading: boolean;
+  saveError: string | null;
+  onCancel: () => void;
+  onSave: () => void;
+}
+
+function TemplateEditorHeader({
+  loading,
+  saveError,
+  onCancel,
+  onSave,
+}: TemplateEditorHeaderProps) {
+  return (
+    <header className="flex items-center justify-between px-5 h-12 border-b bg-card shadow-sm shrink-0 z-10">
+      <div className="flex items-center gap-2.5">
+        <img src="/Agreema.svg" alt="Agreema" className="h-8 w-auto" />
+      </div>
+
+      <div className="flex items-center gap-2">
+        {saveError && (
+          <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {saveError}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={loading}
+          className="px-4 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50">
+          Batal
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50">
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Simpan
+        </button>
+      </div>
+    </header>
+  );
+}
+
+interface TemplateMetadataSidebarProps {
+  width: number;
+  name: string;
+  categoryId: number | "";
+  categories: Category[];
+  status: TemplateStatus;
+  isEditMode: boolean;
+  onNameChange: (value: string) => void;
+  onCategoryChange: (value: number | "") => void;
+  onStatusChange: (value: TemplateStatus) => void;
+}
+
+function TemplateMetadataSidebar({
+  width,
+  name,
+  categoryId,
+  categories,
+  status,
+  isEditMode,
+  onNameChange,
+  onCategoryChange,
+  onStatusChange,
+}: TemplateMetadataSidebarProps) {
+  return (
+    <aside
+      className="shrink-0 border-r bg-card flex flex-col overflow-y-auto"
+      style={{ width: `${width}px` }}>
+      <div className="p-4 space-y-1">
+        <div className="pb-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
+            Informasi Template
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Atur metadata dan kategori template
+          </p>
+        </div>
+
+        <div className="space-y-1.5 py-1">
+          <label className="text-xs font-semibold text-foreground">
+            Nama Template <span className="text-red-500">*</span>
+          </label>
+          <input
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            placeholder="e.g. Template Perjanjian Kerja Sama"
+            className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+            autoFocus={!isEditMode}
+          />
+        </div>
+
+        <div className="space-y-1.5 py-1">
+          <label className="text-xs font-semibold text-foreground">
+            Kategori <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <select
+              value={categoryId}
+              onChange={(event) =>
+                onCategoryChange(
+                  event.target.value ? Number(event.target.value) : "",
+                )
+              }
+              className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+              <option value="">Pilih kategori</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5 py-1">
+          <label className="text-xs font-semibold text-foreground">
+            Status
+          </label>
+          <div className="relative">
+            <select
+              value={status}
+              onChange={(event) =>
+                onStatusChange(event.target.value as TemplateStatus)
+              }
+              className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
+              <option value="Active">Aktif</option>
+              <option value="Inactive">Nonaktif</option>
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+interface ResizeDividerProps {
+  target: ResizeTarget;
+  onStart: (target: ResizeTarget) => void;
+  onReset: () => void;
+}
+
+function ResizeDivider({ target, onStart, onReset }: ResizeDividerProps) {
+  return (
+    <div
+      className="w-1 cursor-col-resize bg-transparent hover:bg-border"
+      onMouseDown={() => onStart(target)}
+      onDoubleClick={onReset}
+    />
+  );
+}
+
+interface TemplateEditorWorkspaceProps {
+  editor: Editor | null;
+  activeTab: EditorTab;
+  uploadedFile: File | null;
+  pageMargin: MarginStyle;
+  paperSize: PaperSize;
+  watermark: WatermarkSettings;
+  pdfPreviewUrl: string | null;
+  pdfPreviewFilename: string | null;
+  pdfPreviewError: string | null;
+  isPreparingPdfPreview: boolean;
+  onTabChange: (tab: EditorTab) => void;
+  onOpenPreview: () => void;
+  onFileSelect: (file: File) => void;
+  onFileRemove: () => void;
+  setPageMargin: Dispatch<SetStateAction<MarginStyle>>;
+  setPaperSize: Dispatch<SetStateAction<PaperSize>>;
+  setWatermark: Dispatch<SetStateAction<WatermarkSettings>>;
+}
+
+function TemplateEditorWorkspace({
+  editor,
+  activeTab,
+  uploadedFile,
+  pageMargin,
+  paperSize,
+  watermark,
+  pdfPreviewUrl,
+  pdfPreviewFilename,
+  pdfPreviewError,
+  isPreparingPdfPreview,
+  onTabChange,
+  onOpenPreview,
+  onFileSelect,
+  onFileRemove,
+  setPageMargin,
+  setPaperSize,
+  setWatermark,
+}: TemplateEditorWorkspaceProps) {
+  return (
+    <main className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex items-center w-full pt-3 border-b bg-card shrink-0">
+        <EditorModeTabButton
+          active={activeTab === "visual"}
+          onClick={() => onTabChange("visual")}
+          icon={<LayoutTemplate className="h-3.5 w-3.5" />}
+          label="Editor Visual"
+        />
+        <EditorModeTabButton
+          active={activeTab === "upload"}
+          onClick={() => onTabChange("upload")}
+          icon={<Upload className="h-3.5 w-3.5" />}
+          label="Upload Dokumen"
+        />
+        <EditorModeTabButton
+          active={activeTab === "preview"}
+          onClick={onOpenPreview}
+          icon={<Eye className="h-3.5 w-3.5" />}
+          label="Preview"
+        />
+      </div>
+
+      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+        {activeTab === "visual" && (
+          <div className="flex flex-col flex-1 overflow-hidden">
+            <EditorToolbar
+              editor={editor}
+              pageMargin={pageMargin}
+              setPageMargin={setPageMargin}
+              paperSize={paperSize}
+              setPaperSize={setPaperSize}
+              watermark={watermark}
+              setWatermark={setWatermark}
+            />
+            <EditorPaper
+              editor={editor}
+              pageMargin={pageMargin}
+              paperSize={paperSize}
+              watermark={watermark}
+            />
+          </div>
+        )}
+        {activeTab === "upload" && (
+          <TemplateUploadTab
+            file={uploadedFile}
+            onSelect={onFileSelect}
+            onRemove={onFileRemove}
+          />
+        )}
+        {activeTab === "preview" && (
+          <TemplatePreviewTab
+            pdfPreviewUrl={pdfPreviewUrl}
+            pdfPreviewFilename={pdfPreviewFilename}
+            pdfPreviewError={pdfPreviewError}
+            isPreparingPdfPreview={isPreparingPdfPreview}
+          />
+        )}
+      </div>
+    </main>
+  );
+}
+
+interface TemplateEditorModalsProps {
+  showFieldModal: boolean;
+  showCancelConfirm: boolean;
+  uploadNotice: string | null;
+  onCloseFieldModal: () => void;
+  onRefreshFields: () => Promise<void>;
+  onCloseCancelConfirm: () => void;
+  onConfirmCancel: () => void;
+  onCloseUploadNotice: () => void;
+}
+
+function TemplateEditorModals({
+  showFieldModal,
+  showCancelConfirm,
+  uploadNotice,
+  onCloseFieldModal,
+  onRefreshFields,
+  onCloseCancelConfirm,
+  onConfirmCancel,
+  onCloseUploadNotice,
+}: TemplateEditorModalsProps) {
+  return (
+    <>
+      {showFieldModal && (
+        <FieldManageModal
+          onClose={onCloseFieldModal}
+          onRefreshFields={onRefreshFields}
+        />
+      )}
+      {showCancelConfirm && (
+        <UnsavedChangesModal
+          message="Template belum disimpan. Jika tetap keluar, progres edit dan draft lokal akan dihapus."
+          onClose={onCloseCancelConfirm}
+          onConfirm={onConfirmCancel}
+        />
+      )}
+      {uploadNotice && (
+        <ConfirmModal
+          title="Upload Dokumen Gagal"
+          message={uploadNotice}
+          icon={AlertCircle}
+          tone="warning"
+          confirmLabel="Mengerti"
+          cancelLabel="Tutup"
+          onClose={onCloseUploadNotice}
+          onConfirm={onCloseUploadNotice}
+        />
+      )}
+    </>
+  );
+}
+
+function TemplateEditorLoading() {
+  return (
+    <div className="flex items-center justify-center h-screen">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 //  Main Page
 
 export default function TemplateEditorPage() {
@@ -124,12 +530,17 @@ export default function TemplateEditorPage() {
     useTemplates();
   const draftKey = isEditMode ? `template_draft_${id}` : "template_draft_new";
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const resizingRef = useRef<null | "left" | "right">(null);
   const templateLoadedRef = useRef(false);
   const newDraftLoadedRef = useRef(false);
-  const [leftWidth, setLeftWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
-  const [rightWidth, setRightWidth] = useState<number>(SIDEBAR_DEFAULT_PX);
+  const previewCreatedTemplateIdRef = useRef<number | null>(null);
+  const {
+    containerRef,
+    leftWidth,
+    rightWidth,
+    startResizing,
+    resetLeftWidth,
+    resetRightWidth,
+  } = useResizableSidebars();
 
   // Form state
   const [name, setName] = useState("");
@@ -144,7 +555,7 @@ export default function TemplateEditorPage() {
   const [persistedTemplateId, setPersistedTemplateId] = useState<number | null>(
     id ? Number(id) : null,
   );
-  const [status, setStatus] = useState<"Active" | "Inactive">("Active");
+  const [status, setStatus] = useState<TemplateStatus>("Active");
   const [activeTab, setActiveTab] = useState<EditorTab>("visual");
   const [uploadedFile, setFile] = useState<File | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -160,30 +571,7 @@ export default function TemplateEditorPage() {
 
   // TipTap
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
-      Link.configure({ openOnClick: false }),
-      TextStyle,
-      Color,
-      Highlight.configure({ multicolor: true }),
-      FontFamily,
-      FontSize,
-      LineHeight,
-      ContractField,
-      PageBreak,
-      HorizontalRule,
-      ResizableTable.configure({
-        resizable: true,
-        lastColumnResizable: true,
-        cellMinWidth: 1,
-      }),
-      ResizableTableRow,
-      BorderedTableHeader,
-      BorderedTableCell,
-      ImageResize,
-    ],
+    extensions: TEMPLATE_EDITOR_EXTENSIONS,
     content: "",
     editorProps: {
       attributes: {
@@ -309,36 +697,6 @@ export default function TemplateEditorPage() {
       cancelled = true;
     };
   }, [isEditMode, editor, fieldsLoaded, allFields, draftKey]);
-
-  // Mouse move/up handlers for resizing
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!resizingRef.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      if (resizingRef.current === "left") {
-        const newWidth = Math.round(e.clientX - rect.left);
-        setLeftWidth(
-          Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, newWidth)),
-        );
-      } else if (resizingRef.current === "right") {
-        const newWidth = Math.round(rect.right - e.clientX);
-        setRightWidth(
-          Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, newWidth)),
-        );
-      }
-    };
-
-    const onUp = () => {
-      resizingRef.current = null;
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
 
   // Load existing template in edit mode
   useEffect(() => {
@@ -476,7 +834,7 @@ export default function TemplateEditorPage() {
       setSaveError("Nama template wajib diisi.");
       return undefined;
     }
-  if (!isPreview && !categoryId) {
+    if (!isPreview && !categoryId) {
       setSaveError("Kategori template wajib dipilih.");
       return undefined;
     }
@@ -500,6 +858,9 @@ export default function TemplateEditorPage() {
         const created = await createTemplate(
           buildTemplatePayload(payloadOverrides),
         );
+        if (isPreview) {
+          previewCreatedTemplateIdRef.current = created.id;
+        }
         setPersistedTemplateId(created.id);
         localStorage.removeItem(draftKey);
         return created;
@@ -558,18 +919,30 @@ export default function TemplateEditorPage() {
     }
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
+    const previewCreatedTemplateId = previewCreatedTemplateIdRef.current;
+    if (previewCreatedTemplateId) {
+      try {
+        await deleteTemplate(previewCreatedTemplateId);
+        previewCreatedTemplateIdRef.current = null;
+      } catch (error) {
+        setSaveError(
+          getApiErrorMessage(
+            error,
+            "Gagal membuang template sementara. Coba lagi.",
+          ),
+        );
+        return;
+      }
+    }
+
     localStorage.removeItem(draftKey);
     setShowCancelConfirm(false);
     navigate("/contracts-templates");
   };
 
   if (initialising) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <TemplateEditorLoading />;
   }
 
   return (
@@ -577,187 +950,56 @@ export default function TemplateEditorPage() {
       permissions={["create.template", "update.template"]}
       fallback={<Navigate to="/unauthorized" replace />}>
       <div className="flex flex-col h-screen bg-background overflow-hidden">
-        {/*  Header  */}
-        <header className="flex items-center justify-between px-5 h-12 border-b bg-card shadow-sm shrink-0 z-10">
-          {/* Agreema logo */}
-          <div className="flex items-center gap-2.5">
-            <img src="/Agreema.svg" alt="Agreema" className="h-8 w-auto" />
-          </div>
+        <TemplateEditorHeader
+          loading={loading}
+          saveError={saveError}
+          onCancel={() => setShowCancelConfirm(true)}
+          onSave={() => void handleSave()}
+        />
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            {saveError && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                {saveError}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowCancelConfirm(true)}
-              disabled={loading}
-              className="px-4 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors disabled:opacity-50">
-              Batal
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-1.5 text-sm rounded-md bg-emerald-600 text-white hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50">
-              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              Simpan
-            </button>
-          </div>
-        </header>
-
-        {/*  Body: 3-column layout  */}
         <div className="flex flex-1 overflow-hidden" ref={containerRef}>
-          {/*  LEFT: Informasi Template  */}
-          <aside
-            className="shrink-0 border-r bg-card flex flex-col overflow-y-auto"
-            style={{ width: `${leftWidth}px` }}>
-            <div className="p-4 space-y-1">
-              {/* Section header */}
-              <div className="pb-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                  Informasi Template
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Atur metadata dan kategori template
-                </p>
-              </div>
-
-              {/* Nama Template */}
-              <div className="space-y-1.5 py-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Nama Template <span className="text-red-500">*</span>
-                </label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Template Perjanjian Kerja Sama"
-                  className="w-full rounded-md border bg-background px-2.5 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                  autoFocus={!isEditMode}
-                />
-              </div>
-
-              {/* Kategori */}
-              <div className="space-y-1.5 py-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Kategori
-                </label>
-                <div className="relative">
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(Number(e.target.value))}
-                    className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
-                    <option value="">Pilih kategori</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Status */}
-              <div className="space-y-1.5 py-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Status
-                </label>
-                <div className="relative">
-                  <select
-                    value={status}
-                    onChange={(e) =>
-                      setStatus(e.target.value as "Active" | "Inactive")
-                    }
-                    className="w-full appearance-none rounded-md border bg-background px-2.5 py-1.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all">
-                    <option value="Active">Aktif</option>
-                    <option value="Inactive">Nonaktif</option>
-                  </select>
-                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* draggable divider: left */}
-          <div
-            className="w-1 cursor-col-resize bg-transparent hover:bg-border"
-            onMouseDown={() => (resizingRef.current = "left")}
-            onDoubleClick={() => setLeftWidth(SIDEBAR_DEFAULT_PX)}
+          <TemplateMetadataSidebar
+            width={leftWidth}
+            name={name}
+            categoryId={categoryId}
+            categories={categories}
+            status={status}
+            isEditMode={isEditMode}
+            onNameChange={setName}
+            onCategoryChange={setCategoryId}
+            onStatusChange={setStatus}
           />
 
-          {/*  CENTER: Editor  */}
-          <main className="flex-1 flex flex-col overflow-hidden">
-            {/* Tab bar */}
-            <div className="flex items-center w-full pt-3 border-b bg-card shrink-0">
-              <EditorModeTabButton
-                active={activeTab === "visual"}
-                onClick={() => setActiveTab("visual")}
-                icon={<LayoutTemplate className="h-3.5 w-3.5" />}
-                label="Editor Visual"
-              />
-              <EditorModeTabButton
-                active={activeTab === "upload"}
-                onClick={() => setActiveTab("upload")}
-                icon={<Upload className="h-3.5 w-3.5" />}
-                label="Upload Dokumen"
-              />
-              <EditorModeTabButton
-                active={activeTab === "preview"}
-                onClick={handleOpenPreviewTab}
-                icon={<Eye className="h-3.5 w-3.5" />}
-                label="Preview"
-              />
-            </div>
+          <ResizeDivider
+            target="left"
+            onStart={startResizing}
+            onReset={resetLeftWidth}
+          />
 
-            {/* Editor content */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-background">
-              {activeTab === "visual" && (
-                <div className="flex flex-col flex-1 overflow-hidden">
-                  <EditorToolbar
-                    editor={editor}
-                    pageMargin={pageMargin}
-                    setPageMargin={setPageMargin}
-                    paperSize={paperSize}
-                    setPaperSize={setPaperSize}
-                    watermark={watermark}
-                    setWatermark={setWatermark}
-                  />
-                  <EditorPaper
-                    editor={editor}
-                    pageMargin={pageMargin}
-                    paperSize={paperSize}
-                    watermark={watermark}
-                  />
-                </div>
-              )}
-              {activeTab === "upload" && (
-                <TemplateUploadTab
-                  file={uploadedFile}
-                  onSelect={handleFileSelect}
-                  onRemove={() => setFile(null)}
-                />
-              )}
-              {activeTab === "preview" && (
-                <TemplatePreviewTab
-                  pdfPreviewUrl={pdfPreviewUrl}
-                  pdfPreviewFilename={pdfPreviewFilename}
-                  pdfPreviewError={pdfPreviewError}
-                  isPreparingPdfPreview={isPreparingPdfPreview}
-                />
-              )}
-            </div>
-          </main>
+          <TemplateEditorWorkspace
+            editor={editor}
+            activeTab={activeTab}
+            uploadedFile={uploadedFile}
+            pageMargin={pageMargin}
+            paperSize={paperSize}
+            watermark={watermark}
+            pdfPreviewUrl={pdfPreviewUrl}
+            pdfPreviewFilename={pdfPreviewFilename}
+            pdfPreviewError={pdfPreviewError}
+            isPreparingPdfPreview={isPreparingPdfPreview}
+            onTabChange={setActiveTab}
+            onOpenPreview={handleOpenPreviewTab}
+            onFileSelect={(file) => void handleFileSelect(file)}
+            onFileRemove={() => setFile(null)}
+            setPageMargin={setPageMargin}
+            setPaperSize={setPaperSize}
+            setWatermark={setWatermark}
+          />
 
-          {/* draggable divider: right */}
-          <div
-            className="w-1 cursor-col-resize bg-transparent hover:bg-border"
-            onMouseDown={() => (resizingRef.current = "right")}
-            onDoubleClick={() => setRightWidth(SIDEBAR_DEFAULT_PX)}
+          <ResizeDivider
+            target="right"
+            onStart={startResizing}
+            onReset={resetRightWidth}
           />
 
           <TemplateFieldSidebar
@@ -769,32 +1011,16 @@ export default function TemplateEditorPage() {
             onManageFields={() => setShowFieldModal(true)}
           />
 
-          {/* Field management modal */}
-          {showFieldModal && (
-            <FieldManageModal
-              onClose={() => setShowFieldModal(false)}
-              onRefreshFields={refreshFields}
-            />
-          )}
-          {showCancelConfirm && (
-            <UnsavedChangesModal
-              message="Template belum disimpan. Jika tetap keluar, progres edit dan draft lokal akan dihapus."
-              onClose={() => setShowCancelConfirm(false)}
-              onConfirm={handleConfirmCancel}
-            />
-          )}
-          {uploadNotice && (
-            <ConfirmModal
-              title="Upload Dokumen Gagal"
-              message={uploadNotice}
-              icon={AlertCircle}
-              tone="warning"
-              confirmLabel="Mengerti"
-              cancelLabel="Tutup"
-              onClose={() => setUploadNotice(null)}
-              onConfirm={() => setUploadNotice(null)}
-            />
-          )}
+          <TemplateEditorModals
+            showFieldModal={showFieldModal}
+            showCancelConfirm={showCancelConfirm}
+            uploadNotice={uploadNotice}
+            onCloseFieldModal={() => setShowFieldModal(false)}
+            onRefreshFields={refreshFields}
+            onCloseCancelConfirm={() => setShowCancelConfirm(false)}
+            onConfirmCancel={handleConfirmCancel}
+            onCloseUploadNotice={() => setUploadNotice(null)}
+          />
         </div>
       </div>
     </PermissionGuard>

@@ -70,7 +70,10 @@ function collectParagraphAlignments(
   );
 }
 
-function applyParagraphAlignments(html: string, alignments: Array<string | null>) {
+function applyParagraphAlignments(
+  html: string,
+  alignments: Array<string | null>,
+) {
   if (!html.trim() || typeof DOMParser === "undefined") return html;
 
   const document = new DOMParser().parseFromString(html, "text/html");
@@ -90,7 +93,6 @@ function applyParagraphAlignments(html: string, alignments: Array<string | null>
 
 export async function convertDocxToEditorHtml(arrayBuffer: ArrayBuffer) {
   const paragraphAlignments: Array<string | null> = [];
-
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {
@@ -107,6 +109,5 @@ export async function convertDocxToEditorHtml(arrayBuffer: ArrayBuffer) {
       }),
     },
   );
-
   return applyParagraphAlignments(result.value, paragraphAlignments);
 }

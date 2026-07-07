@@ -76,7 +76,7 @@ export function TemplatePreviewTab({
   isPreparingPdfPreview,
 }: {
   pdfPreviewUrl: string | null;
-  pdfPreviewFilename: string;
+  pdfPreviewFilename: string | null;
   pdfPreviewError: string | null;
   isPreparingPdfPreview: boolean;
 }) {
@@ -84,7 +84,7 @@ export function TemplatePreviewTab({
     <PdfPreviewTab
       title="Preview PDF Template"
       previewUrl={pdfPreviewUrl}
-      filename={pdfPreviewFilename}
+      filename={pdfPreviewFilename ?? "template-kontrak-preview.pdf"}
       error={pdfPreviewError}
       isPreparing={isPreparingPdfPreview}
       loadingDescription="Sistem sedang menyimpan template dan membuat preview dari renderer PDF backend."

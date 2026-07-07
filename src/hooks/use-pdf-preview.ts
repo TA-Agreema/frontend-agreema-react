@@ -34,26 +34,20 @@ export function usePdfPreview({
       }
     };
   }, []);
-
   const preparePreview = useCallback(async () => {
     if (isPreparingPreview) return;
-
     const currentSignature = createSignature();
     const currentCacheKey = `${cacheKey}:${currentSignature}`;
-
     if (previewUrlRef.current && previewSignature === currentSignature) {
       setPreviewError(null);
       return;
     }
-
     const cachedPreview = pdfPreviewCache.get(currentCacheKey);
     if (cachedPreview) {
       const cachedUrl = URL.createObjectURL(cachedPreview.blob);
-
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
       }
-
       previewUrlRef.current = cachedUrl;
       setPreviewUrl(cachedUrl);
       setPreviewFilename(cachedPreview.filename);

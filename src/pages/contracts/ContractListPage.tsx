@@ -102,7 +102,7 @@ export interface ContractRow {
   has_open_renewal?: boolean;
 }
 
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 10;
 
 //  Status Config
 
@@ -713,7 +713,7 @@ export default function ContractListPage() {
       {/* Table Card */}
       <div className="rounded-xl border bg-card shadow-sm">
         {/* Table */}
-        <div className="overflow-x-auto min-h-70 pb-12">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">

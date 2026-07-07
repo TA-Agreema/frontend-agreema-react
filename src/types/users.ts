@@ -25,7 +25,3 @@ export interface UpdateUserRequest {
     department: string;
     is_active: number;
 }
-
-export interface UpdateUserRolesRequest {
-    role: string;
-}
