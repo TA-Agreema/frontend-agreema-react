@@ -111,7 +111,7 @@ export function ContractEditorWorkspace({
             filename={pdfPreviewFilename}
             error={pdfPreviewError}
             isPreparing={isPreparingPdfPreview}
-            loadingDescription="Sistem sedang menyimpan draft dan membuat preview dari renderer PDF backend."
+            loadingDescription="Sistem sedang menyimpan draft dan merender PDF."
           />
         )}
       </div>

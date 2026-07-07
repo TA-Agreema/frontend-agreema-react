@@ -245,6 +245,7 @@ export function buildContractFieldValues(
   content: string,
   fields: FieldDefinition[],
 ): ContractFieldValuePayload[] {
+  // Nilai disimpan per field definition, jadi field yang muncul berulang tetap punya satu nilai final.
   const valuesByFieldId = new Map<number, string | null>();
   const occurrences = extractContractFieldOccurrences(content, fields);
 
@@ -270,6 +271,7 @@ export function validateRequiredContractFields(
   content: string,
   fields: FieldDefinition[],
 ): MissingRequiredContractField[] {
+  // Field wajib cukup dilaporkan sekali walaupun token field-nya muncul lebih dari satu kali.
   const reportedFieldIds = new Set<number>();
   const occurrences = extractContractFieldOccurrences(content, fields);
 

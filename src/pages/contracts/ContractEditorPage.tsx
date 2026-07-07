@@ -1152,6 +1152,7 @@ export default function ContractEditorPage() {
     );
   };
 
+  // Menyatukan seluruh state editor menjadi payload API agar create/update kontrak konsisten.
   const buildPayload = (
     statusOverride?: string,
     overrides?: Partial<{ title: string }>,
@@ -1182,6 +1183,7 @@ export default function ContractEditorPage() {
     };
   };
 
+  // Signature dipakai hook preview untuk tahu apakah isi editor berubah dan PDF perlu dibuat ulang.
   const createPdfPreviewSignature = () =>
     JSON.stringify({
       ...buildPayload(currentStatus),
@@ -1191,6 +1193,7 @@ export default function ContractEditorPage() {
       ),
     });
 
+  // Menyimpan kontrak sebagai draft; mode preview boleh memakai judul sementara tanpa validasi submit penuh.
   const persistDraft = async (options?: {
     forPreview?: boolean;
   }): Promise<ContractRow | undefined> => {
@@ -1349,6 +1352,7 @@ export default function ContractEditorPage() {
     setShowLeaveConfirm(true);
   };
 
+  // Saat keluar tanpa simpan, draft lokal dan record sementara hasil preview harus dibuang.
   const handleDiscardAndExit = async () => {
     const previewCreatedContractId = previewCreatedContractIdRef.current;
     if (previewCreatedContractId) {
