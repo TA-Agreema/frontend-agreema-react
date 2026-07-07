@@ -49,10 +49,7 @@ export default function ForgotPasswordPage() {
       if (isAxiosError(err) && err.response?.status === 422) {
         const emailError = err.response.data?.errors?.email?.[0];
         if (emailError) {
-          form.setError("email", {
-            type: "server",
-            message: emailError,
-          });
+          setError(emailError);
           return;
         }
       }

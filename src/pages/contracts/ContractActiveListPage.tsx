@@ -25,7 +25,10 @@ import {
 } from "lucide-react";
 import ContractFilterManager from "@/components/ContractFilterManager";
 import { useContractFilter } from "@/hooks/useContractFilter";
-import { fetchFieldDefinitions, type FieldDefinition } from "@/services/field.service";
+import {
+  fetchFieldDefinitions,
+  type FieldDefinition,
+} from "@/services/field.service";
 import Pagination from "@/components/Pagination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -113,8 +116,7 @@ function AddendumSubRow({
           </div>
           <button
             onClick={onView}
-            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors"
-          >
+            className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md transition-colors">
             <Eye className="h-3.5 w-3.5" />
             Lihat Detail
           </button>
@@ -172,8 +174,7 @@ function RowMenu({
       const estimatedMenuHeight = 280;
       const gap = 4;
       const spaceBelow = window.innerHeight - rect.bottom;
-      const placement =
-        spaceBelow >= estimatedMenuHeight ? "bottom" : "top";
+      const placement = spaceBelow >= estimatedMenuHeight ? "bottom" : "top";
       const top = placement === "bottom" ? rect.bottom + gap : rect.top - gap;
       const left = Math.min(
         Math.max(gap, rect.right - menuWidth),
@@ -190,7 +191,8 @@ function RowMenu({
     if (!open) return;
     const handler = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (menuRef.current?.contains(t) || buttonRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t) || buttonRef.current?.contains(t))
+        return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handler);
@@ -201,10 +203,12 @@ function RowMenu({
     if (!open) return;
     const handler = () => setOpen(false);
     window.addEventListener("scroll", handler, { capture: true });
-    return () => window.removeEventListener("scroll", handler, { capture: true });
+    return () =>
+      window.removeEventListener("scroll", handler, { capture: true });
   }, [open]);
 
-  const hasPendingTermination = contract.terminations && contract.terminations.length > 0;
+  const hasPendingTermination =
+    contract.terminations && contract.terminations.length > 0;
   const canRenewThisContract =
     canRenewContract &&
     contract.contract_type !== "external" &&
@@ -217,92 +221,105 @@ function RowMenu({
       <button
         ref={buttonRef}
         onClick={handleToggleMenu}
-        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-      >
+        className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
         <MoreVertical className="h-4 w-4" />
       </button>
 
-      {open && menuPosition && createPortal(
-        <div
-          ref={menuRef}
-          style={{ top: menuPosition.top, left: menuPosition.left }}
-          className={`fixed w-52 rounded-lg border bg-card shadow-xl z-[100] overflow-hidden py-1 ${menuPosition.placement === "top" ? "-translate-y-full" : ""}`}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); onView(); setOpen(false); }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-          >
-            <Eye className="h-4 w-4 text-muted-foreground opacity-70" />
-            Lihat Detail
-          </button>
-
-
-          {canManageAddendum && isHrd && canAddAddendum && (
+      {open &&
+        menuPosition &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+            className={`fixed w-52 rounded-lg border bg-card shadow-xl z-[100] overflow-hidden py-1 ${menuPosition.placement === "top" ? "-translate-y-full" : ""}`}>
             <button
-              onClick={(e) => { e.stopPropagation(); onAddendum(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
-              <FileText className="h-4 w-4 text-muted-foreground opacity-70" />
-              Ajukan Addendum
-            </button>
-          )}
-
-          {canRenewThisContract && isHrd && (
-            <button
-              type="button"
-              disabled={contract.has_open_renewal}
               onClick={(e) => {
                 e.stopPropagation();
-                if (contract.has_open_renewal) return;
-                onRenew();
+                onView();
                 setOpen(false);
               }}
-              title={
-                contract.has_open_renewal
-                  ? "Kontrak turunan untuk kontrak ini masih diproses"
-                  : undefined
-              }
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-            >
-              <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
-              {contract.has_open_renewal
-                ? "Perpanjangan sedang diproses"
-                : "Perpanjang Kontrak"}
+              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+              <Eye className="h-4 w-4 text-muted-foreground opacity-70" />
+              Lihat Detail
             </button>
-          )}
 
-          {canManageTermination && isHrd && canTerminate && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onTerminate(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <XCircle className="h-4 w-4 opacity-70" />
-              Ajukan Pembatalan
-            </button>
-          )}
+            {canManageAddendum && isHrd && canAddAddendum && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddendum();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+                <FileText className="h-4 w-4 text-muted-foreground opacity-70" />
+                Ajukan Addendum
+              </button>
+            )}
 
-          {canDownloadContract && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDownloadPdf(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground"
-            >
-              <Download className="h-4 w-4 text-muted-foreground opacity-70" />
-              Download PDF
-            </button>
-          )}
+            {canRenewThisContract && isHrd && (
+              <button
+                type="button"
+                disabled={contract.has_open_renewal}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (contract.has_open_renewal) return;
+                  onRenew();
+                  setOpen(false);
+                }}
+                title={
+                  contract.has_open_renewal
+                    ? "Kontrak turunan untuk kontrak ini masih diproses"
+                    : undefined
+                }
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent">
+                <RefreshCw className="h-4 w-4 text-muted-foreground opacity-70" />
+                {contract.has_open_renewal
+                  ? "Perpanjangan sedang diproses"
+                  : "Perpanjang Kontrak"}
+              </button>
+            )}
 
-          {canDeleteRow && contract.status === "draft" && isHrd && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); setOpen(false); }}
-              className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-            >
-              <Trash2 className="h-4 w-4 opacity-70" />
-              Hapus
-            </button>
-          )}
-        </div>,
-        document.body,
-      )}
+            {canManageTermination && isHrd && canTerminate && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTerminate();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                <XCircle className="h-4 w-4 opacity-70" />
+                Ajukan Pembatalan
+              </button>
+            )}
+
+            {canDownloadContract && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownloadPdf();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm hover:bg-muted transition-colors text-foreground">
+                <Download className="h-4 w-4 text-muted-foreground opacity-70" />
+                Download PDF
+              </button>
+            )}
+
+            {canDeleteRow && contract.status === "draft" && isHrd && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                <Trash2 className="h-4 w-4 opacity-70" />
+                Hapus
+              </button>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -316,11 +333,20 @@ export default function ContractActiveListPage() {
   const isHrd = roles.includes("hrd");
   const isManager = roles.includes("manager");
 
-  const canManageAddendum = hasAnyPermission(["create.addendum", "create.contract_addendum"]);
-  const canManageTermination = hasAnyPermission(["create.terminate", "terminate.contract"]);
+  const canManageAddendum = hasAnyPermission([
+    "create.addendum",
+    "create.contract_addendum",
+  ]);
+  const canManageTermination = hasAnyPermission([
+    "create.terminate",
+    "terminate.contract",
+  ]);
   const canDeleteRow = hasAnyPermission(["delete.contract"]);
   const canRenewContract = hasAnyPermission(["create.contract"]);
-  const canDownloadContract = hasAnyPermission(["download.contract", "read.contract"]);
+  const canDownloadContract = hasAnyPermission([
+    "download.contract",
+    "read.contract",
+  ]);
 
   const [contracts, setContracts] = useState<ContractRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -329,10 +355,18 @@ export default function ContractActiveListPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<ContractRow | null>(null);
   const [renewTarget, setRenewTarget] = useState<ContractRow | null>(null);
-  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(null);
-  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(null);
-  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(null);
-  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>([]);
+  const [addendumTarget, setAddendumTarget] = useState<ContractRow | null>(
+    null,
+  );
+  const [viewAddendumTarget, setViewAddendumTarget] = useState<Addendum | null>(
+    null,
+  );
+  const [terminateTarget, setTerminateTarget] = useState<ContractRow | null>(
+    null,
+  );
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(
+    [],
+  );
 
   // Load field definitions
   useEffect(() => {
@@ -343,13 +377,16 @@ export default function ContractActiveListPage() {
   const filter = useContractFilter(contracts);
 
   // Filter only active contracts
-  const activeContracts = filter.contracts.filter(c => c.status === "active");
+  const activeContracts = filter.contracts.filter((c) => c.status === "active");
   const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
-  const paginated = activeContracts.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const paginated = activeContracts.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
 
   const toggleExpand = (id: number) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -360,43 +397,62 @@ export default function ContractActiveListPage() {
     });
   };
 
+  const handleTerminationSuccess = useCallback(
+    (contractId: number, terminationData: Termination) => {
+      setContracts((prev) =>
+        prev.map((c) => {
+          if (c.id !== contractId) return c;
+          const effectiveDateStr = terminationData?.effective_date;
+          let isTerminatedNow = true;
+          if (effectiveDateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const effectiveDate = new Date(effectiveDateStr);
+            effectiveDate.setHours(0, 0, 0, 0);
+            isTerminatedNow = effectiveDate.getTime() <= today.getTime();
+          }
+          if (isTerminatedNow) {
+            return {
+              ...c,
+              status: "terminated" as const,
+              end_date: effectiveDateStr || c.end_date,
+              terminations: [],
+            };
+          } else {
+            return {
+              ...c,
+              terminations: [terminationData, ...(c.terminations || [])],
+            };
+          }
+        }),
+      );
+    },
+    [],
+  );
 
-  const handleTerminationSuccess = useCallback((contractId: number, terminationData: Termination) => {
-    setContracts(prev =>
-      prev.map(c => {
-        if (c.id !== contractId) return c;
-        const effectiveDateStr = terminationData?.effective_date;
-        let isTerminatedNow = true;
-        if (effectiveDateStr) {
-          const today = new Date(); today.setHours(0, 0, 0, 0);
-          const effectiveDate = new Date(effectiveDateStr); effectiveDate.setHours(0, 0, 0, 0);
-          isTerminatedNow = effectiveDate.getTime() <= today.getTime();
-        }
-        if (isTerminatedNow) {
-          return { ...c, status: "terminated" as const, end_date: effectiveDateStr || c.end_date, terminations: [] };
-        } else {
-          return { ...c, terminations: [terminationData, ...(c.terminations || [])] };
-        }
-      })
-    );
-  }, []);
-
-  const handleAddendumSuccess = useCallback((contractId: number, newAddendum: Addendum) => {
-    setContracts(prev =>
-      prev.map(c => c.id === contractId ? { ...c, addendums: [newAddendum, ...c.addendums] } : c)
-    );
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.add(contractId);
-      return next;
-    });
-  }, []);
+  const handleAddendumSuccess = useCallback(
+    (contractId: number, newAddendum: Addendum) => {
+      setContracts((prev) =>
+        prev.map((c) =>
+          c.id === contractId
+            ? { ...c, addendums: [newAddendum, ...c.addendums] }
+            : c,
+        ),
+      );
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        next.add(contractId);
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
       await deleteContract(deleteTarget.id);
-      setContracts(prev => prev.filter(c => c.id !== deleteTarget.id));
+      setContracts((prev) => prev.filter((c) => c.id !== deleteTarget.id));
     } catch {
       alert("Gagal menghapus kontrak. Coba lagi.");
     } finally {
@@ -437,10 +493,10 @@ export default function ContractActiveListPage() {
 
         if (isManager) {
           const all = await fetchManagerContracts(undefined, "active");
-          data = all.filter(c => c.status === "active");
+          data = all.filter((c) => c.status === "active");
         } else {
           const all = await fetchContracts(undefined, false, true);
-          data = all.filter(c => c.status === "active");
+          data = all.filter((c) => c.status === "active");
         }
 
         if (!mounted) return;
@@ -448,14 +504,23 @@ export default function ContractActiveListPage() {
         setPage(1);
       } catch (err: unknown) {
         if (!mounted) return;
-        const axiosError = err as { response?: { data?: { message?: string } }; message?: string };
-        setError(axiosError?.response?.data?.message ?? axiosError?.message ?? "Failed to load contracts");
+        const axiosError = err as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+        setError(
+          axiosError?.response?.data?.message ??
+            axiosError?.message ??
+            "Failed to load contracts",
+        );
       } finally {
         if (mounted) setLoading(false);
       }
     };
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [isManager]);
 
   const renderSortIcon = (key: string) => {
@@ -478,7 +543,9 @@ export default function ContractActiveListPage() {
             <CheckCircle2 className="h-5 w-5 text-emerald-700" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-gray-900">Kontrak Aktif</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+              Kontrak Aktif
+            </h2>
             <p className="text-muted-foreground text-sm">
               Daftar kontrak yang saat ini berstatus aktif dan sedang berjalan.
             </p>
@@ -523,55 +590,49 @@ export default function ContractActiveListPage() {
       {/* Table Card */}
       <div className="rounded-xl border bg-card shadow-sm">
         {/* Table */}
-        <div className="overflow-x-auto min-h-70">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="w-8 px-3 py-3" />
                 <th
                   onClick={() => filter.requestSort("title")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Judul {renderSortIcon("title")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("partner")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Partner {renderSortIcon("partner")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("category")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Kategori {renderSortIcon("category")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("status")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Status {renderSortIcon("status")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("start_date")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Periode {renderSortIcon("start_date")}
                   </div>
                 </th>
                 <th
                   onClick={() => filter.requestSort("created_by")}
-                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                >
+                  className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                   <div className="flex items-center gap-1.5">
                     Dibuat Oleh {renderSortIcon("created_by")}
                   </div>
@@ -585,8 +646,7 @@ export default function ContractActiveListPage() {
                     <th
                       key={field.id}
                       onClick={() => filter.requestSort(String(field.id))}
-                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors"
-                    >
+                      className="cursor-pointer hover:bg-muted/50 text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide transition-colors">
                       <div className="flex items-center gap-1.5">
                         {field.field_label} {renderSortIcon(String(field.id))}
                       </div>
@@ -599,21 +659,36 @@ export default function ContractActiveListPage() {
             <tbody className="divide-y">
               {loading && (
                 <tr>
-                  <td colSpan={8 + filter.visibleFields.length} className="py-16 text-center">
+                  <td
+                    colSpan={8 + filter.visibleFields.length}
+                    className="py-16 text-center">
                     <Loader2 className="h-6 w-6 animate-spin text-emerald-500 mx-auto mb-2" />
-                    <p className="text-muted-foreground text-sm">Memuat kontrak aktif...</p>
+                    <p className="text-muted-foreground text-sm">
+                      Memuat kontrak aktif...
+                    </p>
                   </td>
                 </tr>
               )}
               {error && !loading && (
-                <tr><td colSpan={8 + filter.visibleFields.length} className="py-16 text-center text-red-600 text-sm">{error}</td></tr>
+                <tr>
+                  <td
+                    colSpan={8 + filter.visibleFields.length}
+                    className="py-16 text-center text-red-600 text-sm">
+                    {error}
+                  </td>
+                </tr>
               )}
               {!loading && !error && paginated.length === 0 && (
                 <tr>
-                  <td colSpan={8 + filter.visibleFields.length} className="py-16 text-center">
+                  <td
+                    colSpan={8 + filter.visibleFields.length}
+                    className="py-16 text-center">
                     <CheckCircle2 className="h-10 w-10 text-emerald-200 mx-auto mb-3" />
                     <p className="text-muted-foreground text-sm">
-                      {filter.search || filter.startYearFilter !== "all" || filter.endYearFilter !== "all" || filter.customFilters.length > 0
+                      {filter.search ||
+                      filter.startYearFilter !== "all" ||
+                      filter.endYearFilter !== "all" ||
+                      filter.customFilters.length > 0
                         ? "Tidak ada kontrak aktif yang cocok dengan filter aktif"
                         : "Belum ada kontrak yang aktif"}
                     </p>
@@ -621,133 +696,176 @@ export default function ContractActiveListPage() {
                 </tr>
               )}
 
-              {!loading && !error && paginated.map((contract) => {
-                const isExpanded = expanded.has(contract.id);
-                const hasAddendums = contract.addendums.length > 0;
+              {!loading &&
+                !error &&
+                paginated.map((contract) => {
+                  const isExpanded = expanded.has(contract.id);
+                  const hasAddendums = contract.addendums.length > 0;
 
-                return (
-                  <>
-                    <tr
-                      key={`contract-${contract.id}`}
-                      onClick={() => hasAddendums && toggleExpand(contract.id)}
-                      className={`transition-colors ${hasAddendums ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${isExpanded ? "bg-muted/30" : ""}`}
-                    >
-                      {/* Expand icon */}
-                      <td className="w-10 px-3 py-4">
-                        {hasAddendums ? (
-                          <div className="flex items-center justify-center">
-                            {isExpanded
-                              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                            }
-                          </div>
-                        ) : <div className="w-4" />}
-                      </td>
-
-                      {/* Title */}
-                      <td className="px-3 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="p-2.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0">
-                            <FileText className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground leading-tight">{contract.title}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{contract.contract_number}</p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <ContractTypeBadge type={contract.contract_type} />
-                              {hasAddendums && (
-                                <span className="text-xs text-emerald-600">{contract.addendums.length} addendum</span>
+                  return (
+                    <>
+                      <tr
+                        key={`contract-${contract.id}`}
+                        onClick={() =>
+                          hasAddendums && toggleExpand(contract.id)
+                        }
+                        className={`transition-colors ${hasAddendums ? "cursor-pointer hover:bg-muted/40" : "hover:bg-muted/20"} ${isExpanded ? "bg-muted/30" : ""}`}>
+                        {/* Expand icon */}
+                        <td className="w-10 px-3 py-4">
+                          {hasAddendums ? (
+                            <div className="flex items-center justify-center">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               )}
                             </div>
-                            {/* Notifikasi terminasi terjadwal */}
-                            {contract.terminations && contract.terminations.length > 0 && (
-                              <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                                </span>
-                                Terminasi pada: <span className="font-bold">{contract.terminations[0].effective_date}</span>
+                          ) : (
+                            <div className="w-4" />
+                          )}
+                        </td>
+
+                        {/* Title */}
+                        <td className="px-3 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2.5 rounded-md bg-emerald-100 text-emerald-700 shrink-0">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground leading-tight">
+                                {contract.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {contract.contract_number}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <ContractTypeBadge
+                                  type={contract.contract_type}
+                                />
+                                {hasAddendums && (
+                                  <span className="text-xs text-emerald-600">
+                                    {contract.addendums.length} addendum
+                                  </span>
+                                )}
                               </div>
-                            )}
+                              {/* Notifikasi terminasi terjadwal */}
+                              {contract.terminations &&
+                                contract.terminations.length > 0 && (
+                                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span className="relative flex h-2 w-2">
+                                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                    </span>
+                                    Terminasi pada:{" "}
+                                    <span className="font-bold">
+                                      {contract.terminations[0].effective_date}
+                                    </span>
+                                  </div>
+                                )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.partner}</td>
-                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.category}</td>
-                      <td className="px-3 py-4 font-medium"><StatusBadge /></td>
-                      <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
-                        {contract.start_date}<br />
-                        <span className="text-muted-foreground/60">s/d</span><br />
-                        {contract.end_date ?? "—"}
-                      </td>
-                      <td className="px-3 py-4 text-muted-foreground font-medium">{contract.created_by}</td>
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.partner}
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.category}
+                        </td>
+                        <td className="px-3 py-4 font-medium">
+                          <StatusBadge />
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground text-xs leading-relaxed font-medium">
+                          {contract.start_date}
+                          <br />
+                          <span className="text-muted-foreground/60">s/d</span>
+                          <br />
+                          {contract.end_date ?? "—"}
+                        </td>
+                        <td className="px-3 py-4 text-muted-foreground font-medium">
+                          {contract.created_by}
+                        </td>
 
-                      {/* Render dynamic columns cells */}
-                      {filter.visibleFields.map((fieldId) => {
-                        const valObj = contract.field_values?.find(
-                          (fv) => fv.field_definition_id === fieldId
-                        );
-                        return (
-                          <td key={fieldId} className="px-3 py-4 text-muted-foreground font-medium">
-                            {valObj?.value || "—"}
-                          </td>
-                        );
-                      })}
+                        {/* Render dynamic columns cells */}
+                        {filter.visibleFields.map((fieldId) => {
+                          const valObj = contract.field_values?.find(
+                            (fv) => fv.field_definition_id === fieldId,
+                          );
+                          return (
+                            <td
+                              key={fieldId}
+                              className="px-3 py-4 text-muted-foreground font-medium">
+                              {valObj?.value || "—"}
+                            </td>
+                          );
+                        })}
 
-                      {/* Actions */}
-                      <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
-                        <RowMenu
-                          contract={contract}
-                          isHrd={isHrd}
-                          canManageAddendum={canManageAddendum}
-                          canManageTermination={canManageTermination}
-                          canDeleteRow={canDeleteRow}
-                          canRenewContract={canRenewContract}
-                          canDownloadContract={canDownloadContract}
-                          onView={() => {
-                            if (contract.contract_type === "external") {
-                              if (contract.signed_document_url) {
-                                window.open(contract.signed_document_url, "_blank", "noopener,noreferrer");
+                        {/* Actions */}
+                        <td
+                          className="px-3 py-4"
+                          onClick={(e) => e.stopPropagation()}>
+                          <RowMenu
+                            contract={contract}
+                            isHrd={isHrd}
+                            canManageAddendum={canManageAddendum}
+                            canManageTermination={canManageTermination}
+                            canDeleteRow={canDeleteRow}
+                            canRenewContract={canRenewContract}
+                            canDownloadContract={canDownloadContract}
+                            onView={() => {
+                              if (contract.contract_type === "external") {
+                                if (contract.signed_document_url) {
+                                  window.open(
+                                    contract.signed_document_url,
+                                    "_blank",
+                                    "noopener,noreferrer",
+                                  );
+                                } else {
+                                  toast.error(
+                                    "Dokumen kontrak tidak ditemukan.",
+                                  );
+                                }
+                              } else if (isManager) {
+                                navigate(`/approvals/${contract.id}`);
                               } else {
-                                toast.error("Dokumen kontrak tidak ditemukan.");
+                                navigate(`/contracts/${contract.id}/view`, {
+                                  state: { returnTo: "/contracts/active" },
+                                });
                               }
-                            } else if (isManager) {
-                              navigate(`/approvals/${contract.id}`);
-                            } else {
-                              navigate(`/contracts/${contract.id}/view`, {
-                                state: { returnTo: "/contracts/active" },
-                              });
-                            }
-                          }}
-                          onAddendum={() => setAddendumTarget(contract)}
-                          onTerminate={() => setTerminateTarget(contract)}
-                          onDelete={() => setDeleteTarget(contract)}
-                          onRenew={() => setRenewTarget(contract)}
-                          onDownloadPdf={() => handleDownloadPdf(contract)}
-                        />
-                      </td>
-                    </tr>
+                            }}
+                            onAddendum={() => setAddendumTarget(contract)}
+                            onTerminate={() => setTerminateTarget(contract)}
+                            onDelete={() => setDeleteTarget(contract)}
+                            onRenew={() => setRenewTarget(contract)}
+                            onDownloadPdf={() => handleDownloadPdf(contract)}
+                          />
+                        </td>
+                      </tr>
 
-                    {/* Addendum rows */}
-                    {isExpanded && contract.addendums.map(addendum => (
-                      <AddendumSubRow
-                        key={`addendum-${addendum.id}`}
-                        addendum={addendum}
-                        onView={() => setViewAddendumTarget(addendum)}
-                        colSpan={6 + filter.visibleFields.length}
-                      />
-                    ))}
-                  </>
-                );
-              })}
+                      {/* Addendum rows */}
+                      {isExpanded &&
+                        contract.addendums.map((addendum) => (
+                          <AddendumSubRow
+                            key={`addendum-${addendum.id}`}
+                            addendum={addendum}
+                            onView={() => setViewAddendumTarget(addendum)}
+                            colSpan={6 + filter.visibleFields.length}
+                          />
+                        ))}
+                    </>
+                  );
+                })}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         {activeContracts.length > 0 && (
-          <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+          <Pagination
+            page={safePage}
+            totalPages={totalPages}
+            onChange={setPage}
+          />
         )}
       </div>
 

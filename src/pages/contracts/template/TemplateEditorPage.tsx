@@ -799,6 +799,7 @@ export default function TemplateEditorPage() {
       activeTab === "upload" ? (uploadedFile ?? undefined) : undefined,
   });
 
+  // Signature preview mencegah generate PDF berulang ketika isi template belum berubah.
   const createPdfPreviewSignature = () =>
     JSON.stringify({
       name,
@@ -819,6 +820,7 @@ export default function TemplateEditorPage() {
           : null,
     });
 
+  // Satu pintu untuk create/update template; mode preview memakai nama/kategori sementara.
   const persistTemplate = async (options?: { forPreview?: boolean }) => {
     setSaveError(null);
     const isPreview = options?.forPreview ?? false;
@@ -919,6 +921,7 @@ export default function TemplateEditorPage() {
     }
   };
 
+  // Buang progres berarti hapus draft lokal dan record sementara yang dibuat hanya untuk preview PDF.
   const handleConfirmCancel = async () => {
     const previewCreatedTemplateId = previewCreatedTemplateIdRef.current;
     if (previewCreatedTemplateId) {
