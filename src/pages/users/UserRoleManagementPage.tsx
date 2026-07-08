@@ -43,9 +43,10 @@ import Pagination from "@/components/Pagination";
 import { toast } from "sonner";
 
 //  Schemas
-
 const STRONG_PASSWORD_MESSAGE =
   "Password minimal 8 karakter dan harus berisi huruf besar, huruf kecil, angka, serta simbol";
+// Validasi password dibuat di frontend agar admin langsung mendapat feedback,
+// sedangkan backend tetap menjadi lapisan validasi utama.
 const STRONG_PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -72,12 +73,11 @@ const roleFormSchema = z.object({
 });
 type RoleFormValues = z.infer<typeof roleFormSchema>;
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+//  Constants
 
-const PAGE_SIZE = 5;
+const ROWS_PER_PAGE = 10;
 
-// ─── Shared UI ────────────────────────────────────────────────────────────────
-
+//  Shared UI
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
@@ -149,8 +149,7 @@ function ActionMenu({
   );
 }
 
-// ─── Table skeleton ───────────────────────────────────────────────────────────
-
+//  Table skeleton
 function TableSkeleton({ cols }: { cols: number }) {
   return (
     <>
@@ -170,8 +169,7 @@ function TableSkeleton({ cols }: { cols: number }) {
   );
 }
 
-// ─── Users List ───────────────────────────────────────────────────────────────
-
+// Users List
 function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -212,8 +210,8 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
         fetchUsers(),
         fetchRoles(),
       ]);
-      setUsers(userData);
-      setRoles(roleData);
+      setUsers([...userData].sort((a, b) => b.id - a.id));
+      setRoles([...roleData].sort((a, b) => b.id - a.id));
       totalUsers(userData.length);
     } catch (e) {
       console.error(e);
@@ -246,11 +244,11 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
     );
   }, [users, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const handleSearch = (v: string) => {
@@ -274,6 +272,8 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
+    // Role hanya dipakai sebagai informasi saat edit user.
+    // Perubahan role tidak dibuka agar histori proses bisnis tetap konsisten.
     setSelectedRole(user.roles?.[0] ?? "");
     form.reset({
       name: user.name,
@@ -312,6 +312,8 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
     setIsSubmitting(true);
     try {
       if (editingUser) {
+        // Saat update user, role tidak dikirim ulang.
+        // Role user ditetapkan pada saat pembuatan akun.
         await updateUser(editingUser.id, {
           name: data.name,
           job_title: data.job_title,
@@ -380,9 +382,12 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
       const message = isAxiosError(error)
         ? error.response?.data?.message
         : undefined;
-      toast.error(editingUser ? "Gagal memperbarui user" : "Gagal membuat user", {
-        description: message ?? "Terjadi kesalahan. Silakan coba lagi.",
-      });
+      toast.error(
+        editingUser ? "Gagal memperbarui user" : "Gagal membuat user",
+        {
+          description: message ?? "Terjadi kesalahan. Silakan coba lagi.",
+        },
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -527,8 +532,7 @@ function UsersList({ totalUsers }: { totalUsers: (n: number) => void }) {
   );
 }
 
-// ─── Roles List ───────────────────────────────────────────────────────────────
-
+//  Roles List 
 function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -558,7 +562,7 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
         fetchRoles(),
         fetchPermissions(),
       ]);
-      setRoles(roleData);
+      setRoles([...roleData].sort((a, b) => b.id - a.id));
       setPermissions(permData);
       totalRoles(roleData.length);
     } catch (e) {
@@ -591,11 +595,11 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
     );
   }, [roles, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const handleSearch = (v: string) => {
@@ -634,6 +638,8 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
     if (deleteModal.roleId === null) return;
     setIsDeleting(true);
     try {
+      // Backend akan menolak penghapusan role jika masih dipakai user.
+      // Frontend cukup menampilkan hasil validasi tersebut ke admin.
       await deleteRole(deleteModal.roleId);
       await loadData();
       setDeleteModal({ open: false, roleId: null, roleName: "" });
@@ -675,6 +681,22 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
       form.reset();
     } catch (e) {
       console.error(e);
+      if (isAxiosError(e) && e.response?.status === 422) {
+        const nameError =
+          e.response.data?.errors?.name?.[0] ?? e.response.data?.message;
+
+        if (nameError) {
+          form.setError("name", {
+            type: "server",
+            message: nameError,
+          });
+          toast.error("Gagal menyimpan role", {
+            description: nameError,
+          });
+          return;
+        }
+      }
+
       toast.error("Gagal menyimpan role", {
         description: "Silakan coba lagi.",
       });
@@ -860,7 +882,7 @@ function RolesList({ totalRoles }: { totalRoles: (n: number) => void }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// Main Page 
 
 export default function UserRoleManagementPage() {
   const [activeTab, setActiveTab] = useState<"users" | "roles">("users");
@@ -880,7 +902,7 @@ export default function UserRoleManagementPage() {
           </p>
         </div>
 
-        {/* ── Pill Tab Switcher ─────────────────────────────────────── */}
+        {/* = Pill Tab Switcher = */}
         <div className="inline-flex items-center bg-gray-100 rounded-lg p-1 gap-1">
           <button
             onClick={() => setActiveTab("users")}
