@@ -29,6 +29,7 @@ const STATUS_STYLE: Record<string, string> = {
   revision:    "bg-orange-50 text-orange-700 border border-orange-200",
   rejected:    "bg-red-50 text-red-600 border border-red-200",
   terminated:  "bg-red-50 text-red-600 border border-red-200",
+  expired:     "bg-gray-50 text-gray-600 border border-gray-200",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -40,6 +41,7 @@ const STATUS_DOT: Record<string, string> = {
   revision:    "bg-orange-400",
   rejected:    "bg-red-500",
   terminated:  "bg-red-700",
+  expired:     "bg-gray-500",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -51,6 +53,7 @@ const STATUS_LABEL: Record<string, string> = {
     signed:      "Disahkan",
     active:      "Aktif",
     terminated:  "Dihentikan",
+    expired:     "Berakhir",
 };
 
 const STATUS_DESC: Record<string, string> = {
@@ -62,6 +65,7 @@ const STATUS_DESC: Record<string, string> = {
   revision:    "Dokumen dikembalikan untuk direvisi",
   rejected:    "Dokumen telah ditolak",
   terminated:  "Dokumen kontrak telah diterminasi",
+  expired:     "Dokumen kontrak telah berakhir",
 };
 
 export function ContractEditorRightSidebar({
@@ -112,8 +116,8 @@ export function ContractEditorRightSidebar({
                     </div>
                     <p className="text-xs font-medium text-gray-700 truncate">
                       {log.changed_by === "System" || log.changed_by === "Admin Agreema"
-                        ? "Diperbarui otomatis oleh sistem"
-                        : `Diperbarui oleh ${log.changed_by}`}
+                      ? "Diperbarui otomatis oleh sistem"
+                      : `Diperbarui oleh ${log.changed_by}`}
                     </p>
                     <p className="text-[11px] text-gray-400 truncate">
                       {STATUS_DESC[log.new_status] ?? `Dokumen berpindah ke status ${STATUS_LABEL[log.new_status] ?? log.new_status}`}

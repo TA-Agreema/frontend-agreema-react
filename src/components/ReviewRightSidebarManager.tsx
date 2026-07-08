@@ -11,7 +11,8 @@ const STATUS_STYLE: Record<string, string> = {
     active:      "bg-emerald-50 text-emerald-700 border border-emerald-200",
     revision:    "bg-orange-50 text-orange-700 border border-orange-200",
     rejected:    "bg-red-50 text-red-600 border border-red-200",
-    terminated:  "bg-red-50 text-red-600 border border-red-200",
+    terminated:  "bg-red-50 text-red-600 border border-red-200",    
+    expired:     "bg-gray-50 text-gray-500 border border-gray-200",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -23,6 +24,7 @@ const STATUS_DOT: Record<string, string> = {
     revision:    "bg-orange-400",
     rejected:    "bg-red-500",
     terminated:  "bg-red-700",
+    expired:     "bg-gray-400",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -34,6 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
     signed:      "Disahkan",
     active:      "Aktif",
     terminated:  "Dihentikan",
+    expired:     "Berhenti",
 };
 
 const STATUS_DESC: Record<string, string> = {
@@ -46,6 +49,7 @@ const STATUS_DESC: Record<string, string> = {
   rejected:    "Dokumen telah ditolak",
   terminating: "Dokumen sedang dalam proses terminasi",
   terminated:  "Dokumen kontrak telah diterminasi",
+  expired:     "Dokumen kontrak telah berakhir",
 };
 
 interface ReviewRightSidebarProps {
