@@ -41,6 +41,8 @@ const findContractFieldMarkInRange = (
 export const ContractField = Mark.create({
   name: "contractField",
 
+  // Mark tidak dibuat inclusive agar teks yang diketik setelah field
+  // tidak otomatis ikut menjadi bagian dari field.
   inclusive: false,
 
   spanning: false,
@@ -82,6 +84,8 @@ export const ContractField = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
+    // Atribut data-* adalah identitas field yang dipakai untuk validasi
+    // dan penyimpanan ke contract_field_values.
     return [
       "span",
       mergeAttributes(HTMLAttributes, {
@@ -114,6 +118,8 @@ export const ContractField = Mark.create({
             },
           },
           handleClick(view, pos) {
+            // Saat token field diklik, seluruh nilai field diseleksi agar user
+            // bisa langsung mengetik nilai pengganti tanpa menghapus manual.
             const resolvedPos = view.state.doc.resolve(pos);
             const parentStart = resolvedPos.start();
             let selectedRange: ContractFieldSelectionRange | null = null;
@@ -158,6 +164,8 @@ export const ContractField = Mark.create({
             return true;
           },
           handleTextInput(view, from, to, text) {
+            // Teks pengganti tetap diberi mark field, sehingga nilai yang diketik
+            // masih terbaca sebagai field saat kontrak disimpan atau diajukan.
             const contractMark =
               (activeContractFieldAttrs
                 ? contractFieldType.create(activeContractFieldAttrs)
@@ -201,6 +209,8 @@ export function insertContractField(
       ? `[${field.field_label}]`
       : `{{${field.field_key}}}`;
 
+  // Spasi setelah field sengaja dibuat sebagai teks biasa agar user bisa
+  // melanjutkan mengetik di luar token field.
   editor
     .chain()
     .focus()

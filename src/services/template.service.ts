@@ -20,6 +20,7 @@ export const fetchTemplate = async (id: number): Promise<Template> => {
 export const createTemplate = async (
   payload: TemplatePayload,
 ): Promise<Template> => {
+  // Content template berisi HTML editor beserta metadata margin/watermark.
   const res = await api.post<TemplateItemResponse>(BASE_PATH, payload);
   return res.data.data;
 };
@@ -40,6 +41,7 @@ export const deleteTemplate = async (id: number): Promise<void> => {
 };
 
 export const downloadTemplatePdf = async (id: number) => {
+  // PDF template dibuat oleh backend agar preview dan hasil unduh memakai renderer yang sama.
   const res = await api.get<Blob>(`${BASE_PATH}/${id}/download`, {
     responseType: "blob",
     validateStatus: () => true,

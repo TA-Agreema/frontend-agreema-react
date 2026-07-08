@@ -48,7 +48,7 @@ import TerminationModal from "@/components/modal/terminasi/TerminationModal";
 import type { Termination } from "@/types/termination";
 import type { Addendum, ContractRow } from "./ContractListPage";
 
-const PAGE_SIZE = 8;
+const ROWS_PER_PAGE = 8;
 function ContractTypeBadge({ type }: { type?: "internal" | "external" }) {
   if (type === "external") {
     return (
@@ -378,11 +378,11 @@ export default function ContractActiveListPage() {
 
   // Filter only active contracts
   const activeContracts = filter.contracts.filter((c) => c.status === "active");
-  const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(activeContracts.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const paginated = activeContracts.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const toggleExpand = (id: number) => {

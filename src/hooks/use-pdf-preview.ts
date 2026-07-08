@@ -38,10 +38,16 @@ export function usePdfPreview({
     if (isPreparingPreview) return;
     const currentSignature = createSignature();
     const currentCacheKey = `${cacheKey}:${currentSignature}`;
+
+    // Signature mewakili isi dokumen saat ini. Jika signature belum berubah,
+    // preview PDF lama tetap valid dan tidak perlu generate ulang ke backend.
     if (previewUrlRef.current && previewSignature === currentSignature) {
       setPreviewError(null);
       return;
     }
+
+    // Cache berbasis memory menjaga preview tetap cepat selama user belum
+    // mengubah isi dokumen, tanpa menyimpan file PDF ke localStorage.
     const cachedPreview = pdfPreviewCache.get(currentCacheKey);
     if (cachedPreview) {
       const cachedUrl = URL.createObjectURL(cachedPreview.blob);
@@ -60,6 +66,8 @@ export function usePdfPreview({
     setPreviewError(null);
 
     try {
+      // PDF tetap dibuat oleh backend agar layout preview mengikuti hasil
+      // download final, bukan hanya tampilan visual editor.
       const generated = await generatePdf();
       if (!generated) return;
 

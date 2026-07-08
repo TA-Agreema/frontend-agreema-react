@@ -20,7 +20,7 @@ import { useTemplates, type ContractTemplate } from "@/hooks/use-template";
 import { downloadBlobResponse } from "@/services/download.service";
 import { downloadTemplatePdf } from "@/services/template.service";
 
-const PAGE_SIZE = 10;
+const ROWS_PER_PAGE = 10;
 const TABLE_COLUMNS = "grid-cols-[2.5fr_1.5fr_1.5fr_1.5fr_1.5fr_48px]";
 const TEMPLATE_CREATE_PATH = "/contracts-templates/new";
 
@@ -377,7 +377,7 @@ function TemplateTableBody({
 function TemplateTableSkeleton() {
   return (
     <div className="divide-y">
-      {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+      {Array.from({ length: ROWS_PER_PAGE }).map((_, index) => (
         <div
           key={index}
           className={`grid ${TABLE_COLUMNS} items-center px-6 py-4`}>
@@ -511,12 +511,12 @@ export default function ContractTemplatePage() {
   );
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredTemplates.length / PAGE_SIZE),
+    Math.ceil(filteredTemplates.length / ROWS_PER_PAGE),
   );
   const safePage = Math.min(page, totalPages);
   const paginatedTemplates = filteredTemplates.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const goToCreateTemplate = () => navigate(TEMPLATE_CREATE_PATH);

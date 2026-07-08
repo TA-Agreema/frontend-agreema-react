@@ -21,6 +21,7 @@ export interface CreateContractPayload {
   template_id?: number | null;
   category_id?: number | null;
   partner_name?: string | null;
+  // Diisi saat kontrak dibuat dari proses perpanjangan agar histori kontrak asal tetap terlacak.
   parent_contract_id?: number | null;
   content?: string | null;
   paper_size?: PaperSize | null;
@@ -74,6 +75,7 @@ export const createPartnerContract = async (
 export const generateContractNumber = async (
   categoryId?: number | null,
 ): Promise<string> => {
+  // Nomor kontrak diambil dari backend agar format dan urutan tetap konsisten.
   const url = categoryId
     ? `${BASE_PATH}/generate-number?category_id=${categoryId}`
     : `${BASE_PATH}/generate-number`;
@@ -121,6 +123,7 @@ export const fetchContract = async (id: number): Promise<ContractRow> => {
 export const createContract = async (
   payload: CreateContractPayload,
 ): Promise<ContractRow> => {
+  // Endpoint ini dipakai untuk kontrak baru biasa maupun kontrak perpanjangan.
   const res = await api.post<{ data: ContractRow }>(BASE_PATH, payload);
   return res.data.data;
 };
@@ -141,6 +144,7 @@ export const deleteContract = async (id: number): Promise<void> => {
 };
 
 export const downloadContractPdf = async (id: number) => {
+  // Response PDF berupa Blob, sehingga error JSON dari backend perlu dibaca manual.
   const res = await api.get<Blob>(`${BASE_PATH}/${id}/download`, {
     responseType: "blob",
     validateStatus: () => true,

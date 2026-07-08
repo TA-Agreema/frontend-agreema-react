@@ -749,6 +749,8 @@ export default function TemplateEditorPage() {
   }, [isEditMode, editor, fieldsLoaded, getTemplate, id, draftKey, allFields]);
 
   const handleFileSelect = async (f: File) => {
+    // Import template dibatasi hanya .docx karena converter yang dipakai
+    // memang membaca struktur dokumen Word dan mengubahnya ke HTML editor.
     if (!f.name.toLowerCase().endsWith(".docx")) {
       setUploadNotice("Hanya file .docx yang dapat diimpor ke editor.");
       return;
@@ -790,7 +792,8 @@ export default function TemplateEditorPage() {
     category_id: overrides?.category_id ?? Number(categoryId),
     is_active: status === "Active",
     paper_size: paperSize,
-    // include margins metadata so backend can pick up page margins when rendering PDF
+    // Margin dan watermark disimpan sebagai metadata di content agar PDF backend
+    // bisa merender template sesuai pengaturan visual editor.
     content: appendMarginsToContent(
       getEditorContentWithWatermark(),
       pageMargin,
@@ -821,6 +824,7 @@ export default function TemplateEditorPage() {
     });
 
   // Satu pintu untuk create/update template; mode preview memakai nama/kategori sementara.
+  // Jadi user tetap bisa melihat preview PDF meskipun metadata final belum lengkap.
   const persistTemplate = async (options?: { forPreview?: boolean }) => {
     setSaveError(null);
     const isPreview = options?.forPreview ?? false;
