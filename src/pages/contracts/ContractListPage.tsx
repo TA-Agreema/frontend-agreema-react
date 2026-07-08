@@ -102,10 +102,9 @@ export interface ContractRow {
   has_open_renewal?: boolean;
 }
 
-const PAGE_SIZE = 10;
+const ROWS_PER_PAGE = 10;
 
 //  Status Config
-
 const STATUS_CONFIG: Record<
   ContractStatus,
   { label: string; className: string }
@@ -522,11 +521,11 @@ export default function ContractListPage() {
       c.status !== "rejected" &&
       c.status !== "terminated"
   );
-  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filteredContracts.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const paginated = filteredContracts.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   // Expand toggle

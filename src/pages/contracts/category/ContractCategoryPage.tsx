@@ -30,7 +30,7 @@ import {
 } from "@/services/category.service";
 import type { Category, CategoryPayload } from "@/types/category";
 
-const PAGE_SIZE = 10;
+const ROWS_PER_PAGE = 10;
 const TABLE_COLUMNS = "grid-cols-[2fr_3fr_1.5fr_1.5fr_48px]";
 const EMPTY_DESCRIPTION = "Tidak ada deskripsi";
 
@@ -459,7 +459,7 @@ function CategoryTableBody({
 function CategoryTableSkeleton() {
   return (
     <div className="divide-y">
-      {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+      {Array.from({ length: ROWS_PER_PAGE }).map((_, index) => (
         <div
           key={index}
           className={`grid ${TABLE_COLUMNS} items-center gap-4 px-6 py-5`}>
@@ -555,12 +555,12 @@ export default function ContractCategoryPage() {
   );
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredCategories.length / PAGE_SIZE),
+    Math.ceil(filteredCategories.length / ROWS_PER_PAGE),
   );
   const safePage = Math.min(page, totalPages);
   const paginatedCategories = filteredCategories.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const handleSearchChange = (value: string) => {

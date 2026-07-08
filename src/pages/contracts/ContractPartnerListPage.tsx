@@ -29,7 +29,7 @@ import AddPartnerContractModal from "@/components/modal/partner/AddPartnerContra
 import type { ContractRow, ContractStatus, Addendum } from "./ContractListPage";
 import type { Termination } from "@/types/termination";
 
-const PAGE_SIZE = 4;
+const ROWS_PER_PAGE = 4;
 
 //  Status Config
 
@@ -337,11 +337,11 @@ export default function ContractListPage() {
   const activeContracts = contracts.filter(
     (c) => c.status !== "terminated" && c.status !== "expired",
   );
-  const totalPages = Math.max(1, Math.ceil(activeContracts.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(activeContracts.length / ROWS_PER_PAGE));
   const safePage = Math.min(page, totalPages);
   const paginated = activeContracts.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   // Expand toggle

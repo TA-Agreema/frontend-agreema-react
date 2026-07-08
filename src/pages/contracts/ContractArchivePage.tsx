@@ -34,7 +34,7 @@ import type { Termination } from "@/types/termination";
 import { usePermissions } from "@/contexts/PermissionContext";
 import ConfirmModal from "@/components/modal/common/ConfirmModal";
 
-const PAGE_SIZE = 10;
+const ROWS_PER_PAGE = 10;
 
 const STATUS_CONFIG: Record<
   ContractStatus,
@@ -415,12 +415,12 @@ export default function ContractArchivePage() {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(archivedContracts.length / PAGE_SIZE),
+    Math.ceil(archivedContracts.length / ROWS_PER_PAGE),
   );
   const safePage = Math.min(page, totalPages);
   const paginated = archivedContracts.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
+    (safePage - 1) * ROWS_PER_PAGE,
+    safePage * ROWS_PER_PAGE,
   );
 
   const toggleExpand = (id: number) => {
