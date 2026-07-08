@@ -28,6 +28,8 @@ export const isUnfilledFieldValue = (value: string, field: FieldDefinition) => {
 };
 
 const createContractFieldElement = (doc: Document, field: FieldDefinition) => {
+  // Token field disimpan sebagai span beratribut data-* agar tetap bisa
+  // dikenali saat HTML dibaca kembali dari template atau contract version.
   const span = doc.createElement("span");
   span.className = "contract-field-token";
   span.dataset.contractFieldId = String(field.id);
@@ -38,6 +40,8 @@ const createContractFieldElement = (doc: Document, field: FieldDefinition) => {
 };
 
 const replacePlainFieldTags = (doc: Document, fields: FieldDefinition[]) => {
+  // Template lama atau hasil import DOCX bisa masih berisi {{field_key}}.
+  // Bagian ini mengubah placeholder teks biasa menjadi token field editor.
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
   const replacements: Array<{
     node: Text;
@@ -147,6 +151,8 @@ const extractContractFieldOccurrences = (
   content: string,
   fields: FieldDefinition[],
 ) => {
+  // Semua kemunculan field dibaca dari HTML, baik dari token span maupun
+  // placeholder lama, supaya validasi dan penyimpanan field_values tetap akurat.
   const occurrences: ContractFieldOccurrence[] = [];
   const fieldById = new Map(fields.map((field) => [field.id, field]));
   const fieldByKey = new Map(
@@ -210,6 +216,8 @@ export function prepareContractContentForEditor(
 ) {
   if (!content || fields.length === 0) return content;
 
+  // Normalisasi content dilakukan saat dokumen dibuka, sehingga field yang
+  // berasal dari template tetap tampil sebagai blok hijau yang bisa diedit.
   const doc = new DOMParser().parseFromString(content, "text/html");
   const fieldById = new Map(fields.map((field) => [field.id, field]));
   const fieldByKey = new Map(
@@ -246,6 +254,7 @@ export function buildContractFieldValues(
   fields: FieldDefinition[],
 ): ContractFieldValuePayload[] {
   // Nilai disimpan per field definition, jadi field yang muncul berulang tetap punya satu nilai final.
+  // Data inilah yang masuk ke contract_field_values, bukan sekadar teks di editor.
   const valuesByFieldId = new Map<number, string | null>();
   const occurrences = extractContractFieldOccurrences(content, fields);
 
@@ -272,6 +281,7 @@ export function validateRequiredContractFields(
   fields: FieldDefinition[],
 ): MissingRequiredContractField[] {
   // Field wajib cukup dilaporkan sekali walaupun token field-nya muncul lebih dari satu kali.
+  // Jika nilai masih berupa [Label Field] atau {{field_key}}, field dianggap belum diisi.
   const reportedFieldIds = new Set<number>();
   const occurrences = extractContractFieldOccurrences(content, fields);
 
