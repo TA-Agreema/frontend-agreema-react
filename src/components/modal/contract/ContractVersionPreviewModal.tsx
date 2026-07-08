@@ -373,11 +373,11 @@ export function ContractVersionPreviewModal({
   const hasPrev = prevVersion !== null;
   const hasNext = nextVersion !== null;
 
-  const diffCount = useMemo(() => {
-    const tmp = document.createElement("div");
-    tmp.innerHTML = diffHtml;
-    return tmp.querySelectorAll(".version-diff-added, .version-diff-inline, .version-diff-removed").length;
-  }, [diffHtml]);
+  // const diffCount = useMemo(() => {
+  //   const tmp = document.createElement("div");
+  //   tmp.innerHTML = diffHtml;
+  //   return tmp.querySelectorAll(".version-diff-added, .version-diff-inline, .version-diff-removed").length;
+  // }, [diffHtml]);
 
   return (
     <div
@@ -404,12 +404,12 @@ export function ContractVersionPreviewModal({
           </div>
 
           <div className="flex items-center gap-2">
-            {prevVersion && (
+            {/* {prevVersion && (
               <div className="flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs text-amber-700 font-medium">
                 <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
                 {diffCount} perubahan dari v{prevVersion.version_number}
               </div>
-            )}
+            )} */}
             {!prevVersion && (
               <div className="flex items-center gap-1.5 rounded-full bg-gray-100 border border-gray-200 px-3 py-1 text-xs text-gray-500">
                 <Eye className="h-3 w-3" />

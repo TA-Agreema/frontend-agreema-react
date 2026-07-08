@@ -233,7 +233,7 @@ export default function ContractFilterManager({
 
             {/* Year Dropdown Filter */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Tahun Mulai</label>
+              <label className="text-xs font-semibold text-muted-foreground">Tahun Mulai Kontrak</label>
               <select
                 value={startYearFilter}
                 onChange={(e) => setStartYearFilter(e.target.value)}
@@ -249,7 +249,7 @@ export default function ContractFilterManager({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground">Tahun Selesai</label>
+              <label className="text-xs font-semibold text-muted-foreground">Tahun Selesai Kontrak</label>
               <select
                 value={endYearFilter}
                 onChange={(e) => setEndYearFilter(e.target.value)}
