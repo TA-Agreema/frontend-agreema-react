@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   ArrowLeft,
   CheckCircle,
@@ -31,6 +32,8 @@ import { ContractSignatureBox } from "@/components/editor/contract/ContractSigne
 export default function ContractReviewDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserId = user?.user?.id;
   const [contract, setContract] = useState<ManagerContractDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [contractHtml, setContractHtml] = useState("");
@@ -183,6 +186,24 @@ export default function ContractReviewDetailPage() {
       </div>
     );
   }
+
+  const internalSigners = (contract.signers ?? [])
+  .filter((s) => s.signer_type === "internal")
+  .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+
+  const mySigner = internalSigners.find((s) => s.user?.id === currentUserId);
+
+  const myLatestSignature = mySigner?.signatures?.filter((s) => (s.iteration ?? 1) > 0).slice(-1)[0];
+  const alreadySigned = !!myLatestSignature;
+
+  const prevSigners = internalSigners.filter(
+    (s) => (s.sequence ?? 0) < (mySigner?.sequence ?? 0)
+  );
+  const allPrevSigned = prevSigners.every((s) =>
+    s.signatures && s.signatures.filter((sig) => (sig.iteration ?? 1) > 0).length > 0
+  );
+
+  const canSign = !!mySigner && !alreadySigned && allPrevSigned;
 
   return (
     <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
@@ -372,6 +393,8 @@ export default function ContractReviewDetailPage() {
             onRevise={handleRevisionRequest}
             onReject={() => setShowRejectModal(true)}
             onApprove={() => setShowSignModal(true)}
+            canSign={canSign}        
+            alreadySigned={alreadySigned}
           />
         </div>
       </div>

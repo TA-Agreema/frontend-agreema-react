@@ -25,11 +25,12 @@ export interface SignatureItem {
 // Update interface Signer
 export interface Signer {
   id: number;
+  sequence?:number;
   signer_type: "internal" | "external";
   signer_name: string | null;
   signer_role: string | null;
   external_email: string | null;
-  user: { name: string; job_title: string | null } | null;
+  user: { id: number; name: string; job_title: string | null } | null;
   signatures: SignatureItem[];
   reviews: SignerReview[];
 }
@@ -47,11 +48,12 @@ export interface ManagerContractDetail extends ContractRow {
   }[];
   signers?: {
     id: number;
+    sequence?:number;
     signer_type: "internal" | "external";
     signer_name: string | null;
     signer_role: string | null;
     external_email: string | null;
-    user: { name: string; job_title: string | null } | null;
+  user: { id: number; name: string; job_title: string | null } | null;
     signatures?: SignatureItem[];
     reviews?: {
       reviewed_at: string;

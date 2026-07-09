@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<string, string> = {
     draft:       "Draft",
     review:      "Ditinjau",
     revision:    "Revisi",
-    approved:    "Disetujui Internal",
+    approved:    "Disetujui Pihak 1",
     rejected:    "Ditolak",
     signed:      "Disahkan",
     active:      "Aktif",

@@ -285,7 +285,7 @@ export default function ReviewRightSidebar({
 
                 {/* Grid Tombol Aksi */}
                 <div className="grid grid-cols-2 gap-2.5">
-                    {contractStatus === "review" ? (
+                    {(contractStatus === "review" || contractStatus === "approved") ? (
                         <>
                             <button
                                 onClick={onReject}
