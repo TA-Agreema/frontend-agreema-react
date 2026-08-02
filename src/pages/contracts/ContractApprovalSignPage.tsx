@@ -192,6 +192,7 @@ useEffect(() => {
       if (mode === "upload") {
         // ── ALUR Upload dokumen PDF final yang sudah TTD kedua pihak ──
         const formData = new FormData();
+        
         formData.append("signed_document", uploadFile!);
         formData.append("signature_type", "physical");
 

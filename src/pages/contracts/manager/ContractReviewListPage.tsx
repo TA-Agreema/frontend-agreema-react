@@ -101,7 +101,7 @@ export default function ContractReviewListPage() {
     );
   };
 
-  const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, hasSigned?: boolean) => {
     switch (status) {
       case "review":
         return (
@@ -128,6 +128,14 @@ export default function ContractReviewListPage() {
           </span>
         );
       case "approved":
+        // Kalau approved tapi belum TTD → tampilkan Perlu Ditinjau
+        if (!hasSigned) {
+          return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              Perlu Ditinjau
+            </span>
+          );
+        }
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
             Disetujui
@@ -334,7 +342,7 @@ export default function ContractReviewListPage() {
                               </div>
                             </td>
                             <td className="px-3 py-4">
-                              {getStatusBadge(contract.status)}
+                              {getStatusBadge(contract.status, !!contract.signed_document_url)}
                             </td>
                             <td className="px-3 py-4 font-medium text-gray-600">
                               <span className="inline-flex px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">

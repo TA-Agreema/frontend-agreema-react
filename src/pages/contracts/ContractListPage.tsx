@@ -126,7 +126,7 @@ const STATUS_CONFIG: Record<
     className: "bg-orange-50 text-orange-700 border-orange-200",
   },
   approved: {
-    label: "Disetujui Internal",
+    label: "Disetujui Pihak 1",
     className: "bg-blue-50 text-blue-700 border-blue-200",
   },
   signed: {
@@ -702,7 +702,7 @@ export default function ContractListPage() {
           { label: "Draft", value: "draft" },
           { label: "Ditinjau", value: "review" },
           { label: "Revisi", value: "revision" },
-          { label: "Disetujui Internal", value: "approved" },
+          { label: "Disetujui Pihak 1", value: "approved" },
           { label: "Disahkan", value: "signed" },
         ]}
         customFilters={filter.customFilters}
